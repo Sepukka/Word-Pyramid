@@ -1,0 +1,37 @@
+{
+  "puzzles": [
+	{
+	  "id": "suomalaiset_yhteydet",
+	  "title": "Päivän sanapyramidi",
+	  "groups": [
+		{"size": 2, "label": "Suomen viralliset kielet", "words": ["SUOMI", "RUOTSI"]},
+		{"size": 3, "label": "Suomen järviä", "words": ["SAIMAA", "PÄIJÄNNE", "INARI"]},
+		{"size": 4, "label": "Suomalaisia miesten etunimiä", "words": ["ISMO", "OLAVI", "REIJO", "TOPI"]},
+		{"size": 5, "label": "Suomen suuria kaupunkeja", "words": ["HELSINKI", "ESPOO", "TAMPERE", "TURKU", "OULU"]}
+	  ],
+	  "top_word": "HUIPPU"
+	},
+	{
+	  "id": "screen_and_stage",
+	  "title": "Screen and Stage",
+	  "groups": [
+		{"size": 2, "label": "Theatre sections", "words": ["STAGE", "BALCONY"]},
+		{"size": 3, "label": "Film crew roles", "words": ["DIRECTOR", "CAMERA", "EDITOR"]},
+		{"size": 4, "label": "Types of dance", "words": ["BALLET", "TANGO", "SALSA", "WALTZ"]},
+		{"size": 5, "label": "Shakespeare plays", "words": ["HAMLET", "OTHELLO", "MACBETH", "TEMPEST", "LEAR"]}
+	  ],
+	  "top_word": "APPLAUSE"
+	},
+	{
+	  "id": "nature_trail",
+	  "title": "Nature Trail",
+	  "groups": [
+		{"size": 2, "label": "Evergreen trees", "words": ["PINE", "FIR"]},
+		{"size": 3, "label": "Weather events", "words": ["RAIN", "SNOW", "WIND"]},
+		{"size": 4, "label": "Insects", "words": ["ANT", "BEE", "MOTH", "BEETLE"]},
+		{"size": 5, "label": "Ocean animals", "words": ["SHARK", "WHALE", "DOLPHIN", "SEAL", "OCTOPUS"]}
+	  ],
+	  "top_word": "SUMMIT"
+	}
+  ]
+}

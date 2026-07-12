@@ -1,0 +1,64 @@
+{
+  "puzzles": [
+    {"id":"unlimited_001","title":"Kitchen Logic","groups":[
+      {"size":2,"label":"Cooking fats","words":["BUTTER","OLIVE_OIL"]},
+      {"size":3,"label":"Baking spices","words":["CINNAMON","NUTMEG","CLOVES"]},
+      {"size":4,"label":"Kitchen appliances","words":["BLENDER","TOASTER","KETTLE","MIXER"]},
+      {"size":5,"label":"Ways to cook eggs","words":["POACHED","SCRAMBLED","FRIED","BOILED","OMELETTE"]}
+    ],"top_word":"APRON"},
+    {"id":"unlimited_002","title":"Game Night","groups":[
+      {"size":2,"label":"Chess pieces","words":["BISHOP","KNIGHT"]},
+      {"size":3,"label":"Card suits","words":["HEARTS","SPADES","DIAMONDS"]},
+      {"size":4,"label":"Dice games","words":["YAHTZEE","CRAPS","FARKLE","BUNCO"]},
+      {"size":5,"label":"Board game actions","words":["ROLL","DRAW","TRADE","BLUFF","SCORE"]}
+    ],"top_word":"CHECKMATE"},
+    {"id":"unlimited_003","title":"Animal Kingdom","groups":[
+      {"size":2,"label":"Big cats","words":["LEOPARD","JAGUAR"]},
+      {"size":3,"label":"Australian animals","words":["KOALA","WOMBAT","PLATYPUS"]},
+      {"size":4,"label":"Birds of prey","words":["EAGLE","FALCON","OSPREY","KESTREL"]},
+      {"size":5,"label":"Animal homes","words":["NEST","BURROW","HIVE","DEN","STY"]}
+    ],"top_word":"ZOOKEEPER"},
+    {"id":"unlimited_004","title":"Colour Theory","groups":[
+      {"size":2,"label":"Primary colours","words":["RED","BLUE"]},
+      {"size":3,"label":"Neutral colours","words":["BEIGE","IVORY","TAUPE"]},
+      {"size":4,"label":"Shades of purple","words":["LILAC","VIOLET","MAUVE","PLUM"]},
+      {"size":5,"label":"Things that can be gold","words":["MEDAL","RING","TROPHY","COIN","CROWN"]}
+    ],"top_word":"PALETTE"},
+    {"id":"unlimited_005","title":"Science Lab","groups":[
+      {"size":2,"label":"Noble gases","words":["NEON","ARGON"]},
+      {"size":3,"label":"States of matter","words":["SOLID","LIQUID","GAS"]},
+      {"size":4,"label":"Lab equipment","words":["BEAKER","PIPETTE","FLASK","BUNSEN"]},
+      {"size":5,"label":"Human senses","words":["SIGHT","HEARING","TOUCH","TASTE","SMELL"]}
+    ],"top_word":"MICROSCOPE"},
+    {"id":"unlimited_006","title":"Sporting Life","groups":[
+      {"size":2,"label":"Tennis strokes","words":["SERVE","VOLLEY"]},
+      {"size":3,"label":"Olympic swimming strokes","words":["FREESTYLE","BACKSTROKE","BUTTERFLY"]},
+      {"size":4,"label":"Football positions","words":["GOALKEEPER","DEFENDER","MIDFIELDER","STRIKER"]},
+      {"size":5,"label":"Things at a stadium","words":["SEATS","SCOREBOARD","WHISTLE","MASCOT","TURNSTILE"]}
+    ],"top_word":"CHAMPION"},
+    {"id":"unlimited_007","title":"Office Day","groups":[
+      {"size":2,"label":"Office stationery","words":["STAPLER","PAPERCLIP"]},
+      {"size":3,"label":"Keyboard keys","words":["RETURN","SHIFT","ESCAPE"]},
+      {"size":4,"label":"Meeting formats","words":["STANDUP","WORKSHOP","WEBINAR","BRIEFING"]},
+      {"size":5,"label":"Email folders","words":["INBOX","DRAFTS","SENT","ARCHIVE","SPAM"]}
+    ],"top_word":"DEADLINE"},
+    {"id":"unlimited_008","title":"Myth and Legend","groups":[
+      {"size":2,"label":"Greek gods","words":["ATHENA","HERMES"]},
+      {"size":3,"label":"Norse realms","words":["ASGARD","MIDGARD","NIFLHEIM"]},
+      {"size":4,"label":"Legendary creatures","words":["PHOENIX","GRIFFIN","KRAKEN","UNICORN"]},
+      {"size":5,"label":"Things a hero may carry","words":["SWORD","SHIELD","CLOAK","TORCH","AMULET"]}
+    ],"top_word":"ODYSSEY"},
+    {"id":"unlimited_009","title":"City Break","groups":[
+      {"size":2,"label":"Paris landmarks","words":["LOUVRE","PANTHEON"]},
+      {"size":3,"label":"Underground transport","words":["METRO","SUBWAY","TUBE"]},
+      {"size":4,"label":"Things in a hotel room","words":["KEYCARD","MINIBAR","PILLOW","WARDROBE"]},
+      {"size":5,"label":"Tourist activities","words":["SIGHTSEE","PHOTOGRAPH","SHOP","DINE","EXPLORE"]}
+    ],"top_word":"POSTCARD"},
+    {"id":"unlimited_010","title":"Time and Space","groups":[
+      {"size":2,"label":"Calendar months","words":["APRIL","AUGUST"]},
+      {"size":3,"label":"Units of time","words":["SECOND","MINUTE","HOUR"]},
+      {"size":4,"label":"Day parts","words":["DAWN","NOON","DUSK","MIDNIGHT"]},
+      {"size":5,"label":"Things with hands","words":["CLOCK","WATCH","COMPASS","MANNEQUIN","PUPPET"]}
+    ],"top_word":"FOREVER"}
+  ]
+}
