@@ -790,15 +790,19 @@ func _show_aftermath(won: bool) -> void:
 	stack.add_child(top_space)
 
 	var sheet: PanelContainer = PanelContainer.new()
-	sheet.add_theme_stylebox_override("panel", _aftermath_sheet_style())
+	sheet.add_theme_stylebox_override("panel", _aftermath_sheet_style(won))
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_child(sheet)
+	var sheet_content: VBoxContainer = VBoxContainer.new()
+	sheet_content.add_theme_constant_override("separation", 0)
+	sheet.add_child(sheet_content)
+	_add_aftermath_accent(sheet_content, won)
 	var margin: MarginContainer = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 26)
 	margin.add_theme_constant_override("margin_right", 26)
 	margin.add_theme_constant_override("margin_top", 22)
 	margin.add_theme_constant_override("margin_bottom", 32)
-	sheet.add_child(margin)
+	sheet_content.add_child(margin)
 	var content: VBoxContainer = VBoxContainer.new()
 	content.alignment = BoxContainer.ALIGNMENT_CENTER
 	content.add_theme_constant_override("separation", 16)
@@ -1200,26 +1204,50 @@ func _category_card_style(row_length: int) -> StyleBoxFlat:
 func _button_style(color: Color, border_color: Color = UI_BORDER) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = color
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
 	style.border_color = border_color
 	style.set_border_width_all(1)
 	return style
 
-func _aftermath_sheet_style() -> StyleBoxFlat:
+func _aftermath_sheet_style(won: bool) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = UI_PRIMARY
 	style.corner_radius_top_left = 28
 	style.corner_radius_top_right = 28
 	style.border_color = Color(1, 1, 1, 0.08)
 	style.set_border_width_all(1)
+	style.shadow_color = UI_YELLOW if won else UI_RED
+	style.shadow_size = 1
+	style.shadow_offset = Vector2(8, 8)
 	style.content_margin_left = 0.0
 	style.content_margin_right = 0.0
 	style.content_margin_top = 0.0
 	style.content_margin_bottom = 0.0
 	return style
+
+func _add_aftermath_accent(parent: VBoxContainer, won: bool) -> void:
+	var accent: HBoxContainer = HBoxContainer.new()
+	accent.custom_minimum_size = Vector2(0, 5)
+	accent.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	accent.add_theme_constant_override("separation", 0)
+	parent.add_child(accent)
+	var colors: Array[Color] = []
+	if won:
+		colors.append(UI_YELLOW)
+		colors.append(UI_MAGENTA)
+		colors.append(UI_TEAL)
+		colors.append(UI_RED)
+	else:
+		colors.append(UI_RED)
+	for color in colors:
+		var segment: ColorRect = ColorRect.new()
+		segment.color = color
+		segment.custom_minimum_size = Vector2(0, 5)
+		segment.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		accent.add_child(segment)
 
 func _aftermath_inner_style(radius: int = 20) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
