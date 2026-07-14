@@ -28,8 +28,14 @@ func load_puzzles() -> bool:
 func set_language(language: String) -> bool:
 	if not PUZZLE_PATHS.has(language):
 		return false
+	var previous_language: String = str(SaveManager.settings.get("language", "en"))
 	SaveManager.settings["language"] = language
-	return load_puzzles()
+	if not load_puzzles():
+		SaveManager.settings["language"] = previous_language
+		load_puzzles()
+		return false
+	SaveManager.save_data()
+	return true
 
 func get_language() -> String:
 	return _language

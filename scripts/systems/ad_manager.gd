@@ -12,6 +12,7 @@ var _reward_listener: OnUserEarnedRewardListener = OnUserEarnedRewardListener.ne
 var _load_callback: RewardedAdLoadCallback = RewardedAdLoadCallback.new()
 var _content_callback: FullScreenContentCallback = FullScreenContentCallback.new()
 var _is_loading: bool = false
+var _show_when_loaded: bool = false
 
 func _ready() -> void:
 	if not _is_mobile_platform():
@@ -30,11 +31,12 @@ func request_rewarded_hint() -> void:
 		rewarded_ad_unavailable.emit("Mainos toimii vain Android- tai iOS-testiversiossa.")
 		return
 	if _rewarded_ad == null:
+		_show_when_loaded = true
 		if not _is_loading:
 			_load_rewarded_ad()
-		rewarded_ad_unavailable.emit("Mainosta ladataan. Kokeile hetken kuluttua uudelleen.")
+		rewarded_ad_unavailable.emit("Mainosta ladataan. Se avautuu hetken kuluttua.")
 		return
-	_rewarded_ad.show(_reward_listener)
+	_show_rewarded_ad()
 
 func _load_rewarded_ad() -> void:
 	if _is_loading or _rewarded_ad != null:
@@ -46,9 +48,12 @@ func _on_ad_loaded(ad: RewardedAd) -> void:
 	_is_loading = false
 	_rewarded_ad = ad
 	_rewarded_ad.full_screen_content_callback = _content_callback
+	if _show_when_loaded:
+		_show_rewarded_ad()
 
 func _on_ad_failed_to_load(error: LoadAdError) -> void:
 	_is_loading = false
+	_show_when_loaded = false
 	rewarded_ad_unavailable.emit("Mainosta ei saatu ladattua: %s" % error.message)
 
 func _on_user_earned_reward(_item: RewardedItem) -> void:
@@ -59,6 +64,12 @@ func _discard_rewarded_ad() -> void:
 		_rewarded_ad.destroy()
 		_rewarded_ad = null
 	_load_rewarded_ad()
+
+func _show_rewarded_ad() -> void:
+	if _rewarded_ad == null:
+		return
+	_show_when_loaded = false
+	_rewarded_ad.show(_reward_listener)
 
 func _is_mobile_platform() -> bool:
 	return OS.get_name() == "Android" or OS.get_name() == "iOS"

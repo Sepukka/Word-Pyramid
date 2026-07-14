@@ -20,8 +20,8 @@ config/features=PackedStringArray("4.7")
 
 [autoload]
 
-PuzzleLoader="*res://scripts/data/puzzle_loader.gd"
 SaveManager="*res://scripts/systems/save_manager.gd"
+PuzzleLoader="*res://scripts/data/puzzle_loader.gd"
 SoundManager="*res://scripts/systems/sound_manager.gd"
 AdManager="*res://scripts/systems/ad_manager.gd"
 GameState="*res://scripts/game/game_state.gd"

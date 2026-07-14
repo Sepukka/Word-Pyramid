@@ -32,6 +32,7 @@ var game_mode: String = "daily"
 var hints_used: int = 0
 var rewarded_hint_claimed: bool = false
 var hinted_words_by_row: Dictionary = {}
+var result_correct_count: int = -1
 
 func start_new_game(mode: String = "daily") -> bool:
 	game_mode = mode
@@ -60,9 +61,42 @@ func start_new_game(mode: String = "daily") -> bool:
 	last_failed_guess.clear()
 	last_failed_active = false
 	hinted_words_by_row.clear()
+	result_correct_count = -1
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
+	return true
+
+func view_daily_result() -> bool:
+	game_mode = "daily"
+	daily_date = Time.get_date_string_from_system()
+	if not SaveManager.is_daily_challenge_completed(daily_date):
+		return false
+	puzzle = PuzzleLoader.get_daily_puzzle(daily_date)
+	if puzzle.is_empty():
+		return false
+	selected_words.clear()
+	solved_groups.clear()
+	for index: int in puzzle.get("groups", []).size():
+		solved_groups.append(index)
+	is_top_solved = true
+	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	hints_used = 0
+	rewarded_hint_claimed = false
+	is_finished = true
+	var saved_result: Dictionary = SaveManager.get_daily_result(daily_date)
+	completed_won = bool(saved_result.get("won", false))
+	result_correct_count = int(saved_result.get("correct_count", _total_word_count() if completed_won else 0))
+	is_auto_solving = false
+	wrong_guesses.clear()
+	last_failed_guess.clear()
+	last_failed_active = false
+	hinted_words_by_row.clear()
+	_save_active_game()
+	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
+	selection_changed.emit(selected_words)
+	hint_count_changed.emit(hints_used, _get_hint_limit())
+	game_finished.emit(completed_won, str(puzzle.get("top_word", "")))
 	return true
 
 func restart_current() -> bool:
@@ -81,6 +115,7 @@ func restart_current() -> bool:
 	last_failed_guess.clear()
 	last_failed_active = false
 	hinted_words_by_row.clear()
+	result_correct_count = -1
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -92,7 +127,7 @@ func restore_game() -> bool:
 		return false
 	daily_date = str(saved.get("daily_date", ""))
 	game_mode = str(saved.get("game_mode", "daily"))
-	if daily_date != Time.get_date_string_from_system():
+	if str(saved.get("language", PuzzleLoader.get_language())) != PuzzleLoader.get_language() or daily_date != Time.get_date_string_from_system():
 		SaveManager.active_game.clear()
 		SaveManager.save_data()
 		return false
@@ -107,8 +142,11 @@ func restore_game() -> bool:
 	attempts_left = int(saved.get("attempts_left", SaveManager.settings.get("attempts", 4)))
 	hints_used = int(saved.get("hints_used", 0))
 	rewarded_hint_claimed = bool(saved.get("rewarded_hint_claimed", false))
+	result_correct_count = int(saved.get("result_correct_count", -1))
 	is_finished = bool(saved.get("is_finished", false))
 	completed_won = bool(saved.get("completed_won", false))
+	if is_finished and result_correct_count < 0:
+		result_correct_count = _total_word_count() if completed_won else _player_correct_count()
 	is_auto_solving = false
 	wrong_guesses.clear()
 	for guess_value: Variant in saved.get("wrong_guesses", []):
@@ -148,7 +186,7 @@ func request_hint() -> void:
 		return
 	var hint_limit: int = _get_hint_limit()
 	if hints_used >= hint_limit and game_mode == "unlimited":
-		hint_provided.emit("Rajattomassa pelissä on kaksi vihjettä per pulma.")
+		hint_provided.emit(SaveManager.text("unlimited_hint_limit"))
 		return
 	if hints_used >= hint_limit and not rewarded_hint_claimed:
 		rewarded_hint_required.emit()
@@ -177,7 +215,7 @@ func request_hint() -> void:
 			hints_used += 1
 			_save_active_game()
 			hint_placed.emit(hinted_word, row_length)
-			hint_provided.emit("Vihje: %s sijoitettiin oikealle riville." % hinted_word)
+			hint_provided.emit(SaveManager.text("hint_placed") % hinted_word)
 			hint_count_changed.emit(hints_used, hint_limit)
 			selection_changed.emit(selected_words)
 			return
@@ -187,7 +225,7 @@ func grant_rewarded_hint() -> void:
 		return
 	rewarded_hint_claimed = true
 	_save_active_game()
-	hint_provided.emit("Bonusvihje ansaittu! Käytä Vihje-painiketta.")
+	hint_provided.emit(SaveManager.text("bonus_hint_earned"))
 	hint_count_changed.emit(hints_used, _get_hint_limit())
 
 func _unlock_newly_valid_hint_guess(group: Dictionary) -> void:
@@ -246,9 +284,9 @@ func get_near_miss_feedback() -> String:
 				matches += 1
 		var required_size: int = group_words.size()
 		if selected_words.size() == required_size - 1 and matches == required_size - 1:
-			return "Yksi sana puuttuu."
+			return SaveManager.text("missing_word")
 		if selected_words.size() == required_size + 1 and matches == required_size:
-			return "Yksi sana liikaa."
+			return SaveManager.text("extra_word")
 	return ""
 
 func check_selection() -> void:
@@ -296,6 +334,7 @@ func check_selection() -> void:
 	if not feedback.is_empty():
 		guess_feedback.emit(feedback)
 	if attempts_left <= 0:
+		result_correct_count = _player_correct_count()
 		selected_words.clear()
 		is_auto_solving = true
 		_auto_solve_remaining()
@@ -367,8 +406,10 @@ func _auto_solve_remaining() -> void:
 func _finish(won: bool) -> void:
 	is_finished = true
 	completed_won = won
+	if result_correct_count < 0:
+		result_correct_count = _player_correct_count()
 	_save_active_game()
-	SaveManager.record_result(won, daily_date)
+	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count())
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
 	if SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
@@ -391,11 +432,33 @@ func _save_active_game() -> void:
 		"last_failed_active": last_failed_active,
 		"daily_date": daily_date,
 		"game_mode": game_mode,
+		"language": PuzzleLoader.get_language(),
 		"hints_used": hints_used,
 		"rewarded_hint_claimed": rewarded_hint_claimed,
+		"result_correct_count": result_correct_count,
 		"hinted_words_by_row": hinted_words_by_row.duplicate(true)
 	}
 	SaveManager.save_data()
+
+func result_total_count() -> int:
+	return _total_word_count()
+
+func _player_correct_count() -> int:
+	var count: int = 1 if is_top_solved else 0
+	for index: int in solved_groups:
+		if index >= 0 and index < puzzle.get("groups", []).size():
+			var group: Dictionary = puzzle["groups"][index]
+			count += int(group.get("size", 0))
+	return count
+
+func _total_word_count() -> int:
+	var count: int = 0
+	for group_value: Variant in puzzle.get("groups", []):
+		if group_value is Dictionary:
+			count += int(group_value.get("size", 0))
+	if not str(puzzle.get("top_word", "")).is_empty():
+		count += 1
+	return count
 
 func _has_same_words(left: Array[String], right: Array[String]) -> bool:
 	if left.size() != right.size():

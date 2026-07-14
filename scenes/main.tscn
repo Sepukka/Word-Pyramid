@@ -1,7 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://bv2eytvxlv74j"]
+[gd_scene format=3 uid="uid://bv2eytvxlv74j"]
 
 [ext_resource type="Script" uid="uid://dgsmu2t5m8jkd" path="res://scripts/ui/main.gd" id="1_main"]
-[ext_resource type="Texture2D" path="res://assets/home_background_logo.png" id="2_art"]
+[ext_resource type="Texture2D" uid="uid://ccgbysyxddyrb" path="res://assets/home_background_logo.png" id="2_art"]
 
 [node name="Main" type="Control" unique_id=1563371808]
 layout_mode = 3
@@ -42,46 +42,180 @@ theme_override_constants/margin_bottom = 28
 
 [node name="Content" type="VBoxContainer" parent="HomeLayer" unique_id=31681270]
 layout_mode = 2
-theme_override_constants/separation = 12
-alignment = 1
+theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="HomeLayer/Content"]
+[node name="Header" type="HBoxContainer" parent="HomeLayer/Content" unique_id=1138040889]
 layout_mode = 2
 
-[node name="HeaderSpacer" type="Control" parent="HomeLayer/Content/Header"]
+[node name="HeaderSpacer" type="Control" parent="HomeLayer/Content/Header" unique_id=618626143]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SettingsButton" type="Button" parent="HomeLayer/Content/Header"]
+[node name="SettingsButton" type="Button" parent="HomeLayer/Content/Header" unique_id=287112472]
 custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
-text = "⚙"
+text = "⚙︎"
+
+[node name="BrandBlock" type="VBoxContainer" parent="HomeLayer/Content" unique_id=1772041994]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="MiniPyramid" type="VBoxContainer" parent="HomeLayer/Content/BrandBlock" unique_id=2024350332]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="MiniRow1" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=1590142984]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="Block" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow1" unique_id=1189422966]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="MiniRow2" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=454487522]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow2" unique_id=131723039]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow2" unique_id=774187243]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="MiniRow3" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=453387996]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1683053946]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1144997510]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block3" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1379065835]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="MiniRow4" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=97707079]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=1288798623]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=335950170]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block3" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=1751973780]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Block4" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=669312578]
+custom_minimum_size = Vector2(28, 18)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="HomeLayer/Content/BrandBlock" unique_id=2012668484]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "Word Pyramid"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="HomeLayer/Content/BrandBlock" unique_id=81135053]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "DAILY WORD CHALLENGE"
+horizontal_alignment = 1
+uppercase = true
 
 [node name="LogoSpacer" type="Control" parent="HomeLayer/Content" unique_id=1581409647]
-custom_minimum_size = Vector2(0, 240)
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 
-[node name="ModeButtons" type="HBoxContainer" parent="HomeLayer/Content"]
+[node name="DailyCard" type="PanelContainer" parent="HomeLayer/Content" unique_id=2134963148]
+custom_minimum_size = Vector2(0, 306)
 layout_mode = 2
+
+[node name="CardMargin" type="MarginContainer" parent="HomeLayer/Content/DailyCard" unique_id=1285974397]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 26
+
+[node name="CardContent" type="VBoxContainer" parent="HomeLayer/Content/DailyCard/CardMargin" unique_id=1861818423]
+layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="PlayButton" type="Button" parent="HomeLayer/Content/ModeButtons" unique_id=1739964471]
-custom_minimum_size = Vector2(0, 76)
+[node name="DatePill" type="Label" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=133715965]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_type_variation = &"HomeDatePill"
+text = "📅  July 13, 2026"
+
+[node name="CardTitle" type="Label" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=1792568565]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Around the Kitchen"
+
+[node name="CardMeta" type="Label" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=1998314451]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Food & Cooking · 10 words · 4 categories"
+
+[node name="CardStreak" type="Label" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=2042167319]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "7-day streak"
+
+[node name="CardButtonSpacer" type="Control" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=465497872]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayButton" type="Button" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=1739964471]
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryPlayButton"
-text = "DAILY
-Today's Challenge"
+text = "Play Today's Challenge ->"
 
-[node name="UnlimitedButton" type="Button" parent="HomeLayer/Content/ModeButtons"]
-custom_minimum_size = Vector2(0, 76)
+[node name="ModeButtons" type="VBoxContainer" parent="HomeLayer/Content" unique_id=1318477931]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="UnlimitedButton" type="Button" parent="HomeLayer/Content/ModeButtons" unique_id=439591078]
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "UNLIMITED
-Play any puzzle"
+text = "∞  Infinity Mode"
+
+[node name="HintSpacer" type="Control" parent="HomeLayer/Content" unique_id=1657566125]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="HomeHint" type="RichTextLabel" parent="HomeLayer/Content" unique_id=890228510]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+bbcode_enabled = true
+text = "[center]Group [b][color=#1A0A5E]10 words[/color][/b] into 4 pyramid levels — any order.
+You get [b][color=#1A0A5E]2 hints[/color][/b] and [b][color=#1A0A5E]4 lives[/color][/b] before the pyramid falls.[/center]"
+fit_content = true
+scroll_active = false
 
 [node name="BottomSpacer" type="Control" parent="HomeLayer/Content" unique_id=449263657]
 custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
 
-[connection signal="pressed" from="HomeLayer/Content/ModeButtons/PlayButton" to="." method="_on_play_pressed"]
+[connection signal="pressed" from="HomeLayer/Content/DailyCard/CardMargin/CardContent/PlayButton" to="." method="_on_play_pressed"]
