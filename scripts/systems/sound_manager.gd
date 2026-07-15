@@ -1,11 +1,17 @@
 extends Node
 
+const SELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click1.wav")
+const DESELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click2.wav")
+const SAMPLE_PLAYER_COUNT: int = 4
+
 var enabled: bool = true
 var _player: AudioStreamPlayer
 var _generator: AudioStreamGenerator
 var _playback: AudioStreamGeneratorPlayback
 var _queue: Array[Dictionary] = []
 var _active: Dictionary = {}
+var _sample_players: Array[AudioStreamPlayer] = []
+var _next_sample_player: int = 0
 
 func _ready() -> void:
 	enabled = bool(SaveManager.settings.get("sound_enabled", true))
@@ -17,9 +23,14 @@ func _ready() -> void:
 	add_child(_player)
 	_player.play()
 	_playback = _player.get_stream_playback() as AudioStreamGeneratorPlayback
+	for _index: int in SAMPLE_PLAYER_COUNT:
+		var sample_player: AudioStreamPlayer = AudioStreamPlayer.new()
+		sample_player.volume_db = -8.0
+		add_child(sample_player)
+		_sample_players.append(sample_player)
 
-func click() -> void:
-	_enqueue(560.0, 0.045, 0.13)
+func click(selecting: bool = true) -> void:
+	_play_sample(SELECT_CLICK if selecting else DESELECT_CLICK)
 
 func success() -> void:
 	_enqueue(660.0, 0.10, 0.16)
@@ -27,6 +38,14 @@ func success() -> void:
 
 func failure() -> void:
 	_enqueue(190.0, 0.18, 0.18)
+
+func _play_sample(stream: AudioStream) -> void:
+	if not enabled or _sample_players.is_empty():
+		return
+	var sample_player: AudioStreamPlayer = _sample_players[_next_sample_player]
+	_next_sample_player = (_next_sample_player + 1) % _sample_players.size()
+	sample_player.stream = stream
+	sample_player.play()
 
 func _enqueue(frequency: float, duration: float, volume: float) -> void:
 	if enabled:

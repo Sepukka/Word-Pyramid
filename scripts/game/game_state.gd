@@ -220,13 +220,14 @@ func toggle_word(word: String) -> void:
 	if is_finished or is_auto_solving or is_word_solved(word):
 		return
 	last_failed_active = false
-	if selected_words.has(word):
+	var selecting: bool = not selected_words.has(word)
+	if not selecting:
 		selected_words.erase(word)
 	else:
 		if selected_words.size() >= get_selection_limit():
 			return
 		selected_words.append(word)
-	SoundManager.click()
+	SoundManager.click(selecting)
 	_save_active_game()
 	selection_changed.emit(selected_words)
 
