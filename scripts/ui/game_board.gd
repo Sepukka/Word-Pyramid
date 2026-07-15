@@ -398,6 +398,7 @@ func _build_pyramid() -> void:
 
 func _create_word_tile(word: String) -> Button:
 	var tile: Button = Button.new()
+	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
 	tile.text = word
 	tile.toggle_mode = true
 	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -421,6 +422,7 @@ func _on_word_tile_pressed(tile: Button, word: String) -> void:
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
+	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
 	tile.text = word
 	tile.disabled = true
 	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
