@@ -933,9 +933,11 @@ func _set_tile_lift(tile: Button, lifted: bool, animate: bool) -> void:
 	var active_tween: Tween = _tile_motion_tweens.get(tween_key) as Tween
 	if active_tween != null and active_tween.is_running():
 		active_tween.kill()
-	var was_lifted: bool = bool(tile.get_meta("selection_lifted", false))
-	var rest_y: float = tile.position.y + (SELECTION_LIFT if was_lifted else 0.0)
-	var target_y: float = rest_y - (SELECTION_LIFT if lifted else 0.0)
+	# Tiles fill a stable wrapper whose resting offset is always zero. Do not
+	# derive that rest position from the current animated position: a wrong-guess
+	# animation can interrupt the selection tween halfway and otherwise turn that
+	# temporary offset into the tile's new baseline.
+	var target_y: float = -SELECTION_LIFT if lifted else 0.0
 	tile.set_meta("selection_lifted", lifted)
 	if not animate or is_equal_approx(tile.position.y, target_y):
 		tile.position.y = target_y
