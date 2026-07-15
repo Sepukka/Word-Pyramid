@@ -596,18 +596,23 @@ func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
+	var is_at_limit: bool = selection.size() >= GameState.get_selection_limit()
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var selected: bool = selection.has(word)
+		var selection_blocked: bool = is_at_limit and not selected
 		tile.button_pressed = selected
-		# The selection cap is enforced by GameState.toggle_word(). Keep other
-		# words visually normal so reaching the cap does not gray out the board.
-		tile.disabled = GameState.is_finished
+		# Block excess taps at the Button level so they cannot animate, focus, or
+		# emit a pressed signal. The disabled overrides below keep blocked tiles
+		# visually identical to ordinary unselected tiles.
+		tile.disabled = GameState.is_finished or selection_blocked
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
-		tile.focus_mode = Control.FOCUS_NONE if _is_placing else Control.FOCUS_ALL
+		tile.focus_mode = Control.FOCUS_NONE if _is_placing or selection_blocked else Control.FOCUS_ALL
 		tile.add_theme_stylebox_override("normal", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
+		tile.add_theme_stylebox_override("disabled", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
 		tile.add_theme_stylebox_override("hover_pressed", _tile_style(SELECTED_FILL, SELECTED_BORDER))
 		_apply_tile_text_colors(tile, Color.WHITE if selected else UI_TEXT)
+		tile.add_theme_color_override("font_disabled_color", Color.WHITE if selected else UI_TEXT)
 	_clear.disabled = selection.is_empty() or GameState.is_finished
 	_check.disabled = not GameState.can_check_selection()
 	_update_selection(selection)
