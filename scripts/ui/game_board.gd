@@ -384,8 +384,16 @@ func _create_word_tile(word: String) -> Button:
 	tile.add_theme_color_override("font_color", UI_TEXT)
 	_apply_tile_text_colors(tile, UI_TEXT)
 	tile.add_theme_font_size_override("font_size", 13)
-	tile.pressed.connect(func() -> void: GameState.toggle_word(word))
+	tile.pressed.connect(_on_word_tile_pressed.bind(tile, word))
 	return tile
+
+func _on_word_tile_pressed(tile: Button, word: String) -> void:
+	GameState.toggle_word(word)
+	# Toggle-mode buttons change their local pressed state before this callback.
+	# If GameState rejects an over-limit selection, immediately restore the
+	# visual state from the authoritative selection array.
+	if is_instance_valid(tile):
+		tile.set_pressed_no_signal(GameState.selected_words.has(word))
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
