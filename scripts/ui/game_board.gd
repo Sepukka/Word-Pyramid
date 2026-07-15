@@ -32,6 +32,7 @@ var _message: Label
 var _selection: Label
 var _mistakes: Label
 var _lives_row: HBoxContainer
+var _endless_header_hearts: HBoxContainer
 var _puzzle_title: Label
 var _mode_label: Label
 var _pyramid: VBoxContainer
@@ -85,6 +86,8 @@ func _ready() -> void:
 	# Reopening the board must not connect the same callable a second time.
 	if not AdManager.rewarded_hint_earned.is_connected(GameState.grant_rewarded_hint):
 		AdManager.rewarded_hint_earned.connect(GameState.grant_rewarded_hint)
+	if not AdManager.rewarded_heart_earned.is_connected(_on_rewarded_heart_earned):
+		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
 	AdManager.rewarded_ad_unavailable.connect(_on_rewarded_ad_unavailable)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
 
@@ -156,9 +159,11 @@ func _build() -> void:
 	_mode_label.add_theme_font_size_override("font_size", 10)
 	_mode_label.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	title_stack.add_child(_mode_label)
-	var top_bar_balance: Control = Control.new()
-	top_bar_balance.custom_minimum_size = Vector2(73, 34)
-	top_bar.add_child(top_bar_balance)
+	_endless_header_hearts = HBoxContainer.new()
+	_endless_header_hearts.custom_minimum_size = Vector2(73, 34)
+	_endless_header_hearts.alignment = BoxContainer.ALIGNMENT_END
+	_endless_header_hearts.add_theme_constant_override("separation", 3)
+	top_bar.add_child(_endless_header_hearts)
 	_puzzle_title = Label.new()
 	_puzzle_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_puzzle_title.add_theme_font_override("font", _font_fredoka_semibold)
@@ -287,7 +292,7 @@ func refresh() -> void:
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
 	_message.text = SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message")
-	_mode_label.text = SaveManager.text("daily_challenge_label").to_upper() if is_daily else "%s  ·  ♥ %d" % [SaveManager.text("unlimited_mode_label").to_upper(), SaveManager.get_endless_hearts()]
+	_mode_label.text = SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s" % SaveManager.text("unlimited_mode_label").to_upper()
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
 	_build_pyramid()
 	_update_mistakes()
@@ -542,6 +547,26 @@ func _update_mistakes() -> void:
 	var maximum: int = int(SaveManager.settings.get("attempts", 4))
 	_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
 	_update_lives(maximum - GameState.attempts_left, maximum)
+	_update_endless_header_hearts()
+
+func _update_endless_header_hearts() -> void:
+	if _endless_header_hearts == null:
+		return
+	for child: Node in _endless_header_hearts.get_children():
+		child.queue_free()
+	if GameState.game_mode != "unlimited":
+		return
+	var hearts: int = SaveManager.get_endless_hearts()
+	for index: int in range(SaveManager.ENDLESS_DAILY_HEARTS):
+		var heart: Label = Label.new()
+		heart.text = "♥"
+		heart.add_theme_font_override("font", _font_fredoka_bold)
+		heart.add_theme_font_size_override("font_size", 18)
+		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
+		heart.add_theme_color_override("font_outline_color", UI_PRIMARY)
+		heart.add_theme_constant_override("outline_size", 1)
+		heart.modulate.a = 1.0 if index < hearts else 0.42
+		_endless_header_hearts.add_child(heart)
 
 func _update_lives(used: int, maximum: int) -> void:
 	if _lives_row == null:
@@ -834,6 +859,8 @@ func _show_aftermath(won: bool) -> void:
 		return
 	var correct: int = max(GameState.result_correct_count, 0)
 	var total: int = max(GameState.result_total_count(), correct)
+	var is_endless: bool = GameState.game_mode == "unlimited"
+	var is_endless_loss: bool = is_endless and not won
 	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
 	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
 	var layer: Control = Control.new()
@@ -884,7 +911,8 @@ func _show_aftermath(won: bool) -> void:
 	handle.add_theme_stylebox_override("panel", _aftermath_handle_style())
 	content.add_child(handle)
 
-	var emoji: Label = _aftermath_label("🎉" if won else "✕", 34, UI_YELLOW if won else UI_RED)
+	var emoji_text: String = "🎉" if won else ("💀" if is_endless_loss else "✕")
+	var emoji: Label = _aftermath_label(emoji_text, 34, UI_YELLOW if won else UI_RED)
 	content.add_child(emoji)
 	var title: Label = _aftermath_label(SaveManager.text("aftermath_win_title") if won else SaveManager.text("aftermath_loss_title"), 28, UI_YELLOW if won else UI_RED)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -892,8 +920,10 @@ func _show_aftermath(won: bool) -> void:
 	var subtitle_text: String
 	if won:
 		subtitle_text = SaveManager.text("aftermath_flawless") if mistakes == 0 else SaveManager.text("aftermath_solved_mistakes") % mistakes
+	elif is_endless_loss:
+		subtitle_text = SaveManager.text("aftermath_endless_better_luck")
 	else:
-		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total] if GameState.game_mode == "daily" else SaveManager.text("aftermath_endless_loss_subtitle") % [correct, total, SaveManager.get_endless_hearts()]
+		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total]
 	content.add_child(_aftermath_label(subtitle_text, 14, Color(1, 1, 1, 0.58), FONT_DM_SANS))
 
 	var streak_panel: PanelContainer = PanelContainer.new()
@@ -912,15 +942,37 @@ func _show_aftermath(won: bool) -> void:
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = GameState.game_mode == "daily"
 	var play_streak_animation: bool = has_daily_streak and SaveManager.consume_daily_streak_animation(GameState.daily_date)
-	var flame_text: String = "🔥" if has_daily_streak else "♥"
+	var flame_text: String = "🔥" if has_daily_streak else ""
 	var flame: Label = _aftermath_label(flame_text, 44, Color.WHITE)
+	flame.visible = has_daily_streak
 	streak_box.add_child(flame)
+	var losing_heart: Label = null
+	if is_endless:
+		var aftermath_hearts: HBoxContainer = HBoxContainer.new()
+		aftermath_hearts.alignment = BoxContainer.ALIGNMENT_CENTER
+		aftermath_hearts.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		aftermath_hearts.add_theme_constant_override("separation", 12)
+		streak_box.add_child(aftermath_hearts)
+		var current_hearts: int = SaveManager.get_endless_hearts()
+		for index: int in range(SaveManager.ENDLESS_DAILY_HEARTS):
+			var heart: Label = _aftermath_label("♥", 34, UI_RED if index < current_hearts else Color("62578f"), _font_fredoka_bold)
+			heart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			heart.add_theme_color_override("font_outline_color", Color("090321"))
+			heart.add_theme_constant_override("outline_size", 2)
+			heart.modulate.a = 1.0 if index < current_hearts else 0.30
+			if is_endless_loss and index == current_hearts:
+				heart.add_theme_color_override("font_color", UI_RED)
+				heart.modulate.a = 1.0
+				losing_heart = heart
+			aftermath_hearts.add_child(heart)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
 	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
 	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
-	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else str(SaveManager.get_endless_hearts()), 56, UI_YELLOW)
+	var heart_count: int = SaveManager.get_endless_hearts() if is_endless else 0
+	var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count if heart_count > 0 else SaveManager.text("endless_out_of_hearts")
+	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else endless_count_text, 56 if has_daily_streak else 18, UI_YELLOW if has_daily_streak else Color.WHITE)
 	streak_box.add_child(streak_number)
-	var streak_caption_text: String = SaveManager.text("aftermath_results") if has_daily_streak else SaveManager.text("aftermath_endless_hearts")
+	var streak_caption_text: String = SaveManager.text("aftermath_results") if has_daily_streak else SaveManager.text("endless_resets_tomorrow")
 	if has_daily_streak:
 		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
 		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")
@@ -940,17 +992,30 @@ func _show_aftermath(won: bool) -> void:
 	stats_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_row.add_theme_constant_override("separation", 10)
 	content.add_child(stats_row)
+	stats_row.visible = not is_endless_loss
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_mistakes"), str(mistakes), UI_YELLOW if mistakes == 0 else Color("ff8066")))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_groups"), "%d / 4" % clampi(GameState.solved_groups.size(), 0, 4), UI_TEAL))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
 
-	var share_button: Button = _aftermath_button(SaveManager.text("share_result"), true, won)
-	share_button.pressed.connect(func() -> void:
-		_on_share_pressed()
-		share_button.text = SaveManager.text("result_copied")
-	)
-	content.add_child(share_button)
-	var menu_button: Button = _aftermath_button(SaveManager.text("menu"), false)
+	var primary_button: Button
+	if is_endless:
+		if heart_count > 0:
+			primary_button = _aftermath_button(SaveManager.text("endless_new_puzzle"), true, won)
+			primary_button.pressed.connect(_on_endless_next_puzzle_pressed)
+		elif SaveManager.can_claim_rewarded_endless_heart():
+			primary_button = _aftermath_button(SaveManager.text("endless_watch_ad"), true, false)
+			primary_button.pressed.connect(AdManager.request_rewarded_heart)
+		else:
+			primary_button = _aftermath_button(SaveManager.text("endless_ad_claimed"), true, false)
+			primary_button.visible = false
+	else:
+		primary_button = _aftermath_button(SaveManager.text("share_result"), true, won)
+		primary_button.pressed.connect(func() -> void:
+			_on_share_pressed()
+			primary_button.text = SaveManager.text("result_copied")
+		)
+	content.add_child(primary_button)
+	var menu_button: Button = _aftermath_button(SaveManager.text("back_to_home") if is_endless else SaveManager.text("menu"), false)
 	menu_button.pressed.connect(func() -> void: request_menu.emit())
 	content.add_child(menu_button)
 
@@ -969,6 +1034,23 @@ func _show_aftermath(won: bool) -> void:
 		_animate_streak_loss(layer, flame, streak_number, streak_caption, crack_overlay, streak_crack)
 	elif not won and has_daily_streak:
 		_apply_streak_loss_final(flame, streak_number, crack_overlay, streak_crack)
+	elif is_endless_loss and is_instance_valid(losing_heart):
+		_animate_endless_heart_loss(layer, losing_heart)
+
+func _animate_endless_heart_loss(layer: Control, heart: Label) -> void:
+	await get_tree().create_timer(0.42).timeout
+	if not is_instance_valid(layer) or layer != _aftermath_layer or not is_instance_valid(heart):
+		return
+	heart.pivot_offset = heart.size * 0.5
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(heart, "scale", Vector2.ONE * 1.6, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(heart, "rotation_degrees", 12.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	var collapse: Tween = create_tween().set_parallel(true)
+	collapse.tween_property(heart, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	collapse.tween_property(heart, "rotation_degrees", 0.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	collapse.tween_property(heart, "modulate:a", 0.30, 0.24)
+	heart.add_theme_color_override("font_color", Color("62578f"))
 
 func _animate_streak_win(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
 	await get_tree().create_timer(STREAK_POP_DELAY).timeout
@@ -1097,6 +1179,19 @@ func _dismiss_aftermath() -> void:
 	_aftermath_open_tween = null
 	_aftermath_snap_tween = null
 	_aftermath_dismissing = false
+
+func _on_endless_next_puzzle_pressed() -> void:
+	await _dismiss_aftermath()
+	request_new_game.emit()
+
+func _on_rewarded_heart_earned() -> void:
+	# Main owns the persistent reward grant. Rebuild the visible Infinity sheet
+	# one frame later so it reflects the newly restored heart.
+	await get_tree().process_frame
+	if GameState.game_mode != "unlimited" or not is_instance_valid(_aftermath_layer):
+		return
+	await _dismiss_aftermath()
+	_show_aftermath(GameState.completed_won)
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	var pool_name: String = SaveManager.text("daily_pool") if mode == "daily" else SaveManager.text("unlimited_pool")

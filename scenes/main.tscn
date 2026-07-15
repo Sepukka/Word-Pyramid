@@ -193,28 +193,74 @@ text = "Play Today's Challenge ->"
 
 [node name="ModeButtons" type="VBoxContainer" parent="HomeLayer/Content" unique_id=1318477931]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 0
 
-[node name="UnlimitedButton" type="Button" parent="HomeLayer/Content/ModeButtons" unique_id=439591078]
-custom_minimum_size = Vector2(0, 59)
+[node name="UnlimitedCard" type="PanelContainer" parent="HomeLayer/Content/ModeButtons"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "∞  Infinity Mode"
 
-[node name="EndlessStatus" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons"]
-custom_minimum_size = Vector2(0, 38)
+[node name="CardMargin" type="MarginContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard"]
+layout_mode = 2
+
+[node name="CardContent" type="VBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Header" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent"]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="HeartLabel" type="Label" parent="HomeLayer/Content/ModeButtons/EndlessStatus"]
+[node name="TitleStack" type="VBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Endless hearts: 3 / 3"
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack"]
+layout_mode = 2
+text = "∞ Infinity Mode"
+
+[node name="Subtitle" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack"]
+layout_mode = 2
+text = "Endless word pyramids"
+
+[node name="Hearts" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header"]
+layout_mode = 2
+theme_override_constants/separation = 5
+alignment = 1
+
+[node name="Heart1" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+layout_mode = 2
+text = "♥"
+
+[node name="Heart2" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+layout_mode = 2
+text = "♥"
+
+[node name="Heart3" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+layout_mode = 2
+text = "♥"
+
+[node name="UnlimitedButton" type="Button" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent" unique_id=439591078]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Play Infinity ->"
+
+[node name="EndlessStatus" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="HeartLabel" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "2 / 3 · resets tomorrow"
 vertical_alignment = 1
 
-[node name="RewardHeartButton" type="Button" parent="HomeLayer/Content/ModeButtons/EndlessStatus"]
-custom_minimum_size = Vector2(142, 36)
+[node name="RewardHeartButton" type="Button" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus"]
+custom_minimum_size = Vector2(142, 34)
 layout_mode = 2
 text = "Watch ad  +1 ♥"
 

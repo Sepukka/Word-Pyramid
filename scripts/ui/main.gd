@@ -23,9 +23,14 @@ const UI_TEAL: Color = Color("00bfa5")
 @onready var _logo_spacer: Control = get_node_or_null("HomeLayer/Content/LogoSpacer") as Control
 @onready var _bottom_spacer: Control = get_node_or_null("HomeLayer/Content/BottomSpacer") as Control
 @onready var _play_button: Button = _find_play_button()
-@onready var _unlimited_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedButton") as Button
-@onready var _endless_heart_label: Label = get_node_or_null("HomeLayer/Content/ModeButtons/EndlessStatus/HeartLabel") as Label
-@onready var _reward_heart_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/EndlessStatus/RewardHeartButton") as Button
+@onready var _unlimited_card: PanelContainer = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard") as PanelContainer
+@onready var _unlimited_title: Label = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack/Title") as Label
+@onready var _unlimited_subtitle: Label = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack/Subtitle") as Label
+@onready var _endless_hearts_row: HBoxContainer = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts") as HBoxContainer
+@onready var _unlimited_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/UnlimitedButton") as Button
+@onready var _endless_status: HBoxContainer = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus") as HBoxContainer
+@onready var _endless_heart_label: Label = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus/HeartLabel") as Label
+@onready var _reward_heart_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus/RewardHeartButton") as Button
 @onready var _settings_button: Button = get_node_or_null("HomeLayer/Content/Header/SettingsButton") as Button
 @onready var _daily_card: PanelContainer = get_node_or_null("HomeLayer/Content/DailyCard") as PanelContainer
 @onready var _brand_title: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Title") as Label
@@ -52,7 +57,7 @@ var _font_dm_sans_bold: FontVariation
 var _font_dm_sans_spaced: FontVariation
 
 func _ready() -> void:
-	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_button == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _daily_card == null:
+	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _daily_card == null:
 		# The editor can keep an older Main scene in memory after its .tscn file
 		# changes externally. Reload once so the editable scene tree is used.
 		call_deferred("_reload_editable_home_scene")
@@ -203,15 +208,35 @@ func _apply_play_button_style() -> void:
 	_play_button.add_theme_constant_override("outline_size", 0)
 
 func _apply_unlimited_button_style() -> void:
+	_unlimited_card.add_theme_stylebox_override("panel", _infinity_card_style())
+	var card_margin: MarginContainer = _unlimited_card.get_node("CardMargin") as MarginContainer
+	card_margin.add_theme_constant_override("margin_left", 16)
+	card_margin.add_theme_constant_override("margin_right", 16)
+	card_margin.add_theme_constant_override("margin_top", 12)
+	card_margin.add_theme_constant_override("margin_bottom", 12)
+	_unlimited_title.add_theme_font_override("font", _font_fredoka_bold)
+	_unlimited_title.add_theme_font_size_override("font_size", 18)
+	_unlimited_title.add_theme_color_override("font_color", UI_TEXT)
+	_unlimited_subtitle.add_theme_font_override("font", FONT_DM_SANS)
+	_unlimited_subtitle.add_theme_font_size_override("font_size", 11)
+	_unlimited_subtitle.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	_unlimited_button.add_theme_font_override("font", _font_fredoka_bold)
-	_unlimited_button.add_theme_stylebox_override("normal", _mode_button_style(Color.TRANSPARENT, UI_PRIMARY, 2))
-	_unlimited_button.add_theme_stylebox_override("hover", _mode_button_style(Color(0.10, 0.04, 0.37, 0.06), UI_PRIMARY, 2))
-	_unlimited_button.add_theme_stylebox_override("pressed", _mode_button_style(Color(0.10, 0.04, 0.37, 0.11), UI_PRIMARY, 2))
-	_unlimited_button.add_theme_color_override("font_color", UI_TEXT)
-	_unlimited_button.add_theme_color_override("font_hover_color", UI_TEXT)
-	_unlimited_button.add_theme_color_override("font_pressed_color", UI_TEXT)
-	_unlimited_button.add_theme_font_size_override("font_size", 18)
+	_unlimited_button.add_theme_stylebox_override("normal", _play_style(UI_PRIMARY, 3))
+	_unlimited_button.add_theme_stylebox_override("hover", _play_style(UI_PRIMARY_HOVER, 4))
+	_unlimited_button.add_theme_stylebox_override("pressed", _play_style(UI_PRIMARY_PRESSED, 1))
+	_unlimited_button.add_theme_stylebox_override("disabled", _play_style(Color("d9d3ea"), 0))
+	_unlimited_button.add_theme_color_override("font_color", Color.WHITE)
+	_unlimited_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	_unlimited_button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	_unlimited_button.add_theme_color_override("font_disabled_color", Color("8f80bd"))
+	_unlimited_button.add_theme_font_size_override("font_size", 16)
 	_unlimited_button.add_theme_constant_override("outline_size", 0)
+	for heart_node: Node in _endless_hearts_row.get_children():
+		var heart: Label = heart_node as Label
+		heart.add_theme_font_override("font", _font_fredoka_bold)
+		heart.add_theme_font_size_override("font_size", 24)
+		heart.add_theme_color_override("font_outline_color", UI_PRIMARY)
+		heart.add_theme_constant_override("outline_size", 1)
 
 func _apply_endless_status_style() -> void:
 	_endless_heart_label.add_theme_font_override("font", _font_dm_sans_semibold)
@@ -247,13 +272,16 @@ func _apply_home_texts() -> void:
 		_play_button.text = SaveManager.text("view_result")
 	else:
 		_play_button.text = "Pelaa päivän haaste ->" if is_finnish else "Play Today's Challenge ->"
-	_unlimited_button.text = "∞  %s" % SaveManager.text("unlimited_button")
+	_unlimited_title.text = "∞ %s" % SaveManager.text("unlimited_button")
+	_unlimited_subtitle.text = SaveManager.text("endless_subtitle")
 	var hearts: int = SaveManager.get_endless_hearts()
 	_unlimited_button.disabled = hearts <= 0
-	_endless_heart_label.text = SaveManager.text("endless_hearts") % [hearts, SaveManager.ENDLESS_DAILY_HEARTS] if hearts > 0 else SaveManager.text("endless_no_hearts")
+	_unlimited_button.text = SaveManager.text("endless_play_button") if hearts > 0 else SaveManager.text("endless_play_locked")
+	_update_home_heart_icons(hearts)
+	_endless_heart_label.text = SaveManager.text("endless_daily_status") % [hearts, SaveManager.ENDLESS_DAILY_HEARTS]
 	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
 	var heart_is_full: bool = hearts >= SaveManager.ENDLESS_DAILY_HEARTS
-	_reward_heart_button.visible = not heart_is_full
+	_endless_status.visible = not heart_is_full
 	_reward_heart_button.disabled = not can_claim_heart
 	_reward_heart_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_ad_claimed")
 	if _brand_title != null:
@@ -270,6 +298,14 @@ func _apply_home_texts() -> void:
 		_card_streak.text = SaveManager.daily_streak_text()
 	if _home_hint != null:
 		_home_hint.text = "[center]%s[/center]" % SaveManager.text("home_hint_markup")
+
+func _update_home_heart_icons(hearts: int) -> void:
+	var index: int = 0
+	for heart_node: Node in _endless_hearts_row.get_children():
+		var heart: Label = heart_node as Label
+		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
+		heart.modulate.a = 1.0 if index < hearts else 0.48
+		index += 1
 
 func _daily_card_meta(puzzle: Dictionary, is_finnish: bool) -> String:
 	var groups: Array = []
@@ -856,6 +892,14 @@ func _daily_card_style() -> StyleBoxFlat:
 	style.shadow_color = UI_MAGENTA
 	style.shadow_size = 1
 	style.shadow_offset = Vector2(7, 7)
+	return style
+
+func _infinity_card_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = _round_style(Color(1, 1, 1, 0.96), UI_BORDER, 18)
+	style.set_border_width_all(2)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.10)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3)
 	return style
 
 func _pill_style() -> StyleBoxFlat:
