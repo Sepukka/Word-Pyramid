@@ -2,10 +2,13 @@ extends Node
 
 const SELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click1.wav")
 const DESELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click2.wav")
+const BACKGROUND_MUSIC: AudioStreamOggVorbis = preload("res://assets/audio/music/word_pyramid_background_loop.ogg")
 const SAMPLE_PLAYER_COUNT: int = 4
 
 var enabled: bool = true
+var music_enabled: bool = true
 var _player: AudioStreamPlayer
+var _music_player: AudioStreamPlayer
 var _generator: AudioStreamGenerator
 var _playback: AudioStreamGeneratorPlayback
 var _queue: Array[Dictionary] = []
@@ -15,6 +18,7 @@ var _next_sample_player: int = 0
 
 func _ready() -> void:
 	enabled = bool(SaveManager.settings.get("sound_enabled", true))
+	music_enabled = bool(SaveManager.settings.get("music_enabled", true))
 	_generator = AudioStreamGenerator.new()
 	_generator.mix_rate = 22050.0
 	_generator.buffer_length = 0.3
@@ -28,6 +32,11 @@ func _ready() -> void:
 		sample_player.volume_db = -8.0
 		add_child(sample_player)
 		_sample_players.append(sample_player)
+	_music_player = AudioStreamPlayer.new()
+	_music_player.stream = BACKGROUND_MUSIC
+	_music_player.volume_db = -18.0
+	add_child(_music_player)
+	_sync_music_state()
 
 func click(selecting: bool = true) -> void:
 	_play_sample(SELECT_CLICK if selecting else DESELECT_CLICK)
@@ -38,6 +47,19 @@ func success() -> void:
 
 func failure() -> void:
 	_enqueue(190.0, 0.18, 0.18)
+
+func set_music_enabled(value: bool) -> void:
+	music_enabled = value
+	_sync_music_state()
+
+func _sync_music_state() -> void:
+	if not is_instance_valid(_music_player):
+		return
+	if music_enabled:
+		if not _music_player.playing:
+			_music_player.play()
+	elif _music_player.playing:
+		_music_player.stop()
 
 func _play_sample(stream: AudioStream) -> void:
 	if not enabled or _sample_players.is_empty():

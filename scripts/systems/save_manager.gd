@@ -1,6 +1,6 @@
 extends Node
 
-const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "language": "en"}
+const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "music_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
 const ENDLESS_DAILY_HEARTS: int = 3
 const TEXT: Dictionary = {
@@ -37,6 +37,7 @@ const TEXT: Dictionary = {
 		"language": "Language",
 		"attempts_per_puzzle": "Attempts per puzzle",
 		"sound_effects": "Sound effects",
+		"music": "Music",
 		"settings_note": "New attempt settings are applied when a new puzzle starts.",
 		"debug_reset_progress": "Debug: Reset all progress",
 		"debug_reset_confirm": "Tap again to reset everything",
@@ -136,6 +137,7 @@ const TEXT: Dictionary = {
 		"language": "Kieli",
 		"attempts_per_puzzle": "Yrityksiä per pulma",
 		"sound_effects": "Äänitehosteet",
+		"music": "Musiikki",
 		"settings_note": "Uusi yritysmäärä tulee käyttöön, kun uusi pulma alkaa.",
 		"debug_reset_progress": "Debug: Nollaa kaikki edistyminen",
 		"debug_reset_confirm": "Nollaa kaikki napauttamalla uudelleen",

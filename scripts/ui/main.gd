@@ -548,6 +548,14 @@ func show_settings() -> void:
 		SaveManager.save_data()
 	)
 	panel.add_child(sound)
+	var music: CheckButton = _settings_toggle(SaveManager.text("music"))
+	music.button_pressed = bool(SaveManager.settings.get("music_enabled", true))
+	music.toggled.connect(func(value: bool) -> void:
+		SaveManager.settings["music_enabled"] = value
+		SoundManager.set_music_enabled(value)
+		SaveManager.save_data()
+	)
+	panel.add_child(music)
 	var language_block: VBoxContainer = VBoxContainer.new()
 	language_block.add_theme_constant_override("separation", 10)
 	panel.add_child(language_block)
@@ -708,6 +716,7 @@ func _on_debug_reset_pressed(button: Button) -> void:
 	GameState.reset_debug_state()
 	PuzzleLoader.load_puzzles()
 	SoundManager.enabled = bool(SaveManager.settings.get("sound_enabled", true))
+	SoundManager.set_music_enabled(bool(SaveManager.settings.get("music_enabled", true)))
 	_play_button.disabled = false
 	_unlimited_button.disabled = false
 	var pool_notice: Node = _home_layer.get_node_or_null("Content/PoolCompleteNotice")
