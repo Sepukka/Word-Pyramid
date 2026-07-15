@@ -466,7 +466,11 @@ func _layout_for_width() -> void:
 	var card_width: float = clampf(size.x - 16.0, 304.0, 620.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
 	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
-	var tile_height: float = clampf(tile_size * 0.78, 54.0, 68.0)
+	# The five-word row already consumes the available width on phones. Grow the
+	# pyramid vertically instead, while every tier keeps the same block height
+	# and centered 1-2-3-4-5 geometry.
+	var pyramid_height: float = clampf(size.y - 365.0, 290.0, 480.0)
+	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
 	for tile: Button in _word_buttons.values():
 		tile.custom_minimum_size = Vector2(tile_size, tile_height)
 		tile.size = Vector2(tile_size, tile_height)
