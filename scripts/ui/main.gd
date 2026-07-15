@@ -150,6 +150,9 @@ func _on_unlimited_pressed() -> void:
 	if _is_transitioning:
 		return
 	if not SaveManager.can_start_endless():
+		if SaveManager.can_claim_rewarded_endless_heart():
+			_on_rewarded_heart_pressed()
+			return
 		_apply_home_texts()
 		return
 	if GameState.has_resumable_game("unlimited"):
@@ -163,6 +166,7 @@ func _on_rewarded_heart_pressed() -> void:
 	if not SaveManager.can_claim_rewarded_endless_heart():
 		_apply_home_texts()
 		return
+	_unlimited_button.disabled = true
 	_reward_heart_button.disabled = true
 	AdManager.request_rewarded_heart()
 
@@ -173,8 +177,8 @@ func _on_rewarded_heart_earned() -> void:
 
 func _on_home_rewarded_ad_unavailable(message: String) -> void:
 	if _home_layer.visible and not is_instance_valid(_active_view):
+		_apply_home_texts()
 		_endless_heart_label.text = message
-		_reward_heart_button.disabled = not SaveManager.can_claim_rewarded_endless_heart()
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	if is_instance_valid(_active_view):
@@ -281,13 +285,18 @@ func _apply_home_texts() -> void:
 	_unlimited_title.text = "∞ %s" % SaveManager.text("unlimited_button")
 	_unlimited_subtitle.text = SaveManager.text("endless_subtitle")
 	var hearts: int = SaveManager.get_endless_hearts()
-	_unlimited_button.disabled = hearts <= 0
-	_unlimited_button.text = SaveManager.text("endless_play_button") if hearts > 0 else SaveManager.text("endless_play_locked")
+	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
+	if hearts > 0:
+		_unlimited_button.disabled = false
+		_unlimited_button.text = SaveManager.text("endless_play_button")
+	else:
+		_unlimited_button.disabled = not can_claim_heart
+		_unlimited_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_play_locked")
 	_update_home_heart_icons(hearts)
 	_endless_heart_label.text = SaveManager.endless_reset_countdown_text()
-	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
 	var heart_is_full: bool = hearts >= SaveManager.ENDLESS_DAILY_HEARTS
 	_endless_status.visible = not heart_is_full
+	_reward_heart_button.visible = hearts > 0 and not heart_is_full
 	_reward_heart_button.disabled = not can_claim_heart
 	_reward_heart_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_ad_claimed")
 	if _brand_title != null:
