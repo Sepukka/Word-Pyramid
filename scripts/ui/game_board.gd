@@ -23,6 +23,10 @@ const UI_RED: Color = Color("ff5533")
 const UI_TEAL: Color = Color("00bfa5")
 const SELECTED_FILL: Color = UI_PRIMARY
 const SELECTED_BORDER: Color = UI_PRIMARY
+const WRONG_TILE_FILL: Color = Color("fff2ee")
+const SELECTION_LIFT: float = 4.0
+const SELECTION_MOTION_DURATION: float = 0.14
+const WRONG_SHAKE_DURATION: float = 0.58
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
@@ -52,6 +56,7 @@ var _aftermath_snap_tween: Tween
 var _game_was_running: bool = false
 var _aftermath_scheduled: bool = false
 var _word_buttons: Dictionary = {}
+var _word_tile_wrappers: Dictionary = {}
 var _word_order: Array[String] = []
 var _hinted_tiles: Dictionary = {}
 var _placed_tiles: Dictionary = {}
@@ -60,6 +65,12 @@ var _pyramid_rows: Dictionary = {}
 var _action_buttons: Array[Button] = []
 var _animating_row: int = -1
 var _is_placing: bool = false
+var _displayed_selection: Array[String] = []
+var _tile_motion_tweens: Dictionary = {}
+var _pyramid_shake_tween: Tween
+var _pyramid_shake_origin_x: float = 0.0
+var _wrong_guess_active: bool = false
+var _wrong_guess_words: Array[String] = []
 var _font_fredoka_semibold: FontVariation
 var _font_fredoka_condensed: FontVariation
 var _font_fredoka_bold: FontVariation
@@ -304,9 +315,15 @@ func refresh() -> void:
 		_show_play_actions()
 
 func _build_pyramid() -> void:
+	for tween_value: Variant in _tile_motion_tweens.values():
+		var active_tween: Tween = tween_value as Tween
+		if active_tween != null and active_tween.is_running():
+			active_tween.kill()
+	_tile_motion_tweens.clear()
 	for child: Node in _pyramid.get_children():
 		child.queue_free()
 	_word_buttons.clear()
+	_word_tile_wrappers.clear()
 	_hinted_tiles.clear()
 	_placed_tiles.clear()
 	_category_cards.clear()
@@ -363,8 +380,17 @@ func _build_pyramid() -> void:
 				break
 			var word: String = remaining_words.pop_at(next_word_index)
 			var tile: Button = _create_word_tile(word)
-			row.add_child(tile)
+			# Keep layout sizing on a stable wrapper. The button can then lift by a
+			# few pixels without asking the row container to resize or move anything.
+			var tile_wrapper: Control = Control.new()
+			tile_wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile_wrapper.set_meta("row_length", row_length)
+			row.add_child(tile_wrapper)
+			tile_wrapper.add_child(tile)
+			tile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			tile.set_meta("row_length", row_length)
 			_word_buttons[word] = tile
+			_word_tile_wrappers[word] = tile_wrapper
 	_layout_for_width()
 	_on_selection_changed(GameState.selected_words)
 
@@ -377,13 +403,9 @@ func _create_word_tile(word: String) -> Button:
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.tooltip_text = SaveManager.text("select_tooltip") % word
 	tile.add_theme_font_override("font", _tile_font(word))
-	tile.add_theme_stylebox_override("normal", _tile_style(UI_SURFACE, UI_BORDER))
-	tile.add_theme_stylebox_override("hover", _tile_style(UI_SURFACE, Color("a89dd4")))
-	tile.add_theme_stylebox_override("pressed", _tile_style(SELECTED_FILL, SELECTED_BORDER))
-	tile.add_theme_stylebox_override("hover_pressed", _tile_style(SELECTED_FILL, SELECTED_BORDER))
 	tile.add_theme_color_override("font_color", UI_TEXT)
-	_apply_tile_text_colors(tile, UI_TEXT)
 	tile.add_theme_font_size_override("font_size", 13)
+	_apply_word_tile_visual(tile, false)
 	tile.pressed.connect(_on_word_tile_pressed.bind(tile, word))
 	return tile
 
@@ -495,9 +517,16 @@ func _layout_for_width() -> void:
 	# and centered 1-2-3-4-5 geometry.
 	var pyramid_height: float = clampf(size.y - 365.0, 290.0, 480.0)
 	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
-	for tile: Button in _word_buttons.values():
+	for word: String in _word_buttons:
+		var tile: Button = _word_buttons[word]
+		var tile_wrapper: Control = _word_tile_wrappers.get(word) as Control
+		if tile_wrapper != null:
+			tile_wrapper.custom_minimum_size = Vector2(tile_size, tile_height)
+			tile_wrapper.size = Vector2(tile_size, tile_height)
 		tile.custom_minimum_size = Vector2(tile_size, tile_height)
-		tile.size = Vector2(tile_size, tile_height)
+		tile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tile.position.y = -SELECTION_LIFT if GameState.selected_words.has(word) else 0.0
+		tile.set_meta("selection_lifted", GameState.selected_words.has(word))
 		tile.add_theme_font_size_override("font_size", _tile_font_size(tile.text, tile_size))
 	for hinted_tile: Button in _hinted_tiles.values():
 		hinted_tile.custom_minimum_size = Vector2(tile_size, tile_height)
@@ -600,6 +629,8 @@ func _on_selection_changed(selection: Array[String]) -> void:
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var selected: bool = selection.has(word)
+		var was_selected: bool = _displayed_selection.has(word)
+		var showing_wrong: bool = _wrong_guess_active and _wrong_guess_words.has(word)
 		var selection_blocked: bool = is_at_limit and not selected
 		tile.button_pressed = selected
 		# Block excess taps at the Button level so they cannot animate, focus, or
@@ -608,11 +639,9 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		tile.disabled = GameState.is_finished or selection_blocked
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing or selection_blocked else Control.FOCUS_ALL
-		tile.add_theme_stylebox_override("normal", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
-		tile.add_theme_stylebox_override("disabled", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
-		tile.add_theme_stylebox_override("hover_pressed", _tile_style(SELECTED_FILL, SELECTED_BORDER))
-		_apply_tile_text_colors(tile, Color.WHITE if selected else UI_TEXT)
-		tile.add_theme_color_override("font_disabled_color", Color.WHITE if selected else UI_TEXT)
+		_apply_word_tile_visual(tile, selected, showing_wrong)
+		_set_tile_lift(tile, false if showing_wrong else selected, was_selected != selected and not _is_placing)
+	_displayed_selection.assign(selection)
 	_clear.disabled = selection.is_empty() or GameState.is_finished
 	_check.disabled = not GameState.can_check_selection()
 	_update_selection(selection)
@@ -669,8 +698,7 @@ func _capture_row_swap(row_length: int) -> Dictionary:
 			selected.append({"word": word, "point": _to_board_point(tile.get_global_rect().get_center()), "size": tile.size})
 	for word: String in _word_buttons:
 		var target_tile: Button = _word_buttons[word]
-		var parent: Node = target_tile.get_parent()
-		if int(parent.get_meta("row_length", 0)) == row_length:
+		if int(target_tile.get_meta("row_length", 0)) == row_length:
 			targets.append({"word": word, "point": _to_board_point(target_tile.get_global_rect().get_center()), "size": target_tile.size, "row_length": row_length})
 	return {"selected": selected, "targets": targets}
 
@@ -772,12 +800,10 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 func _to_board_point(global_point: Vector2) -> Vector2:
 	return get_global_transform_with_canvas().affine_inverse() * global_point
 
-func _on_guess_failed(left: int) -> void:
+func _on_guess_failed(_left: int) -> void:
 	_update_mistakes()
 	_message.text = SaveManager.text("guess_failed")
 	_highlight_incorrect_selection()
-	if left <= 0:
-		_build_pyramid()
 
 func _on_repeated_guess_attempted() -> void:
 	_message.text = SaveManager.text("repeated_guess")
@@ -786,19 +812,89 @@ func _on_guess_feedback(text: String) -> void:
 	_message.text = text
 
 func _highlight_incorrect_selection() -> void:
+	_wrong_guess_words.assign(GameState.selected_words)
+	_wrong_guess_active = true
+	for word: String in _wrong_guess_words:
+		if _word_buttons.has(word):
+			var tile: Button = _word_buttons[word]
+			_apply_word_tile_visual(tile, true, true)
+			_set_tile_lift(tile, false, true)
+	_start_wrong_guess_shake()
+
+func _start_wrong_guess_shake() -> void:
+	if not is_instance_valid(_pyramid):
+		_finish_wrong_guess_motion()
+		return
+	if _pyramid_shake_tween != null and _pyramid_shake_tween.is_running():
+		_pyramid_shake_tween.kill()
+		_pyramid.position.x = _pyramid_shake_origin_x
+	_pyramid_shake_origin_x = _pyramid.position.x
+	var segment_duration: float = WRONG_SHAKE_DURATION / 5.0
+	_pyramid_shake_tween = create_tween()
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - 9.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + 9.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - 5.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + 5.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_callback(_finish_wrong_guess_motion)
+
+func _finish_wrong_guess_motion() -> void:
+	if is_instance_valid(_pyramid):
+		_pyramid.position.x = _pyramid_shake_origin_x
+	_wrong_guess_active = false
+	_wrong_guess_words.clear()
+	for word: String in _word_buttons:
+		var tile: Button = _word_buttons[word]
+		var selected: bool = GameState.selected_words.has(word)
+		_apply_word_tile_visual(tile, selected)
+		_set_tile_lift(tile, selected, true)
+
+func _set_tile_lift(tile: Button, lifted: bool, animate: bool) -> void:
+	if not is_instance_valid(tile):
+		return
+	var tween_key: int = tile.get_instance_id()
+	var active_tween: Tween = _tile_motion_tweens.get(tween_key) as Tween
+	if active_tween != null and active_tween.is_running():
+		active_tween.kill()
+	var was_lifted: bool = bool(tile.get_meta("selection_lifted", false))
+	var rest_y: float = tile.position.y + (SELECTION_LIFT if was_lifted else 0.0)
+	var target_y: float = rest_y - (SELECTION_LIFT if lifted else 0.0)
+	tile.set_meta("selection_lifted", lifted)
+	if not animate or is_equal_approx(tile.position.y, target_y):
+		tile.position.y = target_y
+		_tile_motion_tweens.erase(tween_key)
+		return
 	var tween: Tween = create_tween()
-	tween.set_parallel(true)
-	for word: String in GameState.selected_words:
-		if _word_buttons.has(word):
-			var tile: Button = _word_buttons[word]
-			tween.tween_property(tile, "modulate", Color("e69891"), 0.08)
-	tween.set_parallel(false)
-	tween.tween_interval(0.12)
-	tween.set_parallel(true)
-	for word: String in GameState.selected_words:
-		if _word_buttons.has(word):
-			var tile: Button = _word_buttons[word]
-			tween.tween_property(tile, "modulate", Color.WHITE, 0.18)
+	_tile_motion_tweens[tween_key] = tween
+	tween.tween_property(tile, "position:y", target_y, SELECTION_MOTION_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_callback(func() -> void: _tile_motion_tweens.erase(tween_key))
+
+func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) -> void:
+	var style: StyleBoxFlat
+	var text_color: Color
+	if wrong:
+		style = _tile_style(WRONG_TILE_FILL, UI_RED)
+		text_color = UI_RED
+	elif selected:
+		style = _selected_tile_style()
+		text_color = Color.WHITE
+	else:
+		style = _tile_style(UI_SURFACE, UI_BORDER)
+		text_color = UI_TEXT
+	tile.add_theme_stylebox_override("normal", style)
+	tile.add_theme_stylebox_override("pressed", style)
+	tile.add_theme_stylebox_override("hover_pressed", style)
+	tile.add_theme_stylebox_override("disabled", style)
+	tile.add_theme_stylebox_override("hover", style if selected or wrong else _tile_style(UI_SURFACE, Color("a89dd4")))
+	_apply_tile_text_colors(tile, text_color)
+	tile.add_theme_color_override("font_disabled_color", text_color)
+
+func _selected_tile_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = _tile_style(SELECTED_FILL, SELECTED_BORDER)
+	style.shadow_color = Color(0.102, 0.039, 0.369, 0.32)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 8)
+	return style
 
 func _on_game_finished(won: bool, top_word: String) -> void:
 	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
