@@ -42,10 +42,17 @@ func start_new_game(mode: String = "daily") -> bool:
 		return false
 	game_mode = mode
 	daily_date = Time.get_date_string_from_system()
+	if game_mode == UNLIMITED_MODE and not SaveManager.can_start_endless(daily_date):
+		return false
 	var played_ids: Array[String] = SaveManager.get_played_puzzle_ids(_progress_key())
 	if played_ids.size() >= PuzzleLoader.get_puzzles(game_mode).size():
-		puzzle_pool_completed.emit(game_mode)
-		return false
+		if game_mode == UNLIMITED_MODE:
+			var previous_puzzle_id: String = str(puzzle.get("id", ""))
+			played_ids = [previous_puzzle_id] if not previous_puzzle_id.is_empty() else []
+			SaveManager.replace_played_puzzle_ids(_progress_key(), played_ids)
+		else:
+			puzzle_pool_completed.emit(game_mode)
+			return false
 	if game_mode == DAILY_MODE:
 		puzzle = PuzzleLoader.get_daily_puzzle(daily_date)
 	else:
@@ -105,6 +112,10 @@ func view_daily_result() -> bool:
 	return true
 
 func restart_current() -> bool:
+	if game_mode == UNLIMITED_MODE and not puzzle.is_empty() and not is_finished:
+		SaveManager.consume_endless_heart()
+		if not SaveManager.can_start_endless():
+			return false
 	if puzzle.is_empty() or (game_mode == "daily" and daily_date != Time.get_date_string_from_system()):
 		return start_new_game(game_mode)
 	selected_words.clear()
@@ -144,6 +155,16 @@ func reset_debug_state() -> void:
 	rewarded_hint_claimed = false
 	hinted_words_by_row.clear()
 	result_correct_count = -1
+
+func has_resumable_game(mode: String) -> bool:
+	var saved: Dictionary = SaveManager.active_game
+	return (
+		not saved.is_empty()
+		and saved.has("puzzle")
+		and str(saved.get("game_mode", "")) == mode
+		and not bool(saved.get("is_finished", false))
+		and str(saved.get("language", PuzzleLoader.get_language())) == PuzzleLoader.get_language()
+	)
 
 func restore_game() -> bool:
 	var saved: Dictionary = SaveManager.active_game
@@ -457,10 +478,12 @@ func _finish(won: bool) -> void:
 	if result_correct_count < 0:
 		result_correct_count = _player_correct_count()
 	_save_active_game()
+	if not won and game_mode == UNLIMITED_MODE:
+		SaveManager.consume_endless_heart()
 	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count())
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
-	if SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
+	if game_mode == DAILY_MODE and SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
 		puzzle_pool_completed.emit(game_mode)
 
 func _progress_key() -> String:

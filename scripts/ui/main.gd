@@ -24,6 +24,8 @@ const UI_TEAL: Color = Color("00bfa5")
 @onready var _bottom_spacer: Control = get_node_or_null("HomeLayer/Content/BottomSpacer") as Control
 @onready var _play_button: Button = _find_play_button()
 @onready var _unlimited_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedButton") as Button
+@onready var _endless_heart_label: Label = get_node_or_null("HomeLayer/Content/ModeButtons/EndlessStatus/HeartLabel") as Label
+@onready var _reward_heart_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/EndlessStatus/RewardHeartButton") as Button
 @onready var _settings_button: Button = get_node_or_null("HomeLayer/Content/Header/SettingsButton") as Button
 @onready var _daily_card: PanelContainer = get_node_or_null("HomeLayer/Content/DailyCard") as PanelContainer
 @onready var _brand_title: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Title") as Label
@@ -50,7 +52,7 @@ var _font_dm_sans_bold: FontVariation
 var _font_dm_sans_spaced: FontVariation
 
 func _ready() -> void:
-	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_button == null or _settings_button == null or _daily_card == null:
+	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_button == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _daily_card == null:
 		# The editor can keep an older Main scene in memory after its .tscn file
 		# changes externally. Reload once so the editable scene tree is used.
 		call_deferred("_reload_editable_home_scene")
@@ -66,12 +68,18 @@ func _ready() -> void:
 	_apply_mini_pyramid_style()
 	_apply_play_button_style()
 	_apply_unlimited_button_style()
+	_apply_endless_status_style()
 	_apply_settings_button_style()
 	_play_button.button_down.connect(func() -> void: _animate_play_button(0.97))
 	_play_button.button_up.connect(func() -> void: _animate_play_button(1.0))
 	_unlimited_button.pressed.connect(_on_unlimited_pressed)
+	_reward_heart_button.pressed.connect(_on_rewarded_heart_pressed)
 	_settings_button.pressed.connect(show_settings)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
+	if not AdManager.rewarded_heart_earned.is_connected(_on_rewarded_heart_earned):
+		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
+	if not AdManager.rewarded_ad_unavailable.is_connected(_on_home_rewarded_ad_unavailable):
+		AdManager.rewarded_ad_unavailable.connect(_on_home_rewarded_ad_unavailable)
 	resized.connect(_layout_home_layout)
 	show_main_menu()
 
@@ -130,8 +138,32 @@ func _on_play_pressed() -> void:
 func _on_unlimited_pressed() -> void:
 	if _is_transitioning:
 		return
+	if not SaveManager.can_start_endless():
+		_apply_home_texts()
+		return
+	if GameState.has_resumable_game("unlimited"):
+		if GameState.restore_game():
+			show_game()
+		return
 	if GameState.start_new_game("unlimited"):
 		show_game()
+
+func _on_rewarded_heart_pressed() -> void:
+	if not SaveManager.can_claim_rewarded_endless_heart():
+		_apply_home_texts()
+		return
+	_reward_heart_button.disabled = true
+	AdManager.request_rewarded_heart()
+
+func _on_rewarded_heart_earned() -> void:
+	if SaveManager.grant_rewarded_endless_heart():
+		_apply_home_texts()
+		_endless_heart_label.text = SaveManager.text("endless_heart_earned")
+
+func _on_home_rewarded_ad_unavailable(message: String) -> void:
+	if _home_layer.visible and not is_instance_valid(_active_view):
+		_endless_heart_label.text = message
+		_reward_heart_button.disabled = not SaveManager.can_claim_rewarded_endless_heart()
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	if is_instance_valid(_active_view):
@@ -181,6 +213,19 @@ func _apply_unlimited_button_style() -> void:
 	_unlimited_button.add_theme_font_size_override("font_size", 18)
 	_unlimited_button.add_theme_constant_override("outline_size", 0)
 
+func _apply_endless_status_style() -> void:
+	_endless_heart_label.add_theme_font_override("font", _font_dm_sans_semibold)
+	_endless_heart_label.add_theme_font_size_override("font_size", 13)
+	_endless_heart_label.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	_reward_heart_button.add_theme_font_override("font", _font_fredoka_semibold)
+	_reward_heart_button.add_theme_font_size_override("font_size", 13)
+	_reward_heart_button.add_theme_color_override("font_color", UI_PRIMARY)
+	_reward_heart_button.add_theme_color_override("font_disabled_color", UI_MUTED_TEXT)
+	_reward_heart_button.add_theme_stylebox_override("normal", _mode_button_style(Color(1, 0.84, 0, 0.14), UI_YELLOW, 1))
+	_reward_heart_button.add_theme_stylebox_override("hover", _mode_button_style(Color(1, 0.84, 0, 0.24), UI_YELLOW, 1))
+	_reward_heart_button.add_theme_stylebox_override("pressed", _mode_button_style(Color(1, 0.84, 0, 0.32), UI_YELLOW, 1))
+	_reward_heart_button.add_theme_stylebox_override("disabled", _mode_button_style(Color(0.10, 0.04, 0.37, 0.04), UI_BORDER, 1))
+
 func _apply_settings_button_style() -> void:
 	_settings_button.text = "⚙︎"
 	_settings_button.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -203,6 +248,14 @@ func _apply_home_texts() -> void:
 	else:
 		_play_button.text = "Pelaa päivän haaste ->" if is_finnish else "Play Today's Challenge ->"
 	_unlimited_button.text = "∞  %s" % SaveManager.text("unlimited_button")
+	var hearts: int = SaveManager.get_endless_hearts()
+	_unlimited_button.disabled = hearts <= 0
+	_endless_heart_label.text = SaveManager.text("endless_hearts") % [hearts, SaveManager.ENDLESS_DAILY_HEARTS] if hearts > 0 else SaveManager.text("endless_no_hearts")
+	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
+	var heart_is_full: bool = hearts >= SaveManager.ENDLESS_DAILY_HEARTS
+	_reward_heart_button.visible = not heart_is_full
+	_reward_heart_button.disabled = not can_claim_heart
+	_reward_heart_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_ad_claimed")
 	if _brand_title != null:
 		_brand_title.text = "Word Pyramid"
 	if _brand_subtitle != null:
@@ -349,6 +402,9 @@ func show_game() -> void:
 	_is_transitioning = false
 
 func _start_next_game() -> void:
+	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
+		show_main_menu()
+		return
 	GameState.start_new_game(GameState.game_mode)
 
 func show_statistics() -> void:

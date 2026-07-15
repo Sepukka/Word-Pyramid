@@ -1,6 +1,7 @@
 extends Node
 
 signal rewarded_hint_earned
+signal rewarded_heart_earned
 signal rewarded_ad_unavailable(message: String)
 
 # Google's official Android rewarded test unit. Replace this only for a
@@ -13,6 +14,7 @@ var _load_callback: RewardedAdLoadCallback = RewardedAdLoadCallback.new()
 var _content_callback: FullScreenContentCallback = FullScreenContentCallback.new()
 var _is_loading: bool = false
 var _show_when_loaded: bool = false
+var _reward_context: String = ""
 
 func _ready() -> void:
 	if not _is_mobile_platform():
@@ -27,9 +29,16 @@ func _ready() -> void:
 	_load_rewarded_ad()
 
 func request_rewarded_hint() -> void:
+	_request_rewarded_ad("hint")
+
+func request_rewarded_heart() -> void:
+	_request_rewarded_ad("heart")
+
+func _request_rewarded_ad(context: String) -> void:
 	if not _is_mobile_platform():
 		rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_unavailable"))
 		return
+	_reward_context = context
 	if _rewarded_ad == null:
 		_show_when_loaded = true
 		if not _is_loading:
@@ -54,15 +63,21 @@ func _on_ad_loaded(ad: RewardedAd) -> void:
 func _on_ad_failed_to_load(error: LoadAdError) -> void:
 	_is_loading = false
 	_show_when_loaded = false
+	_reward_context = ""
 	rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_failed") % error.message)
 
 func _on_user_earned_reward(_item: RewardedItem) -> void:
-	rewarded_hint_earned.emit()
+	if _reward_context == "heart":
+		rewarded_heart_earned.emit()
+	else:
+		rewarded_hint_earned.emit()
+	_reward_context = ""
 
 func _discard_rewarded_ad() -> void:
 	if _rewarded_ad != null:
 		_rewarded_ad.destroy()
 		_rewarded_ad = null
+	_reward_context = ""
 	_load_rewarded_ad()
 
 func _show_rewarded_ad() -> void:

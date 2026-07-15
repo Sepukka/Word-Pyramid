@@ -2,12 +2,18 @@ extends Node
 
 const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
+const ENDLESS_DAILY_HEARTS: int = 3
 const TEXT: Dictionary = {
 	"en": {
 		"settings": "Settings",
 		"daily_button": "Daily\nToday's challenge",
 		"view_result": "View result",
 		"unlimited_button": "Infinity Mode",
+		"endless_hearts": "Endless hearts: %d / %d",
+		"endless_no_hearts": "No hearts · resets tomorrow",
+		"endless_watch_ad": "Watch ad  +1 ♥",
+		"endless_ad_claimed": "Bonus heart claimed today",
+		"endless_heart_earned": "Extra Endless heart earned!",
 		"all_played": "All played",
 		"all_played_daily": "All played\nDaily challenges",
 		"daily_pool": "daily challenges",
@@ -45,16 +51,19 @@ const TEXT: Dictionary = {
 		"aftermath_flawless": "Flawless solve - no mistakes!",
 		"aftermath_solved_mistakes": "Solved with %d mistakes",
 		"aftermath_loss_subtitle": "%d/%d correct - better luck tomorrow",
+		"aftermath_endless_loss_subtitle": "%d/%d correct · %d hearts left",
 		"aftermath_results": "Results",
 		"aftermath_streak_current": "%d day streak",
 		"aftermath_streak": "%d → %d day streak",
 		"aftermath_streak_lost": "Streak lost",
+		"aftermath_endless_hearts": "Endless hearts left",
 		"stat_mistakes": "Mistakes",
 		"stat_groups": "Groups",
 		"stat_hints_used": "Hints used",
 		"instructions": "Instructions",
 		"board_title": "Select related words",
 		"daily_message": "Daily challenge · find words that belong together.",
+		"unlimited_message": "Endless mode · failed puzzles use one daily heart.",
 		"hint": "Hint",
 		"clear": "Clear",
 		"check": "Check",
@@ -89,6 +98,11 @@ const TEXT: Dictionary = {
 		"daily_button": "Päivän haaste\nTämän päivän pulma",
 		"view_result": "Näytä tulos",
 		"unlimited_button": "Ääretön peli",
+		"endless_hearts": "Äärettömän pelin sydämet: %d / %d",
+		"endless_no_hearts": "Ei sydämiä · palautuvat huomenna",
+		"endless_watch_ad": "Katso mainos  +1 ♥",
+		"endless_ad_claimed": "Bonussydän lunastettu tänään",
+		"endless_heart_earned": "Sait ylimääräisen sydämen!",
 		"all_played": "Kaikki pelattu",
 		"all_played_daily": "Kaikki pelattu\nPäivittäiset haasteet",
 		"daily_pool": "päivittäiset haasteet",
@@ -126,16 +140,19 @@ const TEXT: Dictionary = {
 		"aftermath_flawless": "Täydellinen ratkaisu - ei virheitä!",
 		"aftermath_solved_mistakes": "Ratkaistu %d virheellä",
 		"aftermath_loss_subtitle": "%d/%d oikein - huomenna uudestaan",
+		"aftermath_endless_loss_subtitle": "%d/%d oikein · %d sydäntä jäljellä",
 		"aftermath_results": "Tulokset",
 		"aftermath_streak_current": "%d päivän putki",
 		"aftermath_streak": "%d → %d päivän putki",
 		"aftermath_streak_lost": "Putki katkesi",
+		"aftermath_endless_hearts": "Äärettömän pelin sydämet",
 		"stat_mistakes": "Virheet",
 		"stat_groups": "Ryhmät",
 		"stat_hints_used": "Vihjeet",
 		"instructions": "Ohjeet",
 		"board_title": "Valitse yhteen kuuluvat sanat",
 		"daily_message": "Päivän haaste · etsi samaan ryhmään kuuluvat sanat.",
+		"unlimited_message": "Ääretön peli · epäonnistunut pulma käyttää yhden päivittäisen sydämen.",
 		"hint": "Vihje",
 		"clear": "Tyhjennä",
 		"check": "Tarkista",
@@ -172,6 +189,7 @@ var statistics: Dictionary = {"wins": 0, "losses": 0, "streak": 0, "best_streak"
 var active_game: Dictionary = {}
 var daily_results: Dictionary = {}
 var played_puzzle_ids: Dictionary = {"daily": [], "unlimited": []}
+var endless_state: Dictionary = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 
 func _ready() -> void:
 	load_data()
@@ -192,6 +210,7 @@ func load_data() -> void:
 	active_game = _dictionary_or_empty(saved.get("active_game", {}))
 	daily_results = _dictionary_or_empty(saved.get("daily_results", {}))
 	played_puzzle_ids = _merge_dictionary(played_puzzle_ids, saved.get("played_puzzle_ids", {}))
+	endless_state = _merge_dictionary(endless_state, saved.get("endless_state", {}))
 
 func reset_to_defaults() -> void:
 	settings = DEFAULT_SETTINGS.duplicate(true)
@@ -199,6 +218,7 @@ func reset_to_defaults() -> void:
 	active_game = {}
 	daily_results = {}
 	played_puzzle_ids = {"daily": [], "unlimited": []}
+	endless_state = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 
 func reset_all_data() -> void:
 	reset_to_defaults()
@@ -214,7 +234,8 @@ func save_data() -> void:
 		"statistics": statistics,
 		"active_game": active_game,
 		"daily_results": daily_results,
-		"played_puzzle_ids": played_puzzle_ids
+		"played_puzzle_ids": played_puzzle_ids,
+		"endless_state": endless_state
 	}
 	file.store_string(JSON.stringify(data))
 
@@ -288,6 +309,45 @@ func consume_daily_streak_animation(day_key: String) -> bool:
 	save_data()
 	return true
 
+func get_endless_hearts(day_key: String = "") -> int:
+	_refresh_endless_day(day_key)
+	return clampi(int(endless_state.get("hearts", ENDLESS_DAILY_HEARTS)), 0, ENDLESS_DAILY_HEARTS)
+
+func can_start_endless(day_key: String = "") -> bool:
+	return get_endless_hearts(day_key) > 0
+
+func consume_endless_heart(day_key: String = "") -> int:
+	_refresh_endless_day(day_key)
+	var hearts: int = get_endless_hearts(day_key)
+	if hearts > 0:
+		hearts -= 1
+		endless_state["hearts"] = hearts
+		save_data()
+	return hearts
+
+func can_claim_rewarded_endless_heart(day_key: String = "") -> bool:
+	_refresh_endless_day(day_key)
+	return not bool(endless_state.get("rewarded_heart_claimed", false)) and get_endless_hearts(day_key) < ENDLESS_DAILY_HEARTS
+
+func grant_rewarded_endless_heart(day_key: String = "") -> bool:
+	if not can_claim_rewarded_endless_heart(day_key):
+		return false
+	endless_state["hearts"] = mini(get_endless_hearts(day_key) + 1, ENDLESS_DAILY_HEARTS)
+	endless_state["rewarded_heart_claimed"] = true
+	save_data()
+	return true
+
+func _refresh_endless_day(day_key: String = "") -> void:
+	var current_day: String = day_key if not day_key.is_empty() else Time.get_date_string_from_system()
+	if str(endless_state.get("date", "")) == current_day:
+		return
+	endless_state = {
+		"date": current_day,
+		"hearts": ENDLESS_DAILY_HEARTS,
+		"rewarded_heart_claimed": false
+	}
+	save_data()
+
 func _daily_challenge_completed(day_key: String) -> bool:
 	var result: Variant = daily_results.get(day_key, {})
 	if not (result is Dictionary):
@@ -327,6 +387,10 @@ func record_puzzle_played(mode: String, puzzle_id: String) -> void:
 		ids.append(puzzle_id)
 		played_puzzle_ids[mode] = ids
 		save_data()
+
+func replace_played_puzzle_ids(mode: String, puzzle_ids: Array[String]) -> void:
+	played_puzzle_ids[mode] = puzzle_ids.duplicate()
+	save_data()
 
 func _merge_settings(saved_settings: Variant) -> void:
 	if not (saved_settings is Dictionary):

@@ -285,8 +285,9 @@ func _build() -> void:
 func refresh() -> void:
 	if not is_node_ready():
 		return
-	_message.text = SaveManager.text("daily_message")
-	_mode_label.text = SaveManager.text("daily_challenge_label").to_upper() if GameState.game_mode == "daily" else SaveManager.text("unlimited_mode_label").to_upper()
+	var is_daily: bool = GameState.game_mode == "daily"
+	_message.text = SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message")
+	_mode_label.text = SaveManager.text("daily_challenge_label").to_upper() if is_daily else "%s  ·  ♥ %d" % [SaveManager.text("unlimited_mode_label").to_upper(), SaveManager.get_endless_hearts()]
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
 	_build_pyramid()
 	_update_mistakes()
@@ -892,7 +893,7 @@ func _show_aftermath(won: bool) -> void:
 	if won:
 		subtitle_text = SaveManager.text("aftermath_flawless") if mistakes == 0 else SaveManager.text("aftermath_solved_mistakes") % mistakes
 	else:
-		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total]
+		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total] if GameState.game_mode == "daily" else SaveManager.text("aftermath_endless_loss_subtitle") % [correct, total, SaveManager.get_endless_hearts()]
 	content.add_child(_aftermath_label(subtitle_text, 14, Color(1, 1, 1, 0.58), FONT_DM_SANS))
 
 	var streak_panel: PanelContainer = PanelContainer.new()
@@ -911,15 +912,15 @@ func _show_aftermath(won: bool) -> void:
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = GameState.game_mode == "daily"
 	var play_streak_animation: bool = has_daily_streak and SaveManager.consume_daily_streak_animation(GameState.daily_date)
-	var flame_text: String = "🔥" if has_daily_streak else ("✓" if won else "✕")
+	var flame_text: String = "🔥" if has_daily_streak else "♥"
 	var flame: Label = _aftermath_label(flame_text, 44, Color.WHITE)
 	streak_box.add_child(flame)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
 	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
 	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
-	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else "%d/%d" % [correct, total], 56, UI_YELLOW)
+	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else str(SaveManager.get_endless_hearts()), 56, UI_YELLOW)
 	streak_box.add_child(streak_number)
-	var streak_caption_text: String = SaveManager.text("aftermath_results")
+	var streak_caption_text: String = SaveManager.text("aftermath_results") if has_daily_streak else SaveManager.text("aftermath_endless_hearts")
 	if has_daily_streak:
 		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
 		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")
