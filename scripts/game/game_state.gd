@@ -17,6 +17,7 @@ signal puzzle_pool_completed(mode: String)
 const FREE_HINT_LIMIT: int = 2
 const DAILY_MODE: String = "daily"
 const UNLIMITED_MODE: String = "unlimited"
+const AUTO_SOLVE_ROW_INTERVAL: float = 0.95
 
 var puzzle: Dictionary = {}
 var selected_words: Array[String] = []
@@ -468,7 +469,7 @@ func _auto_solve_remaining() -> void:
 		top_solved.emit(selected_words[0])
 		selected_words.clear()
 		selection_changed.emit(selected_words)
-		await get_tree().create_timer(0.50).timeout
+		await get_tree().create_timer(AUTO_SOLVE_ROW_INTERVAL).timeout
 	for group_size: int in [2, 3, 4, 5]:
 		for index: int in puzzle.get("groups", []).size():
 			if solved_groups.has(index):
@@ -483,7 +484,7 @@ func _auto_solve_remaining() -> void:
 			group_solved.emit(group)
 			selected_words.clear()
 			selection_changed.emit(selected_words)
-			await get_tree().create_timer(0.50).timeout
+			await get_tree().create_timer(AUTO_SOLVE_ROW_INTERVAL).timeout
 			break
 	is_auto_solving = false
 	_finish(false)

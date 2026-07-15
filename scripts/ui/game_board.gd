@@ -71,6 +71,8 @@ var _animating_row: int = -1
 var _is_placing: bool = false
 var _displayed_selection: Array[String] = []
 var _tile_motion_tweens: Dictionary = {}
+var _row_reveal_tween: Tween
+var _row_animation_ghosts: Array[Control] = []
 var _pyramid_shake_tween: Tween
 var _pyramid_shake_origin_x: float = 0.0
 var _wrong_guess_active: bool = false
@@ -334,8 +336,11 @@ func _build_pyramid() -> void:
 		if active_tween != null and active_tween.is_running():
 			active_tween.kill()
 	_tile_motion_tweens.clear()
+	# Correct-row animations rebuild the pyramid in the same frame. Free the old
+	# rows immediately so the VBox never lays out old and new copies together for
+	# one frame, which showed up as intermittent jumping/duplicated words.
 	for child: Node in _pyramid.get_children():
-		child.queue_free()
+		child.free()
 	_word_buttons.clear()
 	_word_tile_wrappers.clear()
 	_hinted_tiles.clear()
@@ -701,17 +706,18 @@ func _on_selection_changed(selection: Array[String]) -> void:
 func _on_group_solved(group: Dictionary) -> void:
 	var row_length: int = int(group.get("size", 0))
 	var swap: Dictionary = _capture_row_swap(row_length)
+	_cancel_row_reveal_animation()
 	_apply_swap_to_word_order(swap)
 	_animating_row = row_length
 	_is_placing = true
 	_build_pyramid()
 	if _placed_tiles.has(row_length):
 		_animate_row_swap(swap)
-		var placed_tween: Tween = create_tween()
-		placed_tween.tween_interval(0.60)
-		placed_tween.tween_callback(func() -> void: _show_placed_row(row_length))
-		placed_tween.tween_interval(0.24)
-		placed_tween.tween_callback(func() -> void: _activate_category_card(row_length, group))
+		_row_reveal_tween = create_tween()
+		_row_reveal_tween.tween_interval(0.60)
+		_row_reveal_tween.tween_callback(func() -> void: _show_placed_row(row_length))
+		_row_reveal_tween.tween_interval(0.24)
+		_row_reveal_tween.tween_callback(func() -> void: _activate_category_card(row_length, group))
 
 func _on_top_solved(_word: String) -> void:
 	_on_group_solved({"size": 1, "words": [str(GameState.puzzle.get("top_word", ""))]})
@@ -730,6 +736,7 @@ func _activate_category_card(row_length: int, group: Dictionary) -> void:
 	_category_cards[row_length] = category_card
 	_animating_row = -1
 	_is_placing = false
+	_row_reveal_tween = null
 	_layout_for_width()
 	var tween: Tween = create_tween()
 	tween.tween_property(category_card, "modulate:a", 1.0, 0.20)
@@ -740,6 +747,15 @@ func _show_placed_row(row_length: int) -> void:
 		return
 	for placed_tile: Label in _placed_tiles[row_length]:
 		placed_tile.modulate.a = 1.0
+
+func _cancel_row_reveal_animation() -> void:
+	if _row_reveal_tween != null and _row_reveal_tween.is_running():
+		_row_reveal_tween.kill()
+	_row_reveal_tween = null
+	for ghost: Control in _row_animation_ghosts:
+		if is_instance_valid(ghost):
+			ghost.free()
+	_row_animation_ghosts.clear()
 
 func _capture_row_swap(row_length: int) -> Dictionary:
 	var selected: Array[Dictionary] = []
@@ -842,12 +858,21 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	ghost.add_theme_stylebox_override("normal", _tile_style(fill_color, border_color))
 	ghost.z_index = 10
 	add_child(ghost)
-	var tween: Tween = create_tween()
+	_row_animation_ghosts.append(ghost)
+	# Bind the tween to its visual copy. If a second solved row starts, freeing
+	# the old ghost also stops its tween instead of letting stale words fly over
+	# the newly rebuilt board.
+	var tween: Tween = ghost.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(ghost, "position", destination - block_size * 0.5, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(ghost, "modulate:a", 0.0, 0.12).set_delay(0.40)
 	tween.set_parallel(false)
-	tween.tween_callback(ghost.queue_free)
+	tween.tween_callback(_finish_fly_ghost.bind(ghost))
+
+func _finish_fly_ghost(ghost: Control) -> void:
+	_row_animation_ghosts.erase(ghost)
+	if is_instance_valid(ghost):
+		ghost.queue_free()
 
 func _to_board_point(global_point: Vector2) -> Vector2:
 	return get_global_transform_with_canvas().affine_inverse() * global_point
