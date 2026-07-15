@@ -25,6 +25,7 @@ const SELECTED_FILL: Color = UI_PRIMARY
 const SELECTED_BORDER: Color = UI_PRIMARY
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
+const FONT_AXIS_WIDTH: int = 2003072104 # wdth
 
 var _card: PanelContainer
 var _message: Label
@@ -59,6 +60,7 @@ var _action_buttons: Array[Button] = []
 var _animating_row: int = -1
 var _is_placing: bool = false
 var _font_fredoka_semibold: FontVariation
+var _font_fredoka_condensed: FontVariation
 var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
 
@@ -93,13 +95,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _setup_font_variations() -> void:
 	_font_fredoka_semibold = _font_variation(FONT_FREDOKA, 600, 0.30)
+	_font_fredoka_condensed = _font_variation(FONT_FREDOKA, 600, 0.30, 85)
 	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 700, 0.48)
 	_font_dm_sans_semibold = _font_variation(FONT_DM_SANS, 600, 0.12)
 
-func _font_variation(base_font: Font, weight: int, embolden: float) -> FontVariation:
+func _font_variation(base_font: Font, weight: int, embolden: float, width: int = 100) -> FontVariation:
 	var font: FontVariation = FontVariation.new()
 	font.base_font = base_font
-	font.variation_opentype = {"wght": weight}
+	var variations: Dictionary = {"wght": weight}
+	if width != 100:
+		variations[FONT_AXIS_WIDTH] = width
+	font.variation_opentype = variations
 	font.variation_embolden = embolden
 	return font
 
@@ -150,11 +156,9 @@ func _build() -> void:
 	_mode_label.add_theme_font_size_override("font_size", 10)
 	_mode_label.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	title_stack.add_child(_mode_label)
-	_lives_row = HBoxContainer.new()
-	_lives_row.custom_minimum_size = Vector2(73, 34)
-	_lives_row.alignment = BoxContainer.ALIGNMENT_END
-	_lives_row.add_theme_constant_override("separation", 5)
-	top_bar.add_child(_lives_row)
+	var top_bar_balance: Control = Control.new()
+	top_bar_balance.custom_minimum_size = Vector2(73, 34)
+	top_bar.add_child(top_bar_balance)
 	_puzzle_title = Label.new()
 	_puzzle_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_puzzle_title.add_theme_font_override("font", _font_fredoka_semibold)
@@ -216,6 +220,12 @@ func _build() -> void:
 	_pyramid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_pyramid.add_theme_constant_override("separation", TILE_GAP)
 	content.add_child(_pyramid)
+	_lives_row = HBoxContainer.new()
+	_lives_row.custom_minimum_size = Vector2(0, 14)
+	_lives_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_lives_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_lives_row.add_theme_constant_override("separation", 7)
+	content.add_child(_lives_row)
 	_mistakes = Label.new()
 	_mistakes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mistakes.add_theme_font_override("font", FONT_DM_SANS)
@@ -360,7 +370,7 @@ func _create_word_tile(word: String) -> Button:
 	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.tooltip_text = SaveManager.text("select_tooltip") % word
-	tile.add_theme_font_override("font", _font_fredoka_semibold)
+	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_stylebox_override("normal", _tile_style(UI_SURFACE, UI_BORDER))
 	tile.add_theme_stylebox_override("hover", _tile_style(UI_SURFACE, Color("a89dd4")))
 	tile.add_theme_stylebox_override("pressed", _tile_style(SELECTED_FILL, SELECTED_BORDER))
@@ -378,7 +388,7 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
 	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tile.add_theme_font_override("font", _font_fredoka_semibold)
+	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
 	tile.add_theme_color_override("font_disabled_color", _row_text(row_length))
 	tile.add_theme_stylebox_override("disabled", _tile_style(_row_fill(row_length), _row_border(row_length)))
@@ -392,7 +402,7 @@ func _create_placed_tile(word: String, row_length: int) -> Label:
 	tile.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
 	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	tile.add_theme_font_override("font", _font_fredoka_semibold)
+	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
 	tile.add_theme_color_override("font_color", _row_text(row_length))
 	tile.add_theme_stylebox_override("normal", _tile_style(_row_fill(row_length), _row_border(row_length)))
@@ -500,11 +510,18 @@ func _layout_for_width() -> void:
 	_check.add_theme_font_size_override("font_size", 17)
 
 func _tile_font_size(word: String, tile_size: float) -> int:
-	# A single-line word must fit within the square even in Finnish, where
-	# compound words can be substantially longer than English equivalents.
-	var characters: int = max(word.length(), 1)
-	var estimated_size: int = floori((tile_size - 8.0) / (float(characters) * 0.78))
-	return clampi(estimated_size, 7, 15)
+	# Measure the real rendered width instead of estimating from character count.
+	# This keeps long compounds as large as possible without arbitrary wrapping
+	# or clipping them halfway through a word.
+	var available_width: float = maxf(tile_size - 8.0, 24.0)
+	var font: FontVariation = _tile_font(word)
+	for candidate_size: int in range(15, 7, -1):
+		if font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1.0, candidate_size).x <= available_width:
+			return candidate_size
+	return 7
+
+func _tile_font(word: String) -> FontVariation:
+	return _font_fredoka_condensed if word.length() >= 10 else _font_fredoka_semibold
 
 func _fit_category_card_text(category_card: PanelContainer, row_width: float) -> void:
 	var available_width: float = max(row_width - 30.0, 24.0)
@@ -698,7 +715,7 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ghost.autowrap_mode = TextServer.AUTOWRAP_OFF
 	ghost.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	ghost.add_theme_font_override("font", _font_fredoka_semibold)
+	ghost.add_theme_font_override("font", _tile_font(word))
 	ghost.add_theme_font_size_override("font_size", _tile_font_size(word, block_size.x))
 	ghost.add_theme_color_override("font_color", UI_TEXT)
 	ghost.add_theme_stylebox_override("normal", _tile_style(fill_color, border_color))
