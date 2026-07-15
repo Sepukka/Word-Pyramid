@@ -28,13 +28,13 @@ func _ready() -> void:
 
 func request_rewarded_hint() -> void:
 	if not _is_mobile_platform():
-		rewarded_ad_unavailable.emit("Mainos toimii vain Android- tai iOS-testiversiossa.")
+		rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_unavailable"))
 		return
 	if _rewarded_ad == null:
 		_show_when_loaded = true
 		if not _is_loading:
 			_load_rewarded_ad()
-		rewarded_ad_unavailable.emit("Mainosta ladataan. Se avautuu hetken kuluttua.")
+		rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_loading"))
 		return
 	_show_rewarded_ad()
 
@@ -54,7 +54,7 @@ func _on_ad_loaded(ad: RewardedAd) -> void:
 func _on_ad_failed_to_load(error: LoadAdError) -> void:
 	_is_loading = false
 	_show_when_loaded = false
-	rewarded_ad_unavailable.emit("Mainosta ei saatu ladattua: %s" % error.message)
+	rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_failed") % error.message)
 
 func _on_user_earned_reward(_item: RewardedItem) -> void:
 	rewarded_hint_earned.emit()

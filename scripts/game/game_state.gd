@@ -15,6 +15,8 @@ signal rewarded_hint_required
 signal puzzle_pool_completed(mode: String)
 
 const FREE_HINT_LIMIT: int = 2
+const DAILY_MODE: String = "daily"
+const UNLIMITED_MODE: String = "unlimited"
 
 var puzzle: Dictionary = {}
 var selected_words: Array[String] = []
@@ -35,13 +37,16 @@ var hinted_words_by_row: Dictionary = {}
 var result_correct_count: int = -1
 
 func start_new_game(mode: String = "daily") -> bool:
+	if not _is_valid_mode(mode):
+		push_error("Unsupported game mode: %s" % mode)
+		return false
 	game_mode = mode
 	daily_date = Time.get_date_string_from_system()
 	var played_ids: Array[String] = SaveManager.get_played_puzzle_ids(_progress_key())
 	if played_ids.size() >= PuzzleLoader.get_puzzles(game_mode).size():
 		puzzle_pool_completed.emit(game_mode)
 		return false
-	if game_mode == "daily":
+	if game_mode == DAILY_MODE:
 		puzzle = PuzzleLoader.get_daily_puzzle(daily_date)
 	else:
 		puzzle = PuzzleLoader.get_next_unplayed_puzzle(game_mode, played_ids)
@@ -68,7 +73,7 @@ func start_new_game(mode: String = "daily") -> bool:
 	return true
 
 func view_daily_result() -> bool:
-	game_mode = "daily"
+	game_mode = DAILY_MODE
 	daily_date = Time.get_date_string_from_system()
 	if not SaveManager.is_daily_challenge_completed(daily_date):
 		return false
@@ -126,12 +131,21 @@ func restore_game() -> bool:
 	if saved.is_empty() or not saved.has("puzzle"):
 		return false
 	daily_date = str(saved.get("daily_date", ""))
-	game_mode = str(saved.get("game_mode", "daily"))
-	if str(saved.get("language", PuzzleLoader.get_language())) != PuzzleLoader.get_language() or daily_date != Time.get_date_string_from_system():
+	game_mode = str(saved.get("game_mode", DAILY_MODE))
+	# Daily puzzles expire at midnight, while Infinity games must remain
+	# resumable regardless of the calendar date.
+	var saved_language: String = str(saved.get("language", PuzzleLoader.get_language()))
+	var expired_daily: bool = game_mode == DAILY_MODE and daily_date != Time.get_date_string_from_system()
+	if not _is_valid_mode(game_mode) or saved_language != PuzzleLoader.get_language() or expired_daily:
 		SaveManager.active_game.clear()
 		SaveManager.save_data()
 		return false
-	puzzle = saved.get("puzzle", {}).duplicate(true)
+	var saved_puzzle: Variant = saved.get("puzzle", {})
+	if not (saved_puzzle is Dictionary):
+		SaveManager.active_game.clear()
+		SaveManager.save_data()
+		return false
+	puzzle = saved_puzzle.duplicate(true)
 	if not PuzzleLoader.validate_puzzle(puzzle).is_empty():
 		SaveManager.active_game.clear()
 		SaveManager.save_data()
@@ -153,7 +167,8 @@ func restore_game() -> bool:
 		wrong_guesses.append(_to_string_array(guess_value))
 	last_failed_guess.assign(_to_string_array(saved.get("last_failed_guess", [])))
 	last_failed_active = bool(saved.get("last_failed_active", false))
-	hinted_words_by_row = saved.get("hinted_words_by_row", {}).duplicate(true)
+	var saved_hints: Variant = saved.get("hinted_words_by_row", {})
+	hinted_words_by_row = saved_hints.duplicate(true) if saved_hints is Dictionary else {}
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	selection_changed.emit(selected_words)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -192,8 +207,6 @@ func request_hint() -> void:
 		rewarded_hint_required.emit()
 		return
 	for row_length: int in [5, 4, 3, 2]:
-		if not get_hint_word_for_row(row_length).is_empty():
-			continue
 		for index: int in puzzle.get("groups", []).size():
 			if solved_groups.has(index):
 				continue
@@ -203,14 +216,22 @@ func request_hint() -> void:
 			var words: Array[String] = _to_string_array(group.get("words", []))
 			if words.is_empty():
 				continue
-			var hinted_word: String = words[0]
+			var existing_hints: Array[String] = get_hint_words_for_row(row_length)
+			var hinted_word: String = ""
+			for candidate: String in words:
+				if not existing_hints.has(candidate):
+					hinted_word = candidate
+					break
+			if hinted_word.is_empty():
+				continue
 			# A hint tile becomes locked and cannot remain part of the player's
 			# active selection. Remove it first so the visible selected state and
 			# the underlying selection always stay in sync.
 			if selected_words.has(hinted_word):
 				selected_words.erase(hinted_word)
 				last_failed_active = false
-			hinted_words_by_row[row_length] = hinted_word
+			existing_hints.append(hinted_word)
+			hinted_words_by_row[row_length] = existing_hints
 			_unlock_newly_valid_hint_guess(group)
 			hints_used += 1
 			_save_active_game()
@@ -246,7 +267,16 @@ func _get_hint_limit() -> int:
 	return FREE_HINT_LIMIT + 1 if rewarded_hint_claimed and game_mode != "unlimited" else FREE_HINT_LIMIT
 
 func get_hint_word_for_row(row_length: int) -> String:
-	return str(hinted_words_by_row.get(row_length, hinted_words_by_row.get(str(row_length), "")))
+	var words: Array[String] = get_hint_words_for_row(row_length)
+	return words[0] if not words.is_empty() else ""
+
+func get_hint_words_for_row(row_length: int) -> Array[String]:
+	var value: Variant = hinted_words_by_row.get(row_length, hinted_words_by_row.get(str(row_length), []))
+	# Older saves stored one String per row. Keep those saves resumable while the
+	# current format supports multiple locked hint words in the same row.
+	if value is String:
+		return [str(value)] if not str(value).is_empty() else []
+	return _to_string_array(value)
 
 func can_check_selection() -> bool:
 	if is_finished or is_auto_solving:
@@ -366,8 +396,7 @@ func get_solved_group_data() -> Array[Dictionary]:
 
 func _get_required_words(group: Dictionary) -> Array[String]:
 	var words: Array[String] = _to_string_array(group.get("words", []))
-	var hinted_word: String = get_hint_word_for_row(int(group.get("size", 0)))
-	if not hinted_word.is_empty():
+	for hinted_word: String in get_hint_words_for_row(int(group.get("size", 0))):
 		words.erase(hinted_word)
 	return words
 
@@ -417,6 +446,9 @@ func _finish(won: bool) -> void:
 
 func _progress_key() -> String:
 	return "%s:%s" % [PuzzleLoader.get_language(), game_mode]
+
+func _is_valid_mode(mode: String) -> bool:
+	return mode == DAILY_MODE or mode == UNLIMITED_MODE
 
 func _save_active_game() -> void:
 	SaveManager.active_game = {

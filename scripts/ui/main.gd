@@ -38,6 +38,11 @@ var _active_view: Control
 var _home_decor: Control
 var _is_transitioning: bool = false
 var _settings_sheet: PanelContainer
+var _settings_motion_target: VBoxContainer
+var _settings_drag_start_y: float = 0.0
+var _settings_dragging: bool = false
+var _settings_dismissing: bool = false
+var _settings_snap_tween: Tween
 var _font_fredoka_semibold: FontVariation
 var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
@@ -80,11 +85,11 @@ func _find_play_button() -> Button:
 	return get_node_or_null("HomeLayer/Content/ModeButtons/PlayButton") as Button
 
 func _setup_font_variations() -> void:
-	_font_fredoka_semibold = _font_variation(FONT_FREDOKA, 760, 0.65)
-	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 900, 1.05)
-	_font_dm_sans_semibold = _font_variation(FONT_DM_SANS, 650, 0.30)
-	_font_dm_sans_bold = _font_variation(FONT_DM_SANS, 760, 0.45)
-	_font_dm_sans_spaced = _font_variation(FONT_DM_SANS, 650, 0.18, 2)
+	_font_fredoka_semibold = _font_variation(FONT_FREDOKA, 600, 0.30)
+	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 700, 0.48)
+	_font_dm_sans_semibold = _font_variation(FONT_DM_SANS, 600, 0.12)
+	_font_dm_sans_bold = _font_variation(FONT_DM_SANS, 700, 0.22)
+	_font_dm_sans_spaced = _font_variation(FONT_DM_SANS, 600, 0.10, 2)
 
 func _font_variation(base_font: Font, weight: int, embolden: float, glyph_spacing: int = 0) -> FontVariation:
 	var font: FontVariation = FontVariation.new()
@@ -156,14 +161,14 @@ func _animate_play_button(scale_target: float) -> void:
 
 func _apply_play_button_style() -> void:
 	_play_button.add_theme_font_override("font", _font_fredoka_bold)
-	_play_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 4))
-	_play_button.add_theme_stylebox_override("hover", _play_style(Color("ffe23d"), 6))
-	_play_button.add_theme_stylebox_override("pressed", _play_style(Color("e9c400"), 2))
+	_play_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 1))
+	_play_button.add_theme_stylebox_override("hover", _play_style(Color("ffe23d"), 1))
+	_play_button.add_theme_stylebox_override("pressed", _play_style(Color("e9c400"), 0))
 	_play_button.add_theme_color_override("font_color", UI_PRIMARY)
 	_play_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	_play_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
-	_play_button.add_theme_font_size_override("font_size", 20)
-	_thicken_button(_play_button, UI_PRIMARY, 1)
+	_play_button.add_theme_font_size_override("font_size", 18)
+	_play_button.add_theme_constant_override("outline_size", 0)
 
 func _apply_unlimited_button_style() -> void:
 	_unlimited_button.add_theme_font_override("font", _font_fredoka_bold)
@@ -173,13 +178,13 @@ func _apply_unlimited_button_style() -> void:
 	_unlimited_button.add_theme_color_override("font_color", UI_TEXT)
 	_unlimited_button.add_theme_color_override("font_hover_color", UI_TEXT)
 	_unlimited_button.add_theme_color_override("font_pressed_color", UI_TEXT)
-	_unlimited_button.add_theme_font_size_override("font_size", 20)
-	_thicken_button(_unlimited_button, UI_TEXT, 1)
+	_unlimited_button.add_theme_font_size_override("font_size", 18)
+	_unlimited_button.add_theme_constant_override("outline_size", 0)
 
 func _apply_settings_button_style() -> void:
 	_settings_button.text = "⚙︎"
 	_settings_button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_settings_button.custom_minimum_size = Vector2(42, 42)
+	_settings_button.custom_minimum_size = Vector2(40, 40)
 	_settings_button.add_theme_font_override("font", _font_dm_sans_bold)
 	_settings_button.add_theme_stylebox_override("normal", _settings_icon_style(Color.WHITE, UI_BORDER))
 	_settings_button.add_theme_stylebox_override("hover", _settings_icon_style(UI_SURFACE_TINT, UI_PRIMARY))
@@ -187,8 +192,8 @@ func _apply_settings_button_style() -> void:
 	_settings_button.add_theme_color_override("font_color", UI_TEXT)
 	_settings_button.add_theme_color_override("font_hover_color", UI_TEXT)
 	_settings_button.add_theme_color_override("font_pressed_color", UI_TEXT)
-	_settings_button.add_theme_font_size_override("font_size", 18)
-	_thicken_button(_settings_button, UI_TEXT, 1)
+	_settings_button.add_theme_font_size_override("font_size", 17)
+	_settings_button.add_theme_constant_override("outline_size", 0)
 
 func _apply_home_texts() -> void:
 	var is_finnish: bool = PuzzleLoader.get_language() == "fi"
@@ -250,40 +255,44 @@ func _apply_home_card_style() -> void:
 	_daily_card.add_theme_stylebox_override("panel", _daily_card_style())
 	if _brand_title != null:
 		_brand_title.add_theme_font_override("font", _font_fredoka_bold)
-		_brand_title.add_theme_font_size_override("font_size", 50)
+		_brand_title.add_theme_font_size_override("font_size", 44)
 		_brand_title.add_theme_color_override("font_color", UI_PRIMARY)
-		_thicken_label(_brand_title, UI_PRIMARY, 2)
+		_brand_title.add_theme_constant_override("outline_size", 0)
 	if _brand_subtitle != null:
 		_brand_subtitle.add_theme_font_override("font", _font_dm_sans_spaced)
-		_brand_subtitle.add_theme_font_size_override("font_size", 14)
+		_brand_subtitle.add_theme_font_size_override("font_size", 12)
 		_brand_subtitle.add_theme_color_override("font_color", Color("7b6ab5"))
 		_brand_subtitle.add_theme_constant_override("outline_size", 0)
 	if _date_pill != null:
 		_date_pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		_date_pill.add_theme_font_override("font", _font_dm_sans_bold)
+		_date_pill.add_theme_font_override("font", _font_fredoka_semibold)
+		_date_pill.add_theme_font_size_override("font_size", 12)
 		_date_pill.add_theme_color_override("font_color", UI_PRIMARY)
 		_date_pill.add_theme_stylebox_override("normal", _date_pill_style())
-		_thicken_label(_date_pill, UI_PRIMARY, 1)
+		_date_pill.add_theme_constant_override("outline_size", 0)
 	if _card_title != null:
 		_card_title.add_theme_font_override("font", _font_fredoka_semibold)
+		_card_title.add_theme_font_size_override("font_size", 24)
 		_card_title.add_theme_color_override("font_color", Color.WHITE)
-		_thicken_label(_card_title, Color.WHITE, 1)
+		_card_title.add_theme_constant_override("outline_size", 0)
 	if _card_meta != null:
-		_card_meta.add_theme_font_override("font", _font_dm_sans_semibold)
+		_card_meta.add_theme_font_override("font", FONT_DM_SANS)
+		_card_meta.add_theme_font_size_override("font_size", 13)
 		_card_meta.add_theme_color_override("font_color", Color("8b7dc8"))
-		_thicken_label(_card_meta, Color("8b7dc8"), 1)
+		_card_meta.add_theme_constant_override("outline_size", 0)
 	if _card_streak != null:
 		_card_streak.add_theme_font_override("font", _font_fredoka_semibold)
+		_card_streak.add_theme_font_size_override("font_size", 18)
 		_card_streak.add_theme_color_override("font_color", UI_YELLOW)
-		_thicken_label(_card_streak, UI_YELLOW, 1)
+		_card_streak.add_theme_constant_override("outline_size", 0)
 	if _home_hint != null:
 		_home_hint.bbcode_enabled = true
 		_home_hint.fit_content = true
 		_home_hint.scroll_active = false
-		_home_hint.add_theme_font_override("normal_font", _font_dm_sans_semibold)
+		_home_hint.add_theme_font_override("normal_font", FONT_DM_SANS)
 		_home_hint.add_theme_font_override("bold_font", _font_dm_sans_bold)
-		_home_hint.add_theme_font_size_override("normal_font_size", 13)
-		_home_hint.add_theme_font_size_override("bold_font_size", 13)
+		_home_hint.add_theme_font_size_override("normal_font_size", 12)
+		_home_hint.add_theme_font_size_override("bold_font_size", 12)
 		_home_hint.add_theme_color_override("default_color", UI_MUTED_TEXT)
 
 func _thicken_label(label: Label, color: Color, outline_size: int) -> void:
@@ -308,8 +317,8 @@ func _apply_mini_pyramid_style() -> void:
 		row_index += 1
 
 func _layout_home_layout() -> void:
-	_logo_spacer.custom_minimum_size = Vector2(0, clampf(size.y * 0.020, 12.0, 24.0))
-	_bottom_spacer.custom_minimum_size = Vector2(0, clampf(size.y * 0.018, 10.0, 20.0))
+	_logo_spacer.custom_minimum_size = Vector2(0, clampf(size.y * 0.012, 8.0, 14.0))
+	_bottom_spacer.custom_minimum_size = Vector2.ZERO
 
 func show_game() -> void:
 	if _is_transitioning:
@@ -377,20 +386,22 @@ func show_settings() -> void:
 			show_main_menu()
 	)
 	var bottom: VBoxContainer = VBoxContainer.new()
+	_settings_motion_target = bottom
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	overlay.add_child(bottom)
 	_settings_sheet = PanelContainer.new()
 	_settings_sheet.add_theme_stylebox_override("panel", _settings_sheet_style())
+	_settings_sheet.gui_input.connect(_on_settings_drag_input)
 	bottom.add_child(_settings_sheet)
 	var margin: MarginContainer = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 34)
+	margin.add_theme_constant_override("margin_bottom", 40)
 	_settings_sheet.add_child(margin)
 	var panel: VBoxContainer = VBoxContainer.new()
-	panel.add_theme_constant_override("separation", 18)
+	panel.add_theme_constant_override("separation", 16)
 	margin.add_child(panel)
 	var handle: Panel = Panel.new()
 	handle.custom_minimum_size = Vector2(40, 4)
@@ -403,14 +414,15 @@ func show_settings() -> void:
 	var title: Label = Label.new()
 	title.text = SaveManager.text("settings_title")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_override("font", FONT_FREDOKA)
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_override("font", _font_fredoka_semibold)
+	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", UI_TEXT)
 	header.add_child(title)
 	var close: Button = Button.new()
-	close.text = "x"
-	close.custom_minimum_size = Vector2(36, 36)
-	close.add_theme_font_override("font", FONT_FREDOKA)
+	close.text = "×"
+	close.custom_minimum_size = Vector2(34, 34)
+	close.add_theme_font_override("font", _font_fredoka_semibold)
+	close.add_theme_font_size_override("font_size", 18)
 	close.add_theme_stylebox_override("normal", _mode_button_style(UI_SURFACE_TINT, UI_SURFACE_TINT, 0))
 	close.add_theme_stylebox_override("hover", _mode_button_style(Color("e4dcf6"), UI_SURFACE_TINT, 0))
 	close.add_theme_color_override("font_color", UI_TEXT)
@@ -429,8 +441,8 @@ func show_settings() -> void:
 	panel.add_child(language_block)
 	var language_label: Label = Label.new()
 	language_label.text = SaveManager.text("language")
-	language_label.add_theme_font_override("font", FONT_FREDOKA)
-	language_label.add_theme_font_size_override("font_size", 18)
+	language_label.add_theme_font_override("font", _font_fredoka_semibold)
+	language_label.add_theme_font_size_override("font_size", 16)
 	language_label.add_theme_color_override("font_color", UI_TEXT)
 	language_block.add_child(language_label)
 	var language_row: HBoxContainer = HBoxContainer.new()
@@ -443,8 +455,8 @@ func show_settings() -> void:
 	panel.add_child(attempts_block)
 	var attempts_label: Label = Label.new()
 	attempts_label.text = SaveManager.text("attempts_per_puzzle")
-	attempts_label.add_theme_font_override("font", FONT_FREDOKA)
-	attempts_label.add_theme_font_size_override("font_size", 18)
+	attempts_label.add_theme_font_override("font", _font_fredoka_semibold)
+	attempts_label.add_theme_font_size_override("font_size", 16)
 	attempts_label.add_theme_color_override("font_color", UI_TEXT)
 	attempts_block.add_child(attempts_label)
 	var attempts_row: HBoxContainer = HBoxContainer.new()
@@ -456,16 +468,78 @@ func show_settings() -> void:
 	note.text = SaveManager.text("settings_note")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_font_override("font", FONT_DM_SANS)
-	note.add_theme_font_size_override("font_size", 13)
+	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	panel.add_child(note)
-	_settings_sheet.custom_minimum_size = Vector2(min(size.x, 480.0), 0)
+	_settings_sheet.custom_minimum_size = Vector2(min(size.x, 390.0), 0)
 	_settings_sheet.modulate.a = 0.0
 	_settings_sheet.scale = Vector2(1.0, 0.96)
 	var tween: Tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(_settings_sheet, "modulate:a", 1.0, 0.18)
 	tween.tween_property(_settings_sheet, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _on_settings_drag_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_start_settings_drag(event.position.y)
+		elif _settings_dragging:
+			_finish_settings_drag(event.position.y)
+	elif event is InputEventScreenDrag and _settings_dragging:
+		_update_settings_drag(event.position.y)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_start_settings_drag(event.global_position.y)
+		elif _settings_dragging:
+			_finish_settings_drag(event.global_position.y)
+	elif event is InputEventMouseMotion and _settings_dragging and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_update_settings_drag(event.global_position.y)
+
+func _start_settings_drag(pointer_y: float) -> void:
+	if not is_instance_valid(_settings_sheet) or not is_instance_valid(_settings_motion_target) or _settings_dismissing:
+		return
+	if _settings_snap_tween != null and _settings_snap_tween.is_running():
+		_settings_snap_tween.kill()
+	_settings_motion_target.position.y = 0.0
+	_settings_dragging = true
+	_settings_drag_start_y = pointer_y
+
+func _update_settings_drag(pointer_y: float) -> void:
+	if not is_instance_valid(_settings_motion_target):
+		return
+	var offset: float = max(pointer_y - _settings_drag_start_y, 0.0)
+	_settings_motion_target.position.y = offset
+	if offset > 8.0:
+		accept_event()
+
+func _finish_settings_drag(pointer_y: float) -> void:
+	_settings_dragging = false
+	var offset: float = max(pointer_y - _settings_drag_start_y, 0.0)
+	if offset >= 72.0:
+		_dismiss_settings()
+	elif is_instance_valid(_settings_motion_target):
+		_settings_snap_tween = create_tween()
+		_settings_snap_tween.tween_property(_settings_motion_target, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _dismiss_settings() -> void:
+	if _settings_dismissing or not is_instance_valid(_settings_sheet) or not is_instance_valid(_settings_motion_target) or not is_instance_valid(_active_view):
+		return
+	_settings_dismissing = true
+	_settings_dragging = false
+	if _settings_snap_tween != null and _settings_snap_tween.is_running():
+		_settings_snap_tween.kill()
+	var overlay: Control = _active_view
+	var sheet: PanelContainer = _settings_sheet
+	var motion_target: VBoxContainer = _settings_motion_target
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(overlay, "modulate:a", 0.0, 0.20)
+	tween.tween_property(motion_target, "position:y", motion_target.position.y + sheet.size.y + 24.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await tween.finished
+	_settings_sheet = null
+	_settings_motion_target = null
+	_settings_snap_tween = null
+	_settings_dismissing = false
+	show_main_menu()
 
 func _add_language_chip(row: HBoxContainer, label_text: String, language_code: String) -> void:
 	var selected: bool = PuzzleLoader.get_language() == language_code
@@ -492,19 +566,29 @@ func _add_attempt_chip(row: HBoxContainer, value: int) -> void:
 func _settings_toggle(label_text: String) -> CheckButton:
 	var button: CheckButton = CheckButton.new()
 	button.text = label_text
-	button.add_theme_font_override("font", FONT_FREDOKA)
-	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_font_override("font", _font_fredoka_semibold)
+	button.add_theme_font_size_override("font_size", 16)
 	button.add_theme_color_override("font_color", UI_TEXT)
 	button.add_theme_color_override("font_pressed_color", UI_TEXT)
 	button.add_theme_color_override("font_hover_color", UI_TEXT)
+	var transparent_row: StyleBoxFlat = _round_style(Color.TRANSPARENT, Color.TRANSPARENT, 0)
+	transparent_row.set_border_width_all(0)
+	transparent_row.content_margin_left = 0.0
+	transparent_row.content_margin_right = 0.0
+	transparent_row.content_margin_top = 0.0
+	transparent_row.content_margin_bottom = 0.0
+	button.add_theme_stylebox_override("normal", transparent_row)
+	button.add_theme_stylebox_override("hover", transparent_row)
+	button.add_theme_stylebox_override("pressed", transparent_row)
+	button.add_theme_stylebox_override("hover_pressed", transparent_row)
 	return button
 
 func _chip_button(label_text: String, selected: bool) -> Button:
 	var button: Button = Button.new()
 	button.text = label_text
-	button.custom_minimum_size = Vector2(92, 36)
-	button.add_theme_font_override("font", FONT_FREDOKA)
-	button.add_theme_font_size_override("font_size", 15)
+	button.custom_minimum_size = Vector2(82, 34)
+	button.add_theme_font_override("font", _font_fredoka_semibold)
+	button.add_theme_font_size_override("font_size", 14)
 	button.add_theme_stylebox_override("normal", _chip_style(selected))
 	button.add_theme_stylebox_override("hover", _chip_style(true))
 	button.add_theme_stylebox_override("pressed", _chip_style(true))
@@ -583,12 +667,12 @@ func _create_home_decor() -> Control:
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(base)
-	_add_decor_shape(layer, Vector2(-48, -48), Vector2(180, 180), UI_YELLOW, 0.26, 90)
-	_add_decor_shape(layer, Vector2(438, 24), Vector2(72, 72), UI_MAGENTA, 0.16, 0, 18.0)
-	_add_decor_shape(layer, Vector2(16, 740), Vector2(88, 70), UI_TEAL, 0.16, 0)
-	_add_decor_shape(layer, Vector2(424, 820), Vector2(140, 140), UI_RED, 0.18, 70)
-	_add_decor_shape(layer, Vector2(42, 385), Vector2(28, 28), UI_MAGENTA, 0.10, 14)
-	_add_decor_shape(layer, Vector2(474, 292), Vector2(18, 18), UI_YELLOW, 0.28, 0)
+	_add_decor_shape(layer, Vector2(-40, -40), Vector2(160, 160), UI_YELLOW, 0.26, 80)
+	_add_decor_shape(layer, Vector2(size.x - 88, 12), Vector2(76, 76), UI_MAGENTA, 0.16, 0, 18.0)
+	_add_decor_shape(layer, Vector2(12, size.y - 132), Vector2(72, 56), UI_TEAL, 0.16, 0, -8.0)
+	_add_decor_shape(layer, Vector2(size.x - 104, size.y - 96), Vector2(120, 120), UI_RED, 0.18, 60)
+	_add_decor_shape(layer, Vector2(24, size.y * 0.46), Vector2(24, 24), UI_MAGENTA, 0.10, 12)
+	_add_decor_shape(layer, Vector2(size.x - 44, size.y * 0.34), Vector2(16, 16), UI_YELLOW, 0.28, 0)
 	return layer
 
 func _add_decor_shape(parent: Control, position: Vector2, shape_size: Vector2, color: Color, alpha: float, radius: int, rotation_degrees_value: float = 0.0) -> void:
@@ -648,9 +732,9 @@ func _chip_style(selected: bool) -> StyleBoxFlat:
 	return style
 
 func _mini_block_style(fill: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, fill, 4)
+	var style: StyleBoxFlat = _round_style(fill, fill, 3)
 	style.shadow_color = Color(0, 0, 0, 0.14)
-	style.shadow_size = 3
+	style.shadow_size = 2
 	style.shadow_offset = Vector2(0, 2)
 	return style
 
@@ -663,10 +747,10 @@ func _date_pill_style() -> StyleBoxFlat:
 	return style
 
 func _daily_card_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(UI_PRIMARY, UI_PRIMARY, 24)
+	var style: StyleBoxFlat = _round_style(UI_PRIMARY, UI_PRIMARY, 22)
 	style.shadow_color = UI_MAGENTA
 	style.shadow_size = 1
-	style.shadow_offset = Vector2(8, 8)
+	style.shadow_offset = Vector2(7, 7)
 	return style
 
 func _pill_style() -> StyleBoxFlat:
@@ -690,15 +774,15 @@ func _ground_shadow_style() -> StyleBoxFlat:
 	return style
 
 func _play_style(fill: Color, shadow_size: int) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, fill.darkened(0.12), 10)
+	var style: StyleBoxFlat = _round_style(fill, fill, 13)
 	style.set_border_width_all(0)
-	style.shadow_color = Color(0, 0, 0, 0.22)
+	style.shadow_color = Color(0, 0, 0, 0.18)
 	style.shadow_size = shadow_size
-	style.shadow_offset = Vector2(4, 4)
+	style.shadow_offset = Vector2(3, 3)
 	return style
 
 func _mode_button_style(fill: Color, border: Color, border_width: int = 1) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, border, 10)
+	var style: StyleBoxFlat = _round_style(fill, border, 13)
 	style.set_border_width_all(border_width)
 	style.shadow_color = Color(0, 0, 0, 0.05)
 	style.shadow_size = 3

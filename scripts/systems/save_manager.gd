@@ -76,6 +76,9 @@ const TEXT: Dictionary = {
 		"hint_placed": "Hint: %s was placed into the correct row.",
 		"bonus_hint_earned": "Bonus hint earned! Use the Hint button.",
 		"rewarded_hint_required": "Two free hints have been used. Watch a rewarded ad to get a bonus hint.",
+		"rewarded_ad_unavailable": "Rewarded ads are available only in Android or iOS test builds.",
+		"rewarded_ad_loading": "The ad is loading. It will open shortly.",
+		"rewarded_ad_failed": "The ad could not be loaded: %s",
 		"instructions_text": "Find groups of 2, 3, 4 and 5 words, then guess the top word with one selection."
 	},
 	"fi": {
@@ -151,6 +154,9 @@ const TEXT: Dictionary = {
 		"hint_placed": "Vihje: %s sijoitettiin oikealle riville.",
 		"bonus_hint_earned": "Bonusvihje ansaittu! Käytä Vihje-painiketta.",
 		"rewarded_hint_required": "Kaksi maksutonta vihjettä on käytetty. Katso palkittu mainos saadaksesi bonusvihjeen.",
+		"rewarded_ad_unavailable": "Palkitut mainokset toimivat vain Android- tai iOS-testiversiossa.",
+		"rewarded_ad_loading": "Mainosta ladataan. Se avautuu hetken kuluttua.",
+		"rewarded_ad_failed": "Mainosta ei saatu ladattua: %s",
 		"instructions_text": "Etsi 2, 3, 4 ja 5 sanan ryhmät sekä arvaa huippusana yhdellä valinnalla."
 	}
 }
@@ -226,6 +232,10 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 
 func get_daily_streak(today_key: String = "") -> int:
 	var current_day: String = today_key if not today_key.is_empty() else Time.get_date_string_from_system()
+	# A loss today breaks the visible daily streak. Previously this skipped back
+	# to yesterday and made a lost challenge look as though the streak survived.
+	if _daily_challenge_completed(current_day) and not _daily_challenge_won(current_day):
+		return 0
 	if not _daily_challenge_won(current_day):
 		current_day = _date_offset(current_day, -1)
 	var streak: int = 0
@@ -270,7 +280,10 @@ func _date_offset(day_key: String, offset_days: int) -> String:
 
 func get_played_puzzle_ids(mode: String) -> Array[String]:
 	var result: Array[String] = []
-	for value: Variant in played_puzzle_ids.get(mode, []):
+	var saved_ids: Variant = played_puzzle_ids.get(mode, [])
+	if not (saved_ids is Array):
+		return result
+	for value: Variant in saved_ids:
 		result.append(str(value))
 	return result
 

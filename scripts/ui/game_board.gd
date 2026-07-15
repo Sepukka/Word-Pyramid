@@ -5,7 +5,7 @@ signal request_menu
 signal request_new_game
 
 const ROW_LENGTHS: Array[int] = [1, 2, 3, 4, 5]
-const TILE_GAP: float = 8.0
+const TILE_GAP: float = 6.0
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const UI_BACKGROUND: Color = Color("fffdf5")
@@ -38,6 +38,13 @@ var _hint: Button
 var _result: Button
 var _share: Button
 var _aftermath_layer: Control
+var _aftermath_sheet: PanelContainer
+var _aftermath_stack: VBoxContainer
+var _aftermath_drag_start_y: float = 0.0
+var _aftermath_dragging: bool = false
+var _aftermath_dismissing: bool = false
+var _aftermath_open_tween: Tween
+var _aftermath_snap_tween: Tween
 var _word_buttons: Dictionary = {}
 var _word_order: Array[String] = []
 var _hinted_tiles: Dictionary = {}
@@ -49,6 +56,7 @@ var _animating_row: int = -1
 var _is_placing: bool = false
 var _font_fredoka_semibold: FontVariation
 var _font_fredoka_bold: FontVariation
+var _font_dm_sans_semibold: FontVariation
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -67,7 +75,10 @@ func _ready() -> void:
 	GameState.hint_provided.connect(_on_hint_provided)
 	GameState.hint_count_changed.connect(_on_hint_count_changed)
 	GameState.rewarded_hint_required.connect(_on_rewarded_hint_required)
-	AdManager.rewarded_hint_earned.connect(GameState.grant_rewarded_hint)
+	# Both nodes are autoloads, so this connection outlives individual boards.
+	# Reopening the board must not connect the same callable a second time.
+	if not AdManager.rewarded_hint_earned.is_connected(GameState.grant_rewarded_hint):
+		AdManager.rewarded_hint_earned.connect(GameState.grant_rewarded_hint)
 	AdManager.rewarded_ad_unavailable.connect(_on_rewarded_ad_unavailable)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
 
@@ -77,8 +88,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _setup_font_variations() -> void:
-	_font_fredoka_semibold = _font_variation(FONT_FREDOKA, 600, 0.10)
-	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 650, 0.18)
+	_font_fredoka_semibold = _font_variation(FONT_FREDOKA, 600, 0.30)
+	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 700, 0.48)
+	_font_dm_sans_semibold = _font_variation(FONT_DM_SANS, 600, 0.12)
 
 func _font_variation(base_font: Font, weight: int, embolden: float) -> FontVariation:
 	var font: FontVariation = FontVariation.new()
@@ -94,14 +106,14 @@ func _build() -> void:
 	add_child(background)
 	var page_margin: MarginContainer = MarginContainer.new()
 	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	page_margin.add_theme_constant_override("margin_left", 12)
-	page_margin.add_theme_constant_override("margin_right", 12)
-	page_margin.add_theme_constant_override("margin_top", 12)
-	page_margin.add_theme_constant_override("margin_bottom", 14)
+	page_margin.add_theme_constant_override("margin_left", 16)
+	page_margin.add_theme_constant_override("margin_right", 16)
+	page_margin.add_theme_constant_override("margin_top", 17)
+	page_margin.add_theme_constant_override("margin_bottom", 24)
 	add_child(page_margin)
 	var page: VBoxContainer = VBoxContainer.new()
 	page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_theme_constant_override("separation", 8)
+	page.add_theme_constant_override("separation", 7)
 	page_margin.add_child(page)
 	var top_bar: HBoxContainer = HBoxContainer.new()
 	top_bar.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -109,9 +121,9 @@ func _build() -> void:
 	page.add_child(top_bar)
 	var back: Button = Button.new()
 	back.text = "< " + SaveManager.text("back")
-	back.custom_minimum_size = Vector2(84, 34)
-	back.add_theme_font_override("font", FONT_DM_SANS)
-	back.add_theme_font_size_override("font_size", 14)
+	back.custom_minimum_size = Vector2(73, 34)
+	back.add_theme_font_override("font", _font_dm_sans_semibold)
+	back.add_theme_font_size_override("font_size", 13)
 	back.add_theme_stylebox_override("normal", _outline_button_style(UI_SURFACE))
 	back.add_theme_stylebox_override("hover", _outline_button_style(UI_SURFACE_TINT))
 	back.add_theme_color_override("font_color", UI_TEXT)
@@ -125,23 +137,24 @@ func _build() -> void:
 	game_title.text = "Word Pyramid"
 	game_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	game_title.add_theme_font_override("font", _font_fredoka_semibold)
-	game_title.add_theme_font_size_override("font_size", 21)
+	game_title.add_theme_font_size_override("font_size", 18)
 	game_title.add_theme_color_override("font_color", UI_TEXT)
 	title_stack.add_child(game_title)
 	_mode_label = Label.new()
 	_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mode_label.add_theme_font_override("font", FONT_DM_SANS)
-	_mode_label.add_theme_font_size_override("font_size", 11)
+	_mode_label.add_theme_font_size_override("font_size", 10)
 	_mode_label.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	title_stack.add_child(_mode_label)
-	var right_spacer: Control = Control.new()
-	right_spacer.custom_minimum_size = Vector2(84, 34)
-	top_bar.add_child(right_spacer)
 	_lives_row = HBoxContainer.new()
+	_lives_row.custom_minimum_size = Vector2(73, 34)
+	_lives_row.alignment = BoxContainer.ALIGNMENT_END
+	_lives_row.add_theme_constant_override("separation", 5)
+	top_bar.add_child(_lives_row)
 	_puzzle_title = Label.new()
 	_puzzle_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_puzzle_title.add_theme_font_override("font", _font_fredoka_semibold)
-	_puzzle_title.add_theme_font_size_override("font_size", 22)
+	_puzzle_title.add_theme_font_size_override("font_size", 19)
 	_puzzle_title.add_theme_color_override("font_color", UI_TEXT)
 	page.add_child(_puzzle_title)
 	_card = PanelContainer.new()
@@ -156,7 +169,7 @@ func _build() -> void:
 	_card.add_child(margin)
 	var content: VBoxContainer = VBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", 7)
 	margin.add_child(content)
 	var top: HBoxContainer = HBoxContainer.new()
 	content.add_child(top)
@@ -167,7 +180,7 @@ func _build() -> void:
 	instructions.text = SaveManager.text("instructions")
 	instructions.flat = true
 	instructions.add_theme_font_override("font", FONT_DM_SANS)
-	instructions.add_theme_font_size_override("font_size", 13)
+	instructions.add_theme_font_size_override("font_size", 12)
 	instructions.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	instructions.pressed.connect(_show_instructions)
 	top.add_child(instructions)
@@ -184,6 +197,7 @@ func _build() -> void:
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_message.add_theme_font_override("font", FONT_DM_SANS)
+	_message.add_theme_font_size_override("font_size", 12)
 	_message.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	content.add_child(_message)
 	_selection = Label.new()
@@ -191,25 +205,25 @@ func _build() -> void:
 	_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_selection.add_theme_font_override("font", FONT_DM_SANS)
 	_selection.add_theme_color_override("font_color", UI_MUTED_TEXT)
-	_selection.add_theme_font_size_override("font_size", 14)
+	_selection.add_theme_font_size_override("font_size", 12)
 	content.add_child(_selection)
 	_pyramid = VBoxContainer.new()
-	_pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
+	_pyramid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_pyramid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_pyramid.add_theme_constant_override("separation", TILE_GAP)
 	content.add_child(_pyramid)
 	_mistakes = Label.new()
 	_mistakes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mistakes.add_theme_font_override("font", FONT_DM_SANS)
-	_mistakes.add_theme_font_size_override("font_size", 15)
+	_mistakes.add_theme_font_size_override("font_size", 12)
 	_mistakes.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	content.add_child(_mistakes)
 	var action_spacer: Control = Control.new()
-	action_spacer.custom_minimum_size = Vector2(0, 8)
+	action_spacer.custom_minimum_size = Vector2(0, 3)
 	content.add_child(action_spacer)
 	var action_row: HBoxContainer = HBoxContainer.new()
 	action_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_row.add_theme_constant_override("separation", 12)
+	action_row.add_theme_constant_override("separation", 10)
 	content.add_child(action_row)
 	_hint = _action_button(_hint_button_label(SaveManager.text("hint_count") % 2))
 	_hint.pressed.connect(_on_hint_pressed)
@@ -282,9 +296,9 @@ func _build_pyramid() -> void:
 	# before its correct row is created.
 	var reserved_hint_words: Array[String] = []
 	for hinted_row_length: int in ROW_LENGTHS:
-		var reserved_word: String = GameState.get_hint_word_for_row(hinted_row_length)
-		if not reserved_word.is_empty() and remaining_words.has(reserved_word):
-			reserved_hint_words.append(reserved_word)
+		for reserved_word: String in GameState.get_hint_words_for_row(hinted_row_length):
+			if remaining_words.has(reserved_word):
+				reserved_hint_words.append(reserved_word)
 	for row_length: int in ROW_LENGTHS:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.set_meta("row_length", row_length)
@@ -296,12 +310,12 @@ func _build_pyramid() -> void:
 		if not solved_group.is_empty():
 			if row_length == _animating_row:
 				var placed_row: Array[Label] = []
-				var locked_hint_word: String = GameState.get_hint_word_for_row(row_length)
+				var locked_hint_words: Array[String] = GameState.get_hint_words_for_row(row_length)
 				for solved_word: String in GameState._to_string_array(solved_group.get("words", [])):
 					var placed_tile: Label = _create_placed_tile(solved_word, row_length)
 					# The hint was already locked in this row, so keep it visible
 					# while the remaining blocks finish their placement animation.
-					placed_tile.modulate.a = 1.0 if solved_word == locked_hint_word else 0.0
+					placed_tile.modulate.a = 1.0 if locked_hint_words.has(solved_word) else 0.0
 					row.add_child(placed_tile)
 					placed_row.append(placed_tile)
 				_placed_tiles[row_length] = placed_row
@@ -310,13 +324,13 @@ func _build_pyramid() -> void:
 				row.add_child(category_card)
 				_category_cards[row_length] = category_card
 			continue
-		var hinted_word: String = GameState.get_hint_word_for_row(row_length)
-		if not hinted_word.is_empty() and remaining_words.has(hinted_word):
-			var hinted_tile: Button = _create_hinted_tile(hinted_word, row_length)
-			row.add_child(hinted_tile)
-			_hinted_tiles[hinted_word] = hinted_tile
-			remaining_words.erase(hinted_word)
-			reserved_hint_words.erase(hinted_word)
+		for hinted_word: String in GameState.get_hint_words_for_row(row_length):
+			if remaining_words.has(hinted_word):
+				var hinted_tile: Button = _create_hinted_tile(hinted_word, row_length)
+				row.add_child(hinted_tile)
+				_hinted_tiles[hinted_word] = hinted_tile
+				remaining_words.erase(hinted_word)
+				reserved_hint_words.erase(hinted_word)
 		var slots_left: int = row_length - row.get_child_count()
 		for _tile_index: int in slots_left:
 			var next_word_index: int = -1
@@ -444,10 +458,10 @@ func _get_stable_word_order() -> Array[String]:
 func _layout_for_width() -> void:
 	if _card == null:
 		return
-	var card_width: float = clampf(size.x - 24.0, 300.0, 600.0)
+	var card_width: float = clampf(size.x - 32.0, 300.0, 600.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
 	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 44.0, 98.0)
-	var tile_height: float = clampf(tile_size * 0.72, 46.0, 70.0)
+	var tile_height: float = clampf(tile_size * 0.72, 48.0, 62.0)
 	for tile: Button in _word_buttons.values():
 		tile.custom_minimum_size = Vector2(tile_size, tile_height)
 		tile.size = Vector2(tile_size, tile_height)
@@ -467,17 +481,21 @@ func _layout_for_width() -> void:
 		category_card.custom_minimum_size = Vector2(row_width, tile_height)
 		category_card.size = Vector2(row_width, tile_height)
 		_fit_category_card_text(category_card, row_width)
-	var action_width: float = clampf((card_width - 12.0) / 2.0, 136.0, 260.0)
+	var action_width: float = clampf((card_width - 10.0) / 2.0, 136.0, 260.0)
 	for action_button: Button in _action_buttons:
-		action_button.custom_minimum_size = Vector2(action_width, 64.0)
-		action_button.add_theme_font_size_override("font_size", 18)
+		action_button.custom_minimum_size = Vector2(action_width, 52.0)
+		action_button.add_theme_font_size_override("font_size", 16)
+	_hint.custom_minimum_size = Vector2(82.0, 52.0)
+	_hint.add_theme_font_size_override("font_size", 14)
+	_check.custom_minimum_size = Vector2(max(card_width - 92.0, 180.0), 52.0)
+	_check.add_theme_font_size_override("font_size", 17)
 
 func _tile_font_size(word: String, tile_size: float) -> int:
 	# A single-line word must fit within the square even in Finnish, where
 	# compound words can be substantially longer than English equivalents.
 	var characters: int = max(word.length(), 1)
 	var estimated_size: int = floori((tile_size - 8.0) / (float(characters) * 0.70))
-	return clampi(estimated_size, 8, 15)
+	return clampi(estimated_size, 8, 13)
 
 func _fit_category_card_text(category_card: PanelContainer, row_width: float) -> void:
 	var available_width: float = max(row_width - 30.0, 24.0)
@@ -505,7 +523,8 @@ func _update_lives(used: int, maximum: int) -> void:
 		child.queue_free()
 	for index: int in range(maximum):
 		var dot: Panel = Panel.new()
-		dot.custom_minimum_size = Vector2(14, 14)
+		dot.custom_minimum_size = Vector2(12, 12)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var is_used: bool = index < used
 		dot.add_theme_stylebox_override("panel", _life_dot_style(is_used))
 		_lives_row.add_child(dot)
@@ -749,7 +768,7 @@ func _result_score_text() -> String:
 	return SaveManager.text("result_score") % [correct, total]
 
 func _on_result_pressed() -> void:
-	_message.text = _result_score_text()
+	_show_aftermath(GameState.completed_won)
 
 func _on_share_pressed() -> void:
 	var correct: int = max(GameState.result_correct_count, 0)
@@ -765,6 +784,12 @@ func _on_share_pressed() -> void:
 
 func _show_aftermath(won: bool) -> void:
 	if is_instance_valid(_aftermath_layer):
+		# Recover an existing overlay if an interrupted gesture or animation left
+		# its full-screen input layer active while the sheet itself was offscreen.
+		if not _aftermath_dismissing:
+			_aftermath_layer.modulate.a = 1.0
+			if is_instance_valid(_aftermath_stack):
+				_aftermath_stack.position.y = 0.0
 		return
 	var correct: int = max(GameState.result_correct_count, 0)
 	var total: int = max(GameState.result_total_count(), correct)
@@ -778,11 +803,13 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_layer = layer
 
 	var backdrop: ColorRect = ColorRect.new()
-	backdrop.color = Color(0.102, 0.039, 0.369, 0.58)
+	backdrop.color = Color(0.102, 0.039, 0.369, 0.45)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.gui_input.connect(_on_aftermath_backdrop_input)
 	layer.add_child(backdrop)
 
 	var stack: VBoxContainer = VBoxContainer.new()
+	_aftermath_stack = stack
 	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(stack)
 	var top_space: Control = Control.new()
@@ -790,33 +817,35 @@ func _show_aftermath(won: bool) -> void:
 	stack.add_child(top_space)
 
 	var sheet: PanelContainer = PanelContainer.new()
+	_aftermath_sheet = sheet
 	sheet.add_theme_stylebox_override("panel", _aftermath_sheet_style(won))
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet.gui_input.connect(_on_aftermath_drag_input)
 	stack.add_child(sheet)
 	var sheet_content: VBoxContainer = VBoxContainer.new()
 	sheet_content.add_theme_constant_override("separation", 0)
 	sheet.add_child(sheet_content)
 	_add_aftermath_accent(sheet_content, won)
 	var margin: MarginContainer = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 26)
-	margin.add_theme_constant_override("margin_right", 26)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 32)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	sheet_content.add_child(margin)
 	var content: VBoxContainer = VBoxContainer.new()
 	content.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_theme_constant_override("separation", 16)
+	content.add_theme_constant_override("separation", 12)
 	margin.add_child(content)
 
 	var handle: Panel = Panel.new()
-	handle.custom_minimum_size = Vector2(42, 4)
+	handle.custom_minimum_size = Vector2(40, 4)
 	handle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	handle.add_theme_stylebox_override("panel", _aftermath_handle_style())
 	content.add_child(handle)
 
-	var emoji: Label = _aftermath_label("🎉" if won else "✕", 40, UI_YELLOW if won else UI_RED)
+	var emoji: Label = _aftermath_label("🎉" if won else "✕", 34, UI_YELLOW if won else UI_RED)
 	content.add_child(emoji)
-	var title: Label = _aftermath_label(SaveManager.text("aftermath_win_title") if won else SaveManager.text("aftermath_loss_title"), 31, UI_YELLOW if won else UI_RED)
+	var title: Label = _aftermath_label(SaveManager.text("aftermath_win_title") if won else SaveManager.text("aftermath_loss_title"), 28, UI_YELLOW if won else UI_RED)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(title)
 	var subtitle_text: String
@@ -833,8 +862,8 @@ func _show_aftermath(won: bool) -> void:
 	var streak_margin: MarginContainer = MarginContainer.new()
 	streak_margin.add_theme_constant_override("margin_left", 16)
 	streak_margin.add_theme_constant_override("margin_right", 16)
-	streak_margin.add_theme_constant_override("margin_top", 18)
-	streak_margin.add_theme_constant_override("margin_bottom", 18)
+	streak_margin.add_theme_constant_override("margin_top", 14)
+	streak_margin.add_theme_constant_override("margin_bottom", 14)
 	streak_panel.add_child(streak_margin)
 	var streak_box: VBoxContainer = VBoxContainer.new()
 	streak_box.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -842,11 +871,11 @@ func _show_aftermath(won: bool) -> void:
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = GameState.game_mode == "daily"
 	var flame_text: String = "🔥" if has_daily_streak else ("✓" if won else "✕")
-	var flame: Label = _aftermath_label(flame_text, 52, Color.WHITE)
+	var flame: Label = _aftermath_label(flame_text, 44, Color.WHITE)
 	streak_box.add_child(flame)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
 	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else streak_to
-	var streak_number: Label = _aftermath_label(str(streak_from) if has_daily_streak else "%d/%d" % [correct, total], 64, UI_YELLOW)
+	var streak_number: Label = _aftermath_label(str(streak_from) if has_daily_streak else "%d/%d" % [correct, total], 56, UI_YELLOW)
 	streak_box.add_child(streak_number)
 	var streak_caption_text: String = SaveManager.text("aftermath_results")
 	if has_daily_streak:
@@ -873,14 +902,18 @@ func _show_aftermath(won: bool) -> void:
 	content.add_child(menu_button)
 
 	await get_tree().process_frame
-	sheet.position.y += sheet.size.y
-	var tween: Tween = create_tween().set_parallel(true)
-	tween.tween_property(layer, "modulate:a", 1.0, 0.22)
-	tween.tween_property(sheet, "position:y", sheet.position.y - sheet.size.y, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if not is_instance_valid(sheet) or not is_instance_valid(layer):
+		return
+	stack.position.y = sheet.size.y
+	_aftermath_open_tween = create_tween().set_parallel(true)
+	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.22)
+	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if won and has_daily_streak:
 		flame.scale = Vector2(0.65, 0.65)
 		streak_number.text = str(streak_from)
 		await get_tree().create_timer(0.56).timeout
+		if not is_instance_valid(layer) or layer != _aftermath_layer:
+			return
 		streak_number.text = str(streak_to)
 		streak_caption.text = SaveManager.text("aftermath_streak") % [streak_from, streak_to]
 		var pop: Tween = create_tween().set_parallel(true)
@@ -890,7 +923,88 @@ func _show_aftermath(won: bool) -> void:
 		pop.tween_property(streak_number, "scale", Vector2.ONE, 0.22).set_delay(0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	elif not won and has_daily_streak:
 		await get_tree().create_timer(0.42).timeout
+		if not is_instance_valid(layer) or layer != _aftermath_layer:
+			return
 		create_tween().tween_property(flame, "modulate", Color(0.55, 0.55, 0.55, 1.0), 0.32)
+
+func _on_aftermath_backdrop_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_dismiss_aftermath()
+	elif event is InputEventScreenTouch and not event.pressed:
+		_dismiss_aftermath()
+
+func _on_aftermath_drag_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_start_aftermath_drag(event.position.y)
+		elif _aftermath_dragging:
+			_finish_aftermath_drag(event.position.y)
+	elif event is InputEventScreenDrag and _aftermath_dragging:
+		_update_aftermath_drag(event.position.y)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_start_aftermath_drag(event.global_position.y)
+		elif _aftermath_dragging:
+			_finish_aftermath_drag(event.global_position.y)
+	elif event is InputEventMouseMotion and _aftermath_dragging and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_update_aftermath_drag(event.global_position.y)
+
+func _start_aftermath_drag(pointer_y: float) -> void:
+	if not is_instance_valid(_aftermath_sheet) or _aftermath_dismissing:
+		return
+	_stop_aftermath_motion()
+	_aftermath_layer.modulate.a = 1.0
+	_aftermath_stack.position.y = 0.0
+	_aftermath_dragging = true
+	_aftermath_drag_start_y = pointer_y
+
+func _update_aftermath_drag(pointer_y: float) -> void:
+	if not is_instance_valid(_aftermath_stack):
+		return
+	var offset: float = max(pointer_y - _aftermath_drag_start_y, 0.0)
+	_aftermath_stack.position.y = offset
+	if offset > 8.0:
+		accept_event()
+
+func _finish_aftermath_drag(pointer_y: float) -> void:
+	_aftermath_dragging = false
+	var offset: float = max(pointer_y - _aftermath_drag_start_y, 0.0)
+	if offset >= 72.0:
+		_dismiss_aftermath()
+	elif is_instance_valid(_aftermath_stack):
+		_aftermath_snap_tween = create_tween()
+		_aftermath_snap_tween.tween_property(_aftermath_stack, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _stop_aftermath_motion() -> void:
+	if _aftermath_open_tween != null and _aftermath_open_tween.is_running():
+		_aftermath_open_tween.kill()
+	if _aftermath_snap_tween != null and _aftermath_snap_tween.is_running():
+		_aftermath_snap_tween.kill()
+
+func _dismiss_aftermath() -> void:
+	if _aftermath_dismissing or not is_instance_valid(_aftermath_layer):
+		return
+	_aftermath_dismissing = true
+	_aftermath_dragging = false
+	_stop_aftermath_motion()
+	var layer: Control = _aftermath_layer
+	var sheet: PanelContainer = _aftermath_sheet
+	var stack: VBoxContainer = _aftermath_stack
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(layer, "modulate:a", 0.0, 0.20)
+	if is_instance_valid(sheet) and is_instance_valid(stack):
+		tween.tween_property(stack, "position:y", stack.position.y + sheet.size.y + 24.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await tween.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if _aftermath_layer == layer:
+		_aftermath_layer = null
+	_aftermath_sheet = null
+	_aftermath_stack = null
+	_aftermath_open_tween = null
+	_aftermath_snap_tween = null
+	_aftermath_dismissing = false
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	var pool_name: String = SaveManager.text("daily_pool") if mode == "daily" else SaveManager.text("unlimited_pool")
@@ -1014,9 +1128,9 @@ func _show_instructions() -> void:
 func _action_button(label_text: String, filled: bool = false) -> Button:
 	var button: Button = Button.new()
 	button.text = label_text
-	button.custom_minimum_size = Vector2(110, 42)
+	button.custom_minimum_size = Vector2(110, 52)
 	button.add_theme_font_override("font", _font_fredoka_semibold)
-	button.add_theme_font_size_override("font_size", 16)
+	button.add_theme_font_size_override("font_size", 15)
 	var normal_color: Color = UI_PRIMARY if filled else UI_SURFACE
 	button.add_theme_stylebox_override("normal", _button_style(normal_color, UI_PRIMARY if filled else UI_BORDER))
 	button.add_theme_stylebox_override("hover", _button_style(UI_PRIMARY_HOVER if filled else Color("eee9fa"), UI_PRIMARY_HOVER if filled else UI_BORDER))
@@ -1068,10 +1182,10 @@ func _aftermath_label(text_value: String, font_size: int, color: Color, font: Fo
 func _aftermath_button(label_text: String, filled: bool, won: bool = true) -> Button:
 	var button: Button = Button.new()
 	button.text = label_text
-	button.custom_minimum_size = Vector2(0, 56)
+	button.custom_minimum_size = Vector2(0, 52)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_override("font", _font_fredoka_semibold)
-	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_font_size_override("font_size", 17)
 	var fill: Color = UI_YELLOW if won else UI_RED
 	if filled:
 		button.add_theme_stylebox_override("normal", _aftermath_button_style(fill, fill))
@@ -1140,20 +1254,20 @@ func _life_dot_style(used: bool) -> StyleBoxFlat:
 	style.bg_color = UI_RED if used else Color("e8e4f4")
 	style.border_color = UI_RED if used else UI_BORDER
 	style.set_border_width_all(2)
-	style.set_corner_radius_all(7)
+	style.set_corner_radius_all(6)
 	return style
 
 func _tile_style(color: Color, border_color: Color) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = color
-	style.corner_radius_top_left = 10
-	style.corner_radius_top_right = 10
-	style.corner_radius_bottom_left = 10
-	style.corner_radius_bottom_right = 10
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 9
+	style.corner_radius_bottom_right = 9
 	style.border_color = border_color
 	style.set_border_width_all(2)
 	style.shadow_color = Color(0, 0, 0, 0.07)
-	style.shadow_size = 3
+	style.shadow_size = 2
 	style.shadow_offset = Vector2(0, 2)
 	# Button's theme default margins are intended for wide UI buttons. Keeping
 	# them here would make ordinary words such as MUSHROOM truncate early.
@@ -1193,10 +1307,10 @@ func _row_text(row_length: int) -> Color:
 func _category_card_style(row_length: int) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = _row_fill(row_length)
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 9
+	style.corner_radius_bottom_right = 9
 	style.border_color = _row_border(row_length)
 	style.set_border_width_all(1)
 	return style
@@ -1209,14 +1323,14 @@ func _button_style(color: Color, border_color: Color = UI_BORDER) -> StyleBoxFla
 	style.corner_radius_bottom_left = 12
 	style.corner_radius_bottom_right = 12
 	style.border_color = border_color
-	style.set_border_width_all(1)
+	style.set_border_width_all(2)
 	return style
 
 func _aftermath_sheet_style(won: bool) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = UI_PRIMARY
-	style.corner_radius_top_left = 28
-	style.corner_radius_top_right = 28
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
 	style.border_color = Color(1, 1, 1, 0.08)
 	style.set_border_width_all(1)
 	style.shadow_color = UI_YELLOW if won else UI_RED
