@@ -23,6 +23,8 @@ const UI_RED: Color = Color("ff5533")
 const UI_TEAL: Color = Color("00bfa5")
 const SELECTED_FILL: Color = UI_PRIMARY
 const SELECTED_BORDER: Color = UI_PRIMARY
+const AFTERMATH_REVEAL_DELAY: float = 2.0
+const STREAK_POP_DELAY: float = 0.70
 
 var _card: PanelContainer
 var _message: Label
@@ -45,6 +47,8 @@ var _aftermath_dragging: bool = false
 var _aftermath_dismissing: bool = false
 var _aftermath_open_tween: Tween
 var _aftermath_snap_tween: Tween
+var _game_was_running: bool = false
+var _aftermath_scheduled: bool = false
 var _word_buttons: Dictionary = {}
 var _word_order: Array[String] = []
 var _hinted_tiles: Dictionary = {}
@@ -280,6 +284,7 @@ func refresh() -> void:
 	if GameState.is_finished:
 		_on_game_finished(GameState.completed_won, str(GameState.puzzle.get("top_word", "")))
 	else:
+		_game_was_running = true
 		_show_play_actions()
 
 func _build_pyramid() -> void:
@@ -736,11 +741,26 @@ func _highlight_incorrect_selection() -> void:
 			tween.tween_property(tile, "modulate", Color.WHITE, 0.18)
 
 func _on_game_finished(won: bool, top_word: String) -> void:
+	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
+		return
+	var should_wait_for_board: bool = _game_was_running
+	_game_was_running = false
+	_aftermath_scheduled = true
 	for tile: Button in _word_buttons.values():
 		tile.disabled = true
-	_show_result_actions()
+	_hint.visible = false
+	_check.visible = false
+	_result.visible = false
+	_share.visible = false
 	_message.text = SaveManager.text("game_complete") % top_word if won else SaveManager.text("game_failed")
 	_update_mistakes()
+	if should_wait_for_board:
+		await get_tree().create_timer(AFTERMATH_REVEAL_DELAY).timeout
+		if not is_inside_tree() or not GameState.is_finished:
+			_aftermath_scheduled = false
+			return
+	_show_result_actions()
+	_aftermath_scheduled = false
 	_show_aftermath(won)
 
 func _show_play_actions() -> void:
@@ -768,6 +788,7 @@ func _result_score_text() -> String:
 	return SaveManager.text("result_score") % [correct, total]
 
 func _on_result_pressed() -> void:
+	_aftermath_scheduled = false
 	_show_aftermath(GameState.completed_won)
 
 func _on_share_pressed() -> void:
@@ -874,14 +895,23 @@ func _show_aftermath(won: bool) -> void:
 	var flame: Label = _aftermath_label(flame_text, 44, Color.WHITE)
 	streak_box.add_child(flame)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
-	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else streak_to
+	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
 	var streak_number: Label = _aftermath_label(str(streak_from) if has_daily_streak else "%d/%d" % [correct, total], 56, UI_YELLOW)
 	streak_box.add_child(streak_number)
 	var streak_caption_text: String = SaveManager.text("aftermath_results")
 	if has_daily_streak:
-		streak_caption_text = SaveManager.text("aftermath_streak") % [streak_from, streak_to] if won else SaveManager.text("aftermath_streak_lost")
+		streak_caption_text = SaveManager.text("aftermath_streak_current") % streak_from if won else SaveManager.text("aftermath_streak_lost")
 	var streak_caption: Label = _aftermath_label(streak_caption_text, 13, Color(1, 1, 1, 0.66), _font_fredoka_semibold)
 	streak_box.add_child(streak_caption)
+	var crack_overlay: Control = Control.new()
+	crack_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crack_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	streak_panel.add_child(crack_overlay)
+	var streak_crack: ColorRect = ColorRect.new()
+	streak_crack.color = UI_RED
+	streak_crack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	streak_crack.visible = false
+	crack_overlay.add_child(streak_crack)
 
 	var stats_row: HBoxContainer = HBoxContainer.new()
 	stats_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -904,28 +934,55 @@ func _show_aftermath(won: bool) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(sheet) or not is_instance_valid(layer):
 		return
+	flame.pivot_offset = flame.size * 0.5
+	streak_number.pivot_offset = streak_number.size * 0.5
 	stack.position.y = sheet.size.y
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.22)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if won and has_daily_streak:
-		flame.scale = Vector2(0.65, 0.65)
-		streak_number.text = str(streak_from)
-		await get_tree().create_timer(0.56).timeout
-		if not is_instance_valid(layer) or layer != _aftermath_layer:
-			return
-		streak_number.text = str(streak_to)
-		streak_caption.text = SaveManager.text("aftermath_streak") % [streak_from, streak_to]
-		var pop: Tween = create_tween().set_parallel(true)
-		pop.tween_property(flame, "scale", Vector2(1.36, 1.36), 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		pop.tween_property(flame, "scale", Vector2.ONE, 0.22).set_delay(0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		pop.tween_property(streak_number, "scale", Vector2(1.22, 1.22), 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		pop.tween_property(streak_number, "scale", Vector2.ONE, 0.22).set_delay(0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
 	elif not won and has_daily_streak:
-		await get_tree().create_timer(0.42).timeout
-		if not is_instance_valid(layer) or layer != _aftermath_layer:
-			return
-		create_tween().tween_property(flame, "modulate", Color(0.55, 0.55, 0.55, 1.0), 0.32)
+		_animate_streak_loss(layer, flame, streak_number, streak_caption, crack_overlay, streak_crack)
+
+func _animate_streak_win(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
+	await get_tree().create_timer(STREAK_POP_DELAY).timeout
+	if not is_instance_valid(layer) or layer != _aftermath_layer:
+		return
+	streak_number.text = str(streak_to)
+	streak_caption.text = SaveManager.text("aftermath_streak") % [streak_from, streak_to]
+	var flame_pop: Tween = create_tween()
+	flame_pop.tween_property(flame, "scale", Vector2.ONE * 1.38, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	flame_pop.tween_property(flame, "scale", Vector2.ONE * 0.96, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	flame_pop.tween_property(flame, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var number_pop: Tween = create_tween()
+	number_pop.tween_property(streak_number, "scale", Vector2.ONE * 1.32, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	number_pop.tween_property(streak_number, "scale", Vector2.ONE * 0.97, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	number_pop.tween_property(streak_number, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _animate_streak_loss(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
+	streak_caption.modulate.a = 0.0
+	await get_tree().create_timer(0.34).timeout
+	if not is_instance_valid(layer) or layer != _aftermath_layer:
+		return
+	var flame_origin_x: float = flame.position.x
+	var shake: Tween = create_tween()
+	shake.tween_property(flame, "position:x", flame_origin_x + 7.0, 0.055)
+	shake.tween_property(flame, "position:x", flame_origin_x - 7.0, 0.055)
+	shake.tween_property(flame, "position:x", flame_origin_x + 5.0, 0.055)
+	shake.tween_property(flame, "position:x", flame_origin_x - 3.0, 0.055)
+	shake.tween_property(flame, "position:x", flame_origin_x, 0.055)
+	var number_center: Vector2 = streak_number.get_global_rect().get_center() - crack_overlay.get_global_rect().position
+	var crack_width: float = minf(maxf(streak_number.size.y * 1.75, 88.0), 112.0)
+	streak_crack.position = Vector2(number_center.x - crack_width * 0.5, number_center.y)
+	streak_crack.size = Vector2(0.0, 4.0)
+	streak_crack.rotation_degrees = -7.0
+	streak_crack.visible = true
+	var shatter: Tween = create_tween().set_parallel(true)
+	shatter.tween_property(flame, "modulate", Color(0.55, 0.55, 0.55, 1.0), 0.32).set_delay(0.16)
+	shatter.tween_property(streak_number, "modulate:a", 0.48, 0.28).set_delay(0.18)
+	shatter.tween_property(streak_caption, "modulate:a", 1.0, 0.22).set_delay(0.24)
+	shatter.tween_property(streak_crack, "size:x", crack_width, 0.30).set_delay(0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _on_aftermath_backdrop_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

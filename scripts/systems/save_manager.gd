@@ -46,7 +46,8 @@ const TEXT: Dictionary = {
 		"aftermath_solved_mistakes": "Solved with %d mistakes",
 		"aftermath_loss_subtitle": "%d/%d correct - better luck tomorrow",
 		"aftermath_results": "Results",
-		"aftermath_streak": "%d -> %d day streak",
+		"aftermath_streak_current": "%d day streak",
+		"aftermath_streak": "%d → %d day streak",
 		"aftermath_streak_lost": "Streak lost",
 		"stat_mistakes": "Mistakes",
 		"stat_groups": "Groups",
@@ -126,7 +127,8 @@ const TEXT: Dictionary = {
 		"aftermath_solved_mistakes": "Ratkaistu %d virheellä",
 		"aftermath_loss_subtitle": "%d/%d oikein - huomenna uudestaan",
 		"aftermath_results": "Tulokset",
-		"aftermath_streak": "%d -> %d päivän putki",
+		"aftermath_streak_current": "%d päivän putki",
+		"aftermath_streak": "%d → %d päivän putki",
 		"aftermath_streak_lost": "Putki katkesi",
 		"stat_mistakes": "Virheet",
 		"stat_groups": "Ryhmät",
@@ -246,6 +248,14 @@ func get_daily_streak(today_key: String = "") -> int:
 		return 0
 	if not _daily_challenge_won(current_day):
 		current_day = _date_offset(current_day, -1)
+	var streak: int = 0
+	while _daily_challenge_won(current_day):
+		streak += 1
+		current_day = _date_offset(current_day, -1)
+	return streak
+
+func get_daily_streak_before(day_key: String) -> int:
+	var current_day: String = _date_offset(day_key, -1)
 	var streak: int = 0
 	while _daily_challenge_won(current_day):
 		streak += 1
