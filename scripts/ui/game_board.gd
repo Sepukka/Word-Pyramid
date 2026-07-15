@@ -588,13 +588,13 @@ func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
-	var selection_limit: int = GameState.get_selection_limit()
-	var is_at_limit: bool = selection.size() >= selection_limit
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var selected: bool = selection.has(word)
 		tile.button_pressed = selected
-		tile.disabled = GameState.is_finished or (is_at_limit and not selected)
+		# The selection cap is enforced by GameState.toggle_word(). Keep other
+		# words visually normal so reaching the cap does not gray out the board.
+		tile.disabled = GameState.is_finished
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing else Control.FOCUS_ALL
 		tile.add_theme_stylebox_override("normal", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
