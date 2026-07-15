@@ -27,6 +27,8 @@ const WRONG_TILE_FILL: Color = Color("fff2ee")
 const SELECTION_LIFT: float = 4.0
 const SELECTION_MOTION_DURATION: float = 0.14
 const WRONG_SHAKE_DURATION: float = 0.58
+const WRONG_SHAKE_PEAK: float = 6.0
+const WRONG_SHAKE_SETTLE: float = 3.0
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
@@ -831,10 +833,10 @@ func _start_wrong_guess_shake() -> void:
 	_pyramid_shake_origin_x = _pyramid.position.x
 	var segment_duration: float = WRONG_SHAKE_DURATION / 5.0
 	_pyramid_shake_tween = create_tween()
-	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - 9.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + 9.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - 5.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + 5.0, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - WRONG_SHAKE_PEAK, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + WRONG_SHAKE_PEAK, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x - WRONG_SHAKE_SETTLE, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x + WRONG_SHAKE_SETTLE, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	_pyramid_shake_tween.tween_property(_pyramid, "position:x", _pyramid_shake_origin_x, segment_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	_pyramid_shake_tween.tween_callback(_finish_wrong_guess_motion)
 
