@@ -471,6 +471,20 @@ func show_settings() -> void:
 	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	panel.add_child(note)
+	var reset_button: Button = Button.new()
+	reset_button.text = SaveManager.text("debug_reset_progress")
+	reset_button.custom_minimum_size = Vector2(0, 44)
+	reset_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reset_button.add_theme_font_override("font", _font_fredoka_semibold)
+	reset_button.add_theme_font_size_override("font_size", 14)
+	reset_button.add_theme_color_override("font_color", UI_RED)
+	reset_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	reset_button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	reset_button.add_theme_stylebox_override("normal", _debug_reset_style(false))
+	reset_button.add_theme_stylebox_override("hover", _debug_reset_style(true))
+	reset_button.add_theme_stylebox_override("pressed", _debug_reset_style(true))
+	reset_button.pressed.connect(func() -> void: _on_debug_reset_pressed(reset_button))
+	panel.add_child(reset_button)
 	_settings_sheet.custom_minimum_size = Vector2(min(size.x, 390.0), 0)
 	_settings_sheet.modulate.a = 0.0
 	_settings_sheet.scale = Vector2(1.0, 0.96)
@@ -562,6 +576,24 @@ func _add_attempt_chip(row: HBoxContainer, value: int) -> void:
 		show_settings()
 	)
 	row.add_child(button)
+
+func _on_debug_reset_pressed(button: Button) -> void:
+	if not bool(button.get_meta("reset_armed", false)):
+		button.set_meta("reset_armed", true)
+		button.text = SaveManager.text("debug_reset_confirm")
+		button.add_theme_color_override("font_color", Color.WHITE)
+		button.add_theme_stylebox_override("normal", _debug_reset_style(true))
+		return
+	SaveManager.reset_all_data()
+	GameState.reset_debug_state()
+	PuzzleLoader.load_puzzles()
+	SoundManager.enabled = bool(SaveManager.settings.get("sound_enabled", true))
+	_play_button.disabled = false
+	_unlimited_button.disabled = false
+	var pool_notice: Node = _home_layer.get_node_or_null("Content/PoolCompleteNotice")
+	if pool_notice != null:
+		pool_notice.queue_free()
+	show_main_menu()
 
 func _settings_toggle(label_text: String) -> CheckButton:
 	var button: CheckButton = CheckButton.new()
@@ -710,6 +742,16 @@ func _settings_sheet_style() -> StyleBoxFlat:
 	style.shadow_color = Color(0.10, 0.04, 0.37, 0.18)
 	style.shadow_size = 24
 	style.shadow_offset = Vector2(0, -8)
+	return style
+
+func _debug_reset_style(armed: bool) -> StyleBoxFlat:
+	var fill: Color = UI_RED if armed else Color("fff1ee")
+	var style: StyleBoxFlat = _round_style(fill, UI_RED, 12)
+	style.set_border_width_all(2)
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
+	style.content_margin_top = 8.0
+	style.content_margin_bottom = 8.0
 	return style
 
 func _handle_style() -> StyleBoxFlat:

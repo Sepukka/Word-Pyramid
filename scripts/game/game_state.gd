@@ -126,6 +126,25 @@ func restart_current() -> bool:
 	hint_count_changed.emit(hints_used, _get_hint_limit())
 	return true
 
+func reset_debug_state() -> void:
+	puzzle.clear()
+	selected_words.clear()
+	solved_groups.clear()
+	attempts_left = 0
+	is_finished = false
+	completed_won = false
+	is_top_solved = false
+	is_auto_solving = false
+	wrong_guesses.clear()
+	last_failed_guess.clear()
+	last_failed_active = false
+	daily_date = ""
+	game_mode = DAILY_MODE
+	hints_used = 0
+	rewarded_hint_claimed = false
+	hinted_words_by_row.clear()
+	result_correct_count = -1
+
 func restore_game() -> bool:
 	var saved: Dictionary = SaveManager.active_game
 	if saved.is_empty() or not saved.has("puzzle"):

@@ -28,6 +28,8 @@ const TEXT: Dictionary = {
 		"attempts_per_puzzle": "Attempts per puzzle",
 		"sound_effects": "Sound effects",
 		"settings_note": "New attempt settings are applied when a new puzzle starts.",
+		"debug_reset_progress": "Debug: Reset all progress",
+		"debug_reset_confirm": "Tap again to reset everything",
 		"back": "Back",
 		"wins": "Wins",
 		"losses": "Losses",
@@ -106,6 +108,8 @@ const TEXT: Dictionary = {
 		"attempts_per_puzzle": "Yrityksiä per pulma",
 		"sound_effects": "Äänitehosteet",
 		"settings_note": "Uusi yritysmäärä tulee käyttöön, kun uusi pulma alkaa.",
+		"debug_reset_progress": "Debug: Nollaa kaikki edistyminen",
+		"debug_reset_confirm": "Nollaa kaikki napauttamalla uudelleen",
 		"back": "Takaisin",
 		"wins": "Voitot",
 		"losses": "Tappiot",
@@ -193,6 +197,10 @@ func reset_to_defaults() -> void:
 	active_game = {}
 	daily_results = {}
 	played_puzzle_ids = {"daily": [], "unlimited": []}
+
+func reset_all_data() -> void:
+	reset_to_defaults()
+	save_data()
 
 func save_data() -> void:
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
