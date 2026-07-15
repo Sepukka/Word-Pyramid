@@ -3,6 +3,8 @@ extends Control
 const GameBoardScene: PackedScene = preload("res://scenes/game_board.tscn")
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
+const SETTINGS_TOGGLE_ON: Texture2D = preload("res://assets/toggle_on.svg")
+const SETTINGS_TOGGLE_OFF: Texture2D = preload("res://assets/toggle_off.svg")
 
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
@@ -734,6 +736,10 @@ func _settings_toggle(label_text: String) -> CheckButton:
 	button.add_theme_stylebox_override("hover", transparent_row)
 	button.add_theme_stylebox_override("pressed", transparent_row)
 	button.add_theme_stylebox_override("hover_pressed", transparent_row)
+	button.add_theme_icon_override("checked", SETTINGS_TOGGLE_ON)
+	button.add_theme_icon_override("checked_disabled", SETTINGS_TOGGLE_ON)
+	button.add_theme_icon_override("unchecked", SETTINGS_TOGGLE_OFF)
+	button.add_theme_icon_override("unchecked_disabled", SETTINGS_TOGGLE_OFF)
 	return button
 
 func _chip_button(label_text: String, selected: bool) -> Button:
