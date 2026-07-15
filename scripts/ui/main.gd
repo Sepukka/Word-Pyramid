@@ -721,6 +721,9 @@ func _settings_toggle(label_text: String) -> CheckButton:
 	button.add_theme_color_override("font_color", UI_TEXT)
 	button.add_theme_color_override("font_pressed_color", UI_TEXT)
 	button.add_theme_color_override("font_hover_color", UI_TEXT)
+	button.add_theme_color_override("font_hover_pressed_color", UI_TEXT)
+	button.add_theme_color_override("font_focus_color", UI_TEXT)
+	button.add_theme_color_override("font_disabled_color", UI_MUTED_TEXT)
 	var transparent_row: StyleBoxFlat = _round_style(Color.TRANSPARENT, Color.TRANSPARENT, 0)
 	transparent_row.set_border_width_all(0)
 	transparent_row.content_margin_left = 0.0
