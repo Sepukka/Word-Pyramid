@@ -5,7 +5,7 @@ signal request_menu
 signal request_new_game
 
 const ROW_LENGTHS: Array[int] = [1, 2, 3, 4, 5]
-const TILE_GAP: float = 6.0
+const TILE_GAP: float = 5.0
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const UI_BACKGROUND: Color = Color("fffdf5")
@@ -110,8 +110,8 @@ func _build() -> void:
 	add_child(background)
 	var page_margin: MarginContainer = MarginContainer.new()
 	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	page_margin.add_theme_constant_override("margin_left", 16)
-	page_margin.add_theme_constant_override("margin_right", 16)
+	page_margin.add_theme_constant_override("margin_left", 8)
+	page_margin.add_theme_constant_override("margin_right", 8)
 	page_margin.add_theme_constant_override("margin_top", 17)
 	page_margin.add_theme_constant_override("margin_bottom", 24)
 	add_child(page_margin)
@@ -463,10 +463,10 @@ func _get_stable_word_order() -> Array[String]:
 func _layout_for_width() -> void:
 	if _card == null:
 		return
-	var card_width: float = clampf(size.x - 32.0, 300.0, 600.0)
+	var card_width: float = clampf(size.x - 16.0, 304.0, 620.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
-	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 44.0, 98.0)
-	var tile_height: float = clampf(tile_size * 0.72, 48.0, 62.0)
+	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
+	var tile_height: float = clampf(tile_size * 0.78, 54.0, 68.0)
 	for tile: Button in _word_buttons.values():
 		tile.custom_minimum_size = Vector2(tile_size, tile_height)
 		tile.size = Vector2(tile_size, tile_height)
@@ -499,8 +499,8 @@ func _tile_font_size(word: String, tile_size: float) -> int:
 	# A single-line word must fit within the square even in Finnish, where
 	# compound words can be substantially longer than English equivalents.
 	var characters: int = max(word.length(), 1)
-	var estimated_size: int = floori((tile_size - 8.0) / (float(characters) * 0.70))
-	return clampi(estimated_size, 8, 13)
+	var estimated_size: int = floori((tile_size - 8.0) / (float(characters) * 0.78))
+	return clampi(estimated_size, 7, 15)
 
 func _fit_category_card_text(category_card: PanelContainer, row_width: float) -> void:
 	var available_width: float = max(row_width - 30.0, 24.0)
@@ -583,15 +583,13 @@ func _activate_category_card(row_length: int, group: Dictionary) -> void:
 	_placed_tiles.erase(row_length)
 	var category_card: PanelContainer = _create_category_card(group)
 	category_card.modulate.a = 0.0
-	category_card.scale = Vector2(0.94, 0.94)
 	row.add_child(category_card)
 	_category_cards[row_length] = category_card
 	_animating_row = -1
 	_is_placing = false
 	_layout_for_width()
-	var tween: Tween = create_tween().set_parallel(true)
+	var tween: Tween = create_tween()
 	tween.tween_property(category_card, "modulate:a", 1.0, 0.20)
-	tween.tween_property(category_card, "scale", Vector2.ONE, 0.20)
 	_on_selection_changed(GameState.selected_words)
 
 func _show_placed_row(row_length: int) -> void:
@@ -891,16 +889,19 @@ func _show_aftermath(won: bool) -> void:
 	streak_box.add_theme_constant_override("separation", 4)
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = GameState.game_mode == "daily"
+	var play_streak_animation: bool = has_daily_streak and SaveManager.consume_daily_streak_animation(GameState.daily_date)
 	var flame_text: String = "🔥" if has_daily_streak else ("✓" if won else "✕")
 	var flame: Label = _aftermath_label(flame_text, 44, Color.WHITE)
 	streak_box.add_child(flame)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
 	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
-	var streak_number: Label = _aftermath_label(str(streak_from) if has_daily_streak else "%d/%d" % [correct, total], 56, UI_YELLOW)
+	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
+	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else "%d/%d" % [correct, total], 56, UI_YELLOW)
 	streak_box.add_child(streak_number)
 	var streak_caption_text: String = SaveManager.text("aftermath_results")
 	if has_daily_streak:
-		streak_caption_text = SaveManager.text("aftermath_streak_current") % streak_from if won else SaveManager.text("aftermath_streak_lost")
+		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
+		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")
 	var streak_caption: Label = _aftermath_label(streak_caption_text, 13, Color(1, 1, 1, 0.66), _font_fredoka_semibold)
 	streak_box.add_child(streak_caption)
 	var crack_overlay: Control = Control.new()
@@ -940,10 +941,12 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.22)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	if won and has_daily_streak:
+	if won and play_streak_animation:
 		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
-	elif not won and has_daily_streak:
+	elif not won and play_streak_animation:
 		_animate_streak_loss(layer, flame, streak_number, streak_caption, crack_overlay, streak_crack)
+	elif not won and has_daily_streak:
+		_apply_streak_loss_final(flame, streak_number, crack_overlay, streak_crack)
 
 func _animate_streak_win(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
 	await get_tree().create_timer(STREAK_POP_DELAY).timeout
@@ -983,6 +986,16 @@ func _animate_streak_loss(layer: Control, flame: Label, streak_number: Label, st
 	shatter.tween_property(streak_number, "modulate:a", 0.48, 0.28).set_delay(0.18)
 	shatter.tween_property(streak_caption, "modulate:a", 1.0, 0.22).set_delay(0.24)
 	shatter.tween_property(streak_crack, "size:x", crack_width, 0.30).set_delay(0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func _apply_streak_loss_final(flame: Label, streak_number: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
+	flame.modulate = Color(0.55, 0.55, 0.55, 1.0)
+	streak_number.modulate.a = 0.48
+	var number_center: Vector2 = streak_number.get_global_rect().get_center() - crack_overlay.get_global_rect().position
+	var crack_width: float = minf(maxf(streak_number.size.y * 1.75, 88.0), 112.0)
+	streak_crack.position = Vector2(number_center.x - crack_width * 0.5, number_center.y)
+	streak_crack.size = Vector2(crack_width, 4.0)
+	streak_crack.rotation_degrees = -7.0
+	streak_crack.visible = true
 
 func _on_aftermath_backdrop_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

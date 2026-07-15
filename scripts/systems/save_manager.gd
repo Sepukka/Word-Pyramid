@@ -274,6 +274,20 @@ func get_daily_result(day_key: String = "") -> Dictionary:
 	var result: Variant = daily_results.get(current_day, {})
 	return result.duplicate(true) if result is Dictionary else {}
 
+func consume_daily_streak_animation(day_key: String) -> bool:
+	if day_key.is_empty():
+		return false
+	var result_value: Variant = daily_results.get(day_key, {})
+	if not (result_value is Dictionary):
+		return false
+	var result: Dictionary = result_value
+	if not bool(result.get("completed", false)) or bool(result.get("streak_animation_seen", false)):
+		return false
+	result["streak_animation_seen"] = true
+	daily_results[day_key] = result
+	save_data()
+	return true
+
 func _daily_challenge_completed(day_key: String) -> bool:
 	var result: Variant = daily_results.get(day_key, {})
 	if not (result is Dictionary):

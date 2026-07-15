@@ -380,15 +380,14 @@ func show_settings() -> void:
 	var dim: ColorRect = ColorRect.new()
 	dim.color = Color(0.10, 0.04, 0.37, 0.45)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.add_child(dim)
-	dim.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed:
-			show_main_menu()
-	)
+	dim.gui_input.connect(_on_settings_backdrop_input)
 	var bottom: VBoxContainer = VBoxContainer.new()
 	_settings_motion_target = bottom
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(bottom)
 	_settings_sheet = PanelContainer.new()
 	_settings_sheet.add_theme_stylebox_override("panel", _settings_sheet_style())
@@ -492,6 +491,14 @@ func show_settings() -> void:
 	tween.set_parallel(true)
 	tween.tween_property(_settings_sheet, "modulate:a", 1.0, 0.18)
 	tween.tween_property(_settings_sheet, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _on_settings_backdrop_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		accept_event()
+		_dismiss_settings()
+	elif event is InputEventScreenTouch and not event.pressed:
+		accept_event()
+		_dismiss_settings()
 
 func _on_settings_drag_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
