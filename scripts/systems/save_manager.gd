@@ -12,7 +12,7 @@ const TEXT: Dictionary = {
 		"endless_subtitle": "Endless word pyramids",
 		"endless_play_button": "Play Infinity ->",
 		"endless_play_locked": "Hearts reset tomorrow",
-		"endless_daily_status": "%d / %d · resets tomorrow",
+		"endless_reset_in": "Resets in %dh %02dm",
 		"endless_hearts": "Endless hearts: %d / %d",
 		"endless_no_hearts": "No hearts · resets tomorrow",
 		"endless_watch_ad": "Watch ad  +1 ♥",
@@ -59,7 +59,6 @@ const TEXT: Dictionary = {
 		"aftermath_endless_better_luck": "Better luck next time",
 		"endless_hearts_remaining": "%d hearts remaining",
 		"endless_out_of_hearts": "Out of hearts!",
-		"endless_resets_tomorrow": "Hearts reset tomorrow",
 		"endless_new_puzzle": "New Puzzle ->",
 		"back_to_home": "Back to Home",
 		"aftermath_results": "Results",
@@ -84,6 +83,7 @@ const TEXT: Dictionary = {
 		"mistakes_left": "Mistakes left: %d / %d",
 		"selected": "Selected: %s",
 		"select_words": "Select 1-5 words to check",
+		"select_up_to": "Select 1-%d words to check",
 		"hint_count": "Hint %d",
 		"hint_zero": "Hint 0",
 		"bonus_hint": "Bonus hint",
@@ -111,7 +111,7 @@ const TEXT: Dictionary = {
 		"endless_subtitle": "Loputtomasti sanapyramideja",
 		"endless_play_button": "Pelaa ääretöntä ->",
 		"endless_play_locked": "Sydämet palautuvat huomenna",
-		"endless_daily_status": "%d / %d · palautuvat huomenna",
+		"endless_reset_in": "Palautuu %d h %02d min kuluttua",
 		"endless_hearts": "Äärettömän pelin sydämet: %d / %d",
 		"endless_no_hearts": "Ei sydämiä · palautuvat huomenna",
 		"endless_watch_ad": "Katso mainos  +1 ♥",
@@ -158,7 +158,6 @@ const TEXT: Dictionary = {
 		"aftermath_endless_better_luck": "Ensi kerralla paremmin",
 		"endless_hearts_remaining": "%d sydäntä jäljellä",
 		"endless_out_of_hearts": "Sydämet loppuivat!",
-		"endless_resets_tomorrow": "Sydämet palautuvat huomenna",
 		"endless_new_puzzle": "Uusi pulma ->",
 		"back_to_home": "Takaisin kotiin",
 		"aftermath_results": "Tulokset",
@@ -183,6 +182,7 @@ const TEXT: Dictionary = {
 		"mistakes_left": "Virheitä jäljellä: %d / %d",
 		"selected": "Valitut: %s",
 		"select_words": "Valitse 1-5 sanaa tarkistettavaksi",
+		"select_up_to": "Valitse 1-%d sanaa tarkistettavaksi",
 		"hint_count": "Vihje %d",
 		"hint_zero": "Vihje 0",
 		"bonus_hint": "Bonusvihje",
@@ -332,6 +332,18 @@ func consume_daily_streak_animation(day_key: String) -> bool:
 func get_endless_hearts(day_key: String = "") -> int:
 	_refresh_endless_day(day_key)
 	return clampi(int(endless_state.get("hearts", ENDLESS_DAILY_HEARTS)), 0, ENDLESS_DAILY_HEARTS)
+
+func endless_reset_countdown_text() -> String:
+	var local_time: Dictionary = Time.get_time_dict_from_system()
+	var elapsed_seconds: int = (
+		int(local_time.get("hour", 0)) * 3600
+		+ int(local_time.get("minute", 0)) * 60
+		+ int(local_time.get("second", 0))
+	)
+	var remaining_minutes: int = maxi(ceili(float(86400 - elapsed_seconds) / 60.0), 1)
+	var hours: int = remaining_minutes / 60
+	var minutes: int = remaining_minutes % 60
+	return text("endless_reset_in") % [hours, minutes]
 
 func can_start_endless(day_key: String = "") -> bool:
 	return get_endless_hearts(day_key) > 0

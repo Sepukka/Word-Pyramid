@@ -582,17 +582,19 @@ func _update_lives(used: int, maximum: int) -> void:
 		_lives_row.add_child(dot)
 
 func _update_selection(selection: Array[String]) -> void:
-	_selection.text = SaveManager.text("selected") % " · ".join(selection) if not selection.is_empty() else SaveManager.text("select_words")
+	_selection.text = SaveManager.text("selected") % " · ".join(selection) if not selection.is_empty() else SaveManager.text("select_up_to") % GameState.get_selection_limit()
 
 func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
+	var selection_limit: int = GameState.get_selection_limit()
+	var is_at_limit: bool = selection.size() >= selection_limit
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var selected: bool = selection.has(word)
 		tile.button_pressed = selected
-		tile.disabled = GameState.is_finished
+		tile.disabled = GameState.is_finished or (is_at_limit and not selected)
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing else Control.FOCUS_ALL
 		tile.add_theme_stylebox_override("normal", _tile_style(SELECTED_FILL if selected else UI_SURFACE, SELECTED_BORDER if selected else UI_BORDER))
@@ -972,7 +974,7 @@ func _show_aftermath(won: bool) -> void:
 	var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count if heart_count > 0 else SaveManager.text("endless_out_of_hearts")
 	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else endless_count_text, 56 if has_daily_streak else 18, UI_YELLOW if has_daily_streak else Color.WHITE)
 	streak_box.add_child(streak_number)
-	var streak_caption_text: String = SaveManager.text("aftermath_results") if has_daily_streak else SaveManager.text("endless_resets_tomorrow")
+	var streak_caption_text: String = SaveManager.text("aftermath_results") if has_daily_streak else SaveManager.endless_reset_countdown_text()
 	if has_daily_streak:
 		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
 		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")

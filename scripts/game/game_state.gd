@@ -223,6 +223,8 @@ func toggle_word(word: String) -> void:
 	if selected_words.has(word):
 		selected_words.erase(word)
 	else:
+		if selected_words.size() >= get_selection_limit():
+			return
 		selected_words.append(word)
 	SoundManager.click()
 	_save_active_game()
@@ -327,7 +329,20 @@ func can_check_selection() -> bool:
 			var group: Dictionary = puzzle["groups"][index]
 			if selected_words.size() == _get_required_words(group).size():
 				has_valid_size = true
-	return (has_valid_size or not get_near_miss_feedback().is_empty()) and not is_current_failed_guess()
+	return (
+		(has_valid_size or not get_near_miss_feedback().is_empty())
+		and not is_current_failed_guess()
+		and not is_repeated_wrong_guess()
+	)
+
+func get_selection_limit() -> int:
+	var largest_unsolved: int = 1 if not is_top_solved else 0
+	for index: int in puzzle.get("groups", []).size():
+		if solved_groups.has(index):
+			continue
+		var group: Dictionary = puzzle["groups"][index]
+		largest_unsolved = maxi(largest_unsolved, int(group.get("size", 0)))
+	return clampi(largest_unsolved, 1, 5)
 
 func is_current_failed_guess() -> bool:
 	return last_failed_active and _has_same_words(selected_words, last_failed_guess)

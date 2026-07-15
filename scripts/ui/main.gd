@@ -50,6 +50,7 @@ var _settings_drag_start_y: float = 0.0
 var _settings_dragging: bool = false
 var _settings_dismissing: bool = false
 var _settings_snap_tween: Tween
+var _endless_countdown_timer: Timer
 var _font_fredoka_semibold: FontVariation
 var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
@@ -85,6 +86,11 @@ func _ready() -> void:
 		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
 	if not AdManager.rewarded_ad_unavailable.is_connected(_on_home_rewarded_ad_unavailable):
 		AdManager.rewarded_ad_unavailable.connect(_on_home_rewarded_ad_unavailable)
+	_endless_countdown_timer = Timer.new()
+	_endless_countdown_timer.wait_time = 30.0
+	_endless_countdown_timer.timeout.connect(_on_endless_countdown_tick)
+	add_child(_endless_countdown_timer)
+	_endless_countdown_timer.start()
 	resized.connect(_layout_home_layout)
 	show_main_menu()
 
@@ -278,7 +284,7 @@ func _apply_home_texts() -> void:
 	_unlimited_button.disabled = hearts <= 0
 	_unlimited_button.text = SaveManager.text("endless_play_button") if hearts > 0 else SaveManager.text("endless_play_locked")
 	_update_home_heart_icons(hearts)
-	_endless_heart_label.text = SaveManager.text("endless_daily_status") % [hearts, SaveManager.ENDLESS_DAILY_HEARTS]
+	_endless_heart_label.text = SaveManager.endless_reset_countdown_text()
 	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
 	var heart_is_full: bool = hearts >= SaveManager.ENDLESS_DAILY_HEARTS
 	_endless_status.visible = not heart_is_full
@@ -306,6 +312,10 @@ func _update_home_heart_icons(hearts: int) -> void:
 		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
 		heart.modulate.a = 1.0 if index < hearts else 0.48
 		index += 1
+
+func _on_endless_countdown_tick() -> void:
+	if _home_layer.visible and not is_instance_valid(_active_view):
+		_apply_home_texts()
 
 func _daily_card_meta(puzzle: Dictionary, is_finnish: bool) -> String:
 	var groups: Array = []
