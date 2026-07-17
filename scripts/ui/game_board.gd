@@ -2288,25 +2288,22 @@ func _build_aftermath_result_pyramid() -> VBoxContainer:
 	pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
 	pyramid.add_theme_constant_override("separation", 3)
 	component.add_child(pyramid)
-	# The result score is based on the four word groups (sizes 2–5). Keep the
-	# compact 1+2+3+4 silhouette, but map those visual layers to all four groups
-	# so the bottom group is never omitted from the picture.
-	for layer_index: int in 4:
-		var visual_row_length: int = layer_index + 1
-		var group_size: int = layer_index + 2
+	# Mirror the full game board: one top-word block followed by all four word
+	# groups. This keeps every result in the exact same visual row as gameplay.
+	for layer_index: int in 5:
+		var row_length: int = layer_index + 1
 		var row: HBoxContainer = HBoxContainer.new()
 		row.name = "Layer%d" % (layer_index + 1)
-		row.set_meta("row_length", visual_row_length)
-		row.set_meta("group_size", group_size)
+		row.set_meta("row_length", row_length)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
-		var found: bool = _aftermath_group_found_for_size(group_size)
-		var fill: Color = _row_fill(group_size) if found else Color("3a267c")
-		var border: Color = _row_border(group_size) if found else Color("ff8066")
+		var found: bool = GameState.result_top_solved if row_length == 1 else _aftermath_group_found_for_size(row_length)
+		var fill: Color = _row_fill(row_length) if found else Color("3a267c")
+		var border: Color = _row_border(row_length) if found else Color("ff8066")
 		var mark_text: String = "✓" if found else "×"
-		var mark_color: Color = _row_text(group_size) if found else Color("ff9a86")
-		for _tile_index: int in visual_row_length:
+		var mark_color: Color = _row_text(row_length) if found else Color("ff9a86")
+		for _tile_index: int in row_length:
 			var tile: PanelContainer = PanelContainer.new()
 			tile.custom_minimum_size = Vector2(42, 25)
 			tile.add_theme_stylebox_override("panel", _aftermath_pyramid_tile_style(fill, border, not found))

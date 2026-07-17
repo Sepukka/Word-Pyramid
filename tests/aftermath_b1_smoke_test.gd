@@ -86,19 +86,20 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	var score: Label = board.find_child("SolvedGroupScore", true, false) as Label
 	assert(score != null and score.text.begins_with("%d / 4" % GameState.result_solved_groups.size()), "Aftermath group score must match the recorded result")
 	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
-	assert(layers.size() == 4, "Result pyramid must have exactly four layers")
+	assert(layers.size() == 5, "Result pyramid must mirror all five game-board layers")
+	var total_blocks: int = 0
 	for layer_index: int in layers.size():
 		var result_row: HBoxContainer = layers[layer_index] as HBoxContainer
 		var row_length: int = int(result_row.get_meta("row_length", 0))
-		var group_size: int = int(result_row.get_meta("group_size", 0))
 		assert(row_length == layer_index + 1, "Result pyramid layer %d must represent the matching game row" % (layer_index + 1))
-		assert(group_size == layer_index + 2, "Compact result layer %d must map to group size %d" % [layer_index + 1, layer_index + 2])
 		assert(result_row.get_child_count() == row_length, "Result pyramid row %d must retain its %d word blocks" % [row_length, row_length])
-		var expected_found: bool = board.call("_aftermath_group_found_for_size", group_size)
+		total_blocks += result_row.get_child_count()
+		var expected_found: bool = GameState.result_top_solved if row_length == 1 else board.call("_aftermath_group_found_for_size", row_length)
 		for tile_index: int in result_row.get_child_count():
 			var tile: PanelContainer = result_row.get_child(tile_index) as PanelContainer
 			var mark: Label = tile.get_child(0) as Label
 			assert(mark.text == ("✓" if expected_found else "×"), "Result pyramid must match the rows solved in the game")
+	assert(total_blocks == 15, "Result pyramid must contain the same 15 blocks as the game board")
 	if GameState.game_mode == GameState.UNLIMITED_MODE:
 		var hearts: HBoxContainer = board.find_child("AftermathHearts", true, false) as HBoxContainer
 		assert(hearts != null, "Infinity aftermath is missing its heart row")
