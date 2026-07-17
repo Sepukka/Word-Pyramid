@@ -2355,8 +2355,8 @@ func _build_aftermath_result_pyramid() -> VBoxContainer:
 	legend.alignment = BoxContainer.ALIGNMENT_CENTER
 	legend.add_theme_constant_override("separation", 14)
 	component.add_child(legend)
-	legend.add_child(_aftermath_legend_item(UI_TEAL, SaveManager.text("aftermath_group_found")))
-	legend.add_child(_aftermath_legend_item(Color("ff8066"), SaveManager.text("aftermath_group_missed")))
+	legend.add_child(_aftermath_legend_item(UI_TEAL, "✓", SaveManager.text("aftermath_group_found"), "LegendFoundIcon"))
+	legend.add_child(_aftermath_legend_item(Color("ff8066"), "×", SaveManager.text("aftermath_group_missed"), "LegendMissedIcon"))
 	return component
 
 func _aftermath_group_found_for_size(group_size: int) -> bool:
@@ -2367,17 +2367,25 @@ func _aftermath_group_found_for_size(group_size: int) -> bool:
 			return GameState.result_solved_groups.has(index)
 	return false
 
-func _aftermath_legend_item(color: Color, text_value: String) -> HBoxContainer:
+func _aftermath_legend_item(color: Color, mark_text: String, text_value: String, icon_name: String) -> HBoxContainer:
 	var item: HBoxContainer = HBoxContainer.new()
 	item.add_theme_constant_override("separation", 5)
-	var dot: Panel = Panel.new()
-	dot.custom_minimum_size = Vector2(8, 8)
-	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var dot_style: StyleBoxFlat = StyleBoxFlat.new()
-	dot_style.bg_color = color
-	dot_style.set_corner_radius_all(4)
-	dot.add_theme_stylebox_override("panel", dot_style)
-	item.add_child(dot)
+	var icon: PanelContainer = PanelContainer.new()
+	icon.name = icon_name
+	icon.custom_minimum_size = Vector2(18, 18)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var icon_style: StyleBoxFlat = StyleBoxFlat.new()
+	icon_style.bg_color = color
+	icon_style.border_color = Color(0.0, 0.0, 0.0, 0.38)
+	icon_style.set_border_width_all(1)
+	icon_style.set_corner_radius_all(4)
+	icon.add_theme_stylebox_override("panel", icon_style)
+	item.add_child(icon)
+	var mark: Label = _aftermath_label(mark_text, 12, Color.WHITE, _font_fredoka_bold)
+	mark.name = "%sMark" % icon_name
+	mark.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.28))
+	mark.add_theme_constant_override("outline_size", 1)
+	icon.add_child(mark)
 	var label: Label = _aftermath_label(text_value, 10, Color(1, 1, 1, 0.62), _font_dm_sans_semibold)
 	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	item.add_child(label)

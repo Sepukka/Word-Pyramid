@@ -97,6 +97,10 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	var xp_progress: ProgressBar = board.find_child("XpProgress", true, false) as ProgressBar
 	assert(xp_reward != null and xp_reward.text.contains("42 XP"), "Aftermath must show the XP earned from this result")
 	assert(xp_progress != null and xp_progress.max_value > 0.0, "Aftermath must show progress toward the next level")
+	var found_mark: Label = board.find_child("LegendFoundIconMark", true, false) as Label
+	var missed_mark: Label = board.find_child("LegendMissedIconMark", true, false) as Label
+	assert(found_mark != null and found_mark.text == "✓", "Found legend must use a check mark inside its green square")
+	assert(missed_mark != null and missed_mark.text == "×", "Missed legend must use an x mark inside its red square")
 	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
 	assert(layers.size() == 5, "Result pyramid must mirror all five game-board layers")
 	var total_blocks: int = 0
