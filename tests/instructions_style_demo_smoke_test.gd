@@ -19,6 +19,8 @@ func _ready() -> void:
 		assert(page.get_combined_minimum_size().y <= 817.0, "Instructions overflow phone height in %s" % language)
 		var back: Button = demo.find_child("BackToGame", true, false) as Button
 		assert(back != null and back.visible, "Instructions have no return button")
+		var top_back: Button = demo.find_child("TopBackToGame", true, false) as Button
+		assert(top_back != null and top_back.visible, "Instructions have no yellow top-left return button")
 		assert(_has_label_fragment(demo, SaveManager.text("instructions_choose_top")), "Instructions do not say rows can be solved in any order")
 		assert(demo.find_children("StepCard_*", "", true, false).size() == 3, "Instructions do not have exactly three clear steps")
 		assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions lack a concrete word example")
@@ -49,8 +51,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	assert(GameState.hints_used == hints_before, "Showcase Hint button must not use a real hint")
 	assert(board.find_child("InstructionsStyleDemo", true, false) != null, "Showcase Hint button unexpectedly closes Instructions")
-	overlay.dismiss_requested.emit()
-	await get_tree().process_frame
+	var top_back_action: Button = overlay.find_child("TopBackToGame", true, false) as Button
+	assert(top_back_action != null, "Live Instructions menu has no top-left Back action")
+	top_back_action.pressed.emit()
+	await get_tree().create_timer(0.20).timeout
 	assert(board.find_child("InstructionsStyleDemo", true, false) == null, "Instructions menu does not return to the game")
 	var gameplay_hint: Button = board.get("_hint") as Button
 	assert(gameplay_hint != null and gameplay_hint.icon != null, "Gameplay Hint button has no lightbulb icon")

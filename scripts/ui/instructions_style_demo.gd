@@ -59,6 +59,13 @@ func _build_three_step_variant(style_index: int) -> Control:
 	var page := _vbox(8)
 	page.name = "VariantPage"
 	page_margin.add_child(page)
+	var top_navigation := HBoxContainer.new()
+	top_navigation.name = "TopNavigation"
+	page.add_child(top_navigation)
+	top_navigation.add_child(_top_back_button())
+	var navigation_spacer := Control.new()
+	navigation_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_navigation.add_child(navigation_spacer)
 	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), WHITE, Color(1, 1, 1, 0.66)))
 
 	var lesson_stack := _vbox(7)
@@ -518,6 +525,23 @@ func _back_button() -> Button:
 	button.add_theme_stylebox_override("normal", _style(YELLOW, YELLOW, 18, 0, true))
 	button.add_theme_stylebox_override("hover", _style(Color("ffe23d"), YELLOW, 18, 0, true))
 	button.add_theme_stylebox_override("pressed", _style(Color("e9c400"), Color("e9c400"), 18, 0))
+	button.pressed.connect(_close)
+	return button
+
+func _top_back_button() -> Button:
+	var button := Button.new()
+	button.name = "TopBackToGame"
+	button.text = "←  %s" % SaveManager.text("back")
+	button.custom_minimum_size = Vector2(106, 40)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_override("font", _fredoka_semibold)
+	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", PURPLE)
+	button.add_theme_color_override("font_hover_color", PURPLE)
+	button.add_theme_color_override("font_pressed_color", PURPLE)
+	button.add_theme_stylebox_override("normal", _style(YELLOW, YELLOW, 15, 0, true))
+	button.add_theme_stylebox_override("hover", _style(Color("ffe23d"), YELLOW, 15, 0, true))
+	button.add_theme_stylebox_override("pressed", _style(Color("e9c400"), Color("e9c400"), 15, 0))
 	button.pressed.connect(_close)
 	return button
 
