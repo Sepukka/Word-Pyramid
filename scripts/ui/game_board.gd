@@ -84,6 +84,7 @@ var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
 var _tutorial_stage: int = 0
 var _tutorial_finishing: bool = false
+var _tutorial_spotlight: ColorRect
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -223,6 +224,7 @@ func _build() -> void:
 	instructions.add_theme_font_size_override("font_size", 12)
 	instructions.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	instructions.pressed.connect(_show_instructions)
+	instructions.visible = GameState.game_mode != GameState.TUTORIAL_MODE
 	top.add_child(instructions)
 	var title: Label = Label.new()
 	title.text = SaveManager.text("board_title")
@@ -240,6 +242,14 @@ func _build() -> void:
 	_message.add_theme_font_size_override("font_size", 13)
 	_message.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	content.add_child(_message)
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_message.custom_minimum_size = Vector2(0, 64)
+		_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_message.add_theme_font_override("font", _font_fredoka_semibold)
+		_message.add_theme_font_size_override("font_size", 18)
+		_message.add_theme_color_override("font_color", UI_TEXT)
+		_message.add_theme_stylebox_override("normal", _tutorial_guide_style())
+		_message.z_index = 22
 	_selection = Label.new()
 	_selection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -323,12 +333,20 @@ func _build() -> void:
 	menu.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	menu.pressed.connect(func() -> void: request_menu.emit())
 	game_actions.add_child(menu)
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_tutorial_spotlight = ColorRect.new()
+		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.16)
+		_tutorial_spotlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tutorial_spotlight.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_tutorial_spotlight.z_index = 20
+		add_child(_tutorial_spotlight)
 
 func refresh() -> void:
 	if not is_node_ready():
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
 	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
+	_selection.visible = not is_tutorial
 	_message.text = SaveManager.text("tutorial_select_group") if is_tutorial else (SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message"))
 	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s" % SaveManager.text("unlimited_mode_label").to_upper())
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
@@ -1012,6 +1030,21 @@ func _tutorial_tile_style() -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 3)
 	return style
 
+func _tutorial_guide_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color("fff8dc")
+	style.border_color = Color("eadb89")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(16)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.12)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 3)
+	return style
+
 func _on_game_finished(won: bool, top_word: String) -> void:
 	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
 		return
@@ -1551,12 +1584,14 @@ func _apply_tutorial_stage() -> void:
 	GameState.set_tutorial_allowed_words(allowed)
 	_hint.disabled = _tutorial_stage != 1
 	_check.disabled = not GameState.can_check_selection()
+	_update_tutorial_spotlight()
 
 func _update_tutorial_selection_message() -> void:
 	if _tutorial_stage == 1:
 		_message.text = SaveManager.text("tutorial_use_hint")
 		_hint.disabled = false
 		_check.disabled = true
+		_update_tutorial_spotlight()
 		return
 	var expected_count: int = GameState.tutorial_allowed_words.size()
 	if expected_count > 0 and GameState.selected_words.size() == expected_count:
@@ -1567,6 +1602,18 @@ func _update_tutorial_selection_message() -> void:
 		_message.text = SaveManager.text("tutorial_top_word")
 	else:
 		_message.text = SaveManager.text("tutorial_select_group")
+	_update_tutorial_spotlight()
+
+func _update_tutorial_spotlight() -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE or not is_instance_valid(_tutorial_spotlight):
+		return
+	for word: String in _word_buttons:
+		var tile: Button = _word_buttons[word]
+		tile.z_index = 21 if GameState.is_tutorial_word_allowed(word) else 0
+	_hint.z_index = 21 if _tutorial_stage == 1 else 0
+	var selection_ready: bool = not GameState.tutorial_allowed_words.is_empty() and GameState.selected_words.size() == GameState.tutorial_allowed_words.size()
+	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
+	_message.z_index = 22
 
 func _advance_tutorial_after_group(row_length: int) -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE:
