@@ -24,8 +24,8 @@ const UI_YELLOW: Color = Color("ffd600")
 const UI_MAGENTA: Color = Color("b939ff")
 const UI_RED: Color = Color("ff5533")
 const UI_TEAL: Color = Color("00bfa5")
-const SELECTED_FILL: Color = UI_PRIMARY
-const SELECTED_BORDER: Color = UI_PRIMARY
+const SELECTED_FILL: Color = Color("ff9a76")
+const SELECTED_BORDER: Color = UI_YELLOW
 const WRONG_TILE_FILL: Color = Color("fff2ee")
 const SELECTION_LIFT: float = 4.0
 const SELECTION_MOTION_DURATION: float = 0.14
@@ -502,8 +502,8 @@ func _create_word_tile(word: String) -> Button:
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
 	tile.text = word
 	tile.toggle_mode = true
-	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.tooltip_text = SaveManager.text("select_tooltip") % word
 	tile.add_theme_font_override("font", _tile_font(word))
@@ -526,8 +526,8 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
 	tile.text = word
 	tile.disabled = true
-	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
@@ -541,8 +541,8 @@ func _create_placed_tile(word: String, row_length: int) -> Label:
 	tile.text = word
 	tile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	tile.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
 	tile.add_theme_color_override("font_color", _row_text(row_length))
@@ -928,8 +928,8 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	ghost.size = block_size
 	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	ghost.autowrap_mode = TextServer.AUTOWRAP_OFF
-	ghost.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	ghost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ghost.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	ghost.add_theme_font_override("font", _tile_font(word))
 	ghost.add_theme_font_size_override("font_size", _uniform_tile_font_size(block_size.x))
 	ghost.add_theme_color_override("font_color", UI_TEXT)
@@ -1034,7 +1034,7 @@ func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) 
 		text_color = UI_RED
 	elif selected:
 		style = _selected_tile_style()
-		text_color = Color.WHITE
+		text_color = UI_PRIMARY
 	else:
 		style = _tile_style(UI_SURFACE, UI_BORDER)
 		text_color = UI_TEXT
@@ -1049,9 +1049,9 @@ func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) 
 func _selected_tile_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = _tile_style(SELECTED_FILL, SELECTED_BORDER)
 	style.set_border_width_all(2)
-	style.shadow_color = Color(0.102, 0.039, 0.369, 0.32)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_color = Color(1.0, 0.84, 0.0, 0.30)
+	style.shadow_size = 9
+	style.shadow_offset = Vector2(0, 6)
 	return style
 
 func _tutorial_tile_style() -> StyleBoxFlat:
