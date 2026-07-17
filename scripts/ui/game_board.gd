@@ -14,6 +14,7 @@ const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const ICON_HOME: Texture2D = preload("res://assets/icons/home.svg")
 const ICON_SHARE: Texture2D = preload("res://assets/icons/share.svg")
 const ICON_FLAME: Texture2D = preload("res://assets/icons/flame.svg")
+const ICON_LIGHTBULB: Texture2D = preload("res://assets/icons/lightbulb.svg")
 const INSTRUCTIONS_STYLE_DEMO_SCENE: PackedScene = preload("res://scenes/instructions_style_demo.tscn")
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
@@ -330,6 +331,10 @@ func _build() -> void:
 	action_row.add_theme_constant_override("separation", 10)
 	dock_content.add_child(action_row)
 	_hint = _action_button(_hint_button_label(SaveManager.text("hint_count") % 2))
+	_hint.icon = ICON_LIGHTBULB
+	_hint.expand_icon = true
+	_hint.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_hint.add_theme_constant_override("icon_max_width", 20)
 	_hint.pressed.connect(_on_hint_pressed)
 	action_row.add_child(_hint)
 	_clear = _action_button(SaveManager.text("clear"))
@@ -2188,7 +2193,6 @@ func _show_instructions() -> void:
 	_instructions_layer = INSTRUCTIONS_STYLE_DEMO_SCENE.instantiate() as Control
 	_instructions_layer.z_index = 60
 	_instructions_layer.connect("dismiss_requested", _on_instructions_dismissed)
-	_instructions_layer.connect("hint_requested", _on_instructions_hint_requested)
 	add_child(_instructions_layer)
 
 func _on_instructions_dismissed() -> void:
@@ -2196,10 +2200,6 @@ func _on_instructions_dismissed() -> void:
 		return
 	_instructions_layer.queue_free()
 	_instructions_layer = null
-
-func _on_instructions_hint_requested() -> void:
-	_on_instructions_dismissed()
-	call_deferred("_on_hint_pressed")
 
 func _action_button(label_text: String, filled: bool = false) -> Button:
 	var button: Button = Button.new()
@@ -2221,7 +2221,7 @@ func _action_button(label_text: String, filled: bool = false) -> Button:
 	return button
 
 func _hint_button_label(label_text: String) -> String:
-	return "✦  %s" % label_text
+	return label_text
 
 func _set_hint_button_text(label_text: String, rewarded_ad: bool = false) -> void:
 	_hint.text = _hint_button_label(label_text)

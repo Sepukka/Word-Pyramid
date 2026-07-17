@@ -2,10 +2,9 @@ class_name InstructionsStyleDemo
 extends Control
 
 signal dismiss_requested
-signal hint_requested
-
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
+const ICON_LIGHTBULB: Texture2D = preload("res://assets/icons/lightbulb.svg")
 
 const PURPLE := Color("1a0a5e")
 const PURPLE_LIGHT := Color("382181")
@@ -261,10 +260,17 @@ func _prominent_hint_card(style_index: int) -> PanelContainer:
 	copy.add_child(description)
 	var hint_button := Button.new()
 	hint_button.name = "HintAction"
-	hint_button.text = _t("instructions_use_hint")
+	var hint_limit: int = int(GameState.call("_get_hint_limit"))
+	var hints_remaining: int = maxi(hint_limit - GameState.hints_used, 0)
+	hint_button.text = SaveManager.text("hint_count") % hints_remaining
+	hint_button.icon = ICON_LIGHTBULB
+	hint_button.expand_icon = true
+	hint_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	hint_button.add_theme_constant_override("icon_max_width", 20)
 	hint_button.custom_minimum_size.y = 38.0
 	hint_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint_button.focus_mode = Control.FOCUS_NONE
+	hint_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hint_button.add_theme_font_override("font", _fredoka_semibold)
 	hint_button.add_theme_font_size_override("font_size", 14)
 	hint_button.add_theme_color_override("font_color", PURPLE)
@@ -273,8 +279,6 @@ func _prominent_hint_card(style_index: int) -> PanelContainer:
 	hint_button.add_theme_stylebox_override("normal", _style(YELLOW, YELLOW, 13, 0, true))
 	hint_button.add_theme_stylebox_override("hover", _style(Color("ffe23d"), YELLOW, 13, 0, true))
 	hint_button.add_theme_stylebox_override("pressed", _style(Color("e9c400"), Color("e9c400"), 13, 0))
-	hint_button.disabled = GameState.is_finished or GameState.is_auto_solving
-	hint_button.pressed.connect(func() -> void: hint_requested.emit())
 	stack.add_child(hint_button)
 	return card
 

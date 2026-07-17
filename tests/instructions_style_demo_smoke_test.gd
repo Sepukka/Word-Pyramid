@@ -24,12 +24,12 @@ func _ready() -> void:
 		assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions lack a concrete word example")
 		var hint_callout: PanelContainer = demo.find_child("HintCallout", true, false) as PanelContainer
 		var hint_action: Button = demo.find_child("HintAction", true, false) as Button
-		assert(hint_callout != null and hint_action != null, "Hint callout does not contain its action button")
-		assert(hint_callout.is_ancestor_of(hint_action), "Hint action is not attached to the Hint element")
-		var hint_emitted: Array[bool] = [false]
-		demo.hint_requested.connect(func() -> void: hint_emitted[0] = true)
-		hint_action.pressed.emit()
-		assert(hint_emitted[0], "Attached Hint button does not request a gameplay hint")
+		assert(hint_callout != null and hint_action != null, "Hint callout does not contain its showcase button")
+		assert(hint_callout.is_ancestor_of(hint_action), "Hint showcase is not attached to the Hint element")
+		assert(hint_action.icon != null, "Hint showcase has no lightbulb icon")
+		var expected_hints: int = maxi(int(GameState.call("_get_hint_limit")) - GameState.hints_used, 0)
+		assert(hint_action.text == SaveManager.text("hint_count") % expected_hints, "Hint showcase does not display the number of hints")
+		assert(hint_action.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Hint showcase must not be interactive")
 		demo.queue_free()
 		await get_tree().process_frame
 
@@ -42,13 +42,19 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var overlay: InstructionsStyleDemo = board.find_child("InstructionsStyleDemo", true, false) as InstructionsStyleDemo
 	assert(overlay != null, "Instructions button does not open the selected menu")
-	var attached_hint: Button = overlay.find_child("HintAction", true, false) as Button
-	assert(attached_hint != null, "Game instructions are missing the attached Hint action")
-	attached_hint.pressed.emit()
+	var showcased_hint: Button = overlay.find_child("HintAction", true, false) as Button
+	assert(showcased_hint != null and showcased_hint.icon != null, "Game instructions are missing the lightbulb Hint showcase")
+	var hints_before: int = GameState.hints_used
+	showcased_hint.pressed.emit()
 	await get_tree().process_frame
+	assert(GameState.hints_used == hints_before, "Showcase Hint button must not use a real hint")
+	assert(board.find_child("InstructionsStyleDemo", true, false) != null, "Showcase Hint button unexpectedly closes Instructions")
+	overlay.dismiss_requested.emit()
 	await get_tree().process_frame
-	assert(board.find_child("InstructionsStyleDemo", true, false) == null, "Using Hint does not return to the game")
-	assert(GameState.hints_used == 1 and GameState.get_hint_words_for_row(5).size() == 1, "Attached Hint button does not place a real gameplay hint")
+	assert(board.find_child("InstructionsStyleDemo", true, false) == null, "Instructions menu does not return to the game")
+	var gameplay_hint: Button = board.get("_hint") as Button
+	assert(gameplay_hint != null and gameplay_hint.icon != null, "Gameplay Hint button has no lightbulb icon")
+	assert(gameplay_hint.text.contains(str(maxi(int(GameState.call("_get_hint_limit")) - GameState.hints_used, 0))), "Gameplay Hint button does not show the hint count")
 
 	print("INSTRUCTIONS_STYLE_DEMO_SMOKE_TEST_PASS")
 	board.queue_free()
