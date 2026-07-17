@@ -177,12 +177,12 @@ func _build() -> void:
 	back.custom_minimum_size = Vector2(header_side_width, 36)
 	back.add_theme_font_override("font", _font_dm_sans_semibold)
 	back.add_theme_font_size_override("font_size", 13)
-	back.add_theme_stylebox_override("normal", _header_button_style(Color(1, 1, 1, 0.10)))
-	back.add_theme_stylebox_override("hover", _header_button_style(Color(1, 1, 1, 0.18)))
-	back.add_theme_stylebox_override("pressed", _header_button_style(Color(1, 1, 1, 0.24)))
-	back.add_theme_color_override("font_color", Color.WHITE)
-	back.add_theme_color_override("font_hover_color", Color.WHITE)
-	back.add_theme_color_override("font_pressed_color", Color.WHITE)
+	back.add_theme_stylebox_override("normal", _header_button_style(UI_YELLOW))
+	back.add_theme_stylebox_override("hover", _header_button_style(Color("ffe23d")))
+	back.add_theme_stylebox_override("pressed", _header_button_style(Color("e9c400")))
+	back.add_theme_color_override("font_color", UI_PRIMARY)
+	back.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	back.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	back.pressed.connect(func() -> void:
 		if GameState.game_mode == GameState.TUTORIAL_MODE:
 			request_tutorial_exit.emit(false)
@@ -264,7 +264,7 @@ func _build() -> void:
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_message.add_theme_font_override("font", _font_dm_sans_semibold)
 	_message.add_theme_font_size_override("font_size", 14)
-	_message.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	_message.add_theme_color_override("font_color", Color("d9d1f3"))
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
 		# A plain Control isolates the VBox from the Label's changing wrapped-text
 		# minimum height, so every tutorial instruction occupies the same space.
@@ -287,7 +287,7 @@ func _build() -> void:
 	_selection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_selection.add_theme_font_override("font", _font_dm_sans_semibold)
-	_selection.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	_selection.add_theme_color_override("font_color", Color("d9d1f3"))
 	_selection.add_theme_font_size_override("font_size", 12)
 	content.add_child(_selection)
 	_pyramid = VBoxContainer.new()
@@ -2014,15 +2014,14 @@ func _create_game_decor() -> Control:
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var base: ColorRect = ColorRect.new()
-	base.color = UI_BACKGROUND
+	base.color = UI_PRIMARY
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(base)
-	_add_game_decor_shape(layer, Vector2(-52, -42), Vector2(150, 150), UI_YELLOW, 0.18, 75)
-	_add_game_decor_shape(layer, Vector2(size.x - 82, 92), Vector2(74, 74), UI_MAGENTA, 0.10, 18, 16.0)
-	_add_game_decor_shape(layer, Vector2(-18, size.y * 0.47), Vector2(64, 64), UI_TEAL, 0.09, 32)
-	_add_game_decor_shape(layer, Vector2(size.x - 88, size.y - 126), Vector2(112, 112), UI_RED, 0.11, 56)
-	_add_game_decor_shape(layer, Vector2(26, size.y - 92), Vector2(28, 28), UI_MAGENTA, 0.08, 14, -12.0)
+	# Half of the circle sits outside the left edge, slightly above the screen's
+	# midpoint. The opposite rectangle is clipped by the right edge.
+	_add_game_decor_shape(layer, Vector2(-76, size.y * 0.34), Vector2(152, 152), UI_YELLOW, 0.92, 76)
+	_add_game_decor_shape(layer, Vector2(size.x - 58, size.y * 0.52), Vector2(156, 84), Color("c9b8ff"), 0.78, 20, 12.0)
 	return layer
 
 func _add_game_decor_shape(parent: Control, position: Vector2, shape_size: Vector2, color: Color, alpha: float, radius: int, rotation_value: float = 0.0) -> void:
@@ -2079,13 +2078,10 @@ func _small_pill_style(fill: Color, border: Color) -> StyleBoxFlat:
 
 func _card_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0.94)
-	style.border_color = Color("e9e3f7")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(24)
-	style.shadow_color = Color(0.10, 0.04, 0.37, 0.12)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(0, 7)
+	style.bg_color = Color.TRANSPARENT
+	style.border_color = Color.TRANSPARENT
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(0)
 	style.content_margin_left = 0.0
 	style.content_margin_right = 0.0
 	style.content_margin_top = 0.0
