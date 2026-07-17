@@ -15,6 +15,7 @@ const ICON_HOME: Texture2D = preload("res://assets/icons/home.svg")
 const ICON_SHARE: Texture2D = preload("res://assets/icons/share.svg")
 const ICON_FLAME: Texture2D = preload("res://assets/icons/flame.svg")
 const ICON_LIGHTBULB: Texture2D = preload("res://assets/icons/lightbulb.svg")
+const ICON_HEART: Texture2D = preload("res://assets/heart.svg")
 const INSTRUCTIONS_STYLE_DEMO_SCENE: PackedScene = preload("res://scenes/instructions_style_demo.tscn")
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
@@ -836,10 +837,25 @@ func _activate_category_card(row_length: int, group: Dictionary) -> void:
 	_animating_row = -1
 	_is_placing = false
 	_row_reveal_tween = null
-	_layout_for_width()
+	# The row wrapper keeps a fixed slot for the full game.  Size only the new
+	# category card from that slot instead of relaying out the whole board here:
+	# a full relayout during the reveal could briefly change the other tiles'
+	# bounds and therefore their apparent font size/position on a phone.
+	_size_category_card_for_row(category_card, row_length)
 	var tween: Tween = create_tween()
 	tween.tween_property(category_card, "modulate:a", 1.0, 0.20)
 	_on_selection_changed(GameState.selected_words)
+
+func _size_category_card_for_row(category_card: PanelContainer, row_length: int) -> void:
+	var row_wrapper: Control = _pyramid_row_wrappers.get(row_length) as Control
+	if row_wrapper == null:
+		return
+	var row_size: Vector2 = row_wrapper.size
+	if row_size.x <= 0.0 or row_size.y <= 0.0:
+		row_size = row_wrapper.custom_minimum_size
+	category_card.custom_minimum_size = row_size
+	category_card.size = row_size
+	_fit_category_card_text(category_card, row_size.x)
 
 func _show_placed_row(row_length: int) -> void:
 	if not _placed_tiles.has(row_length):
@@ -1318,23 +1334,19 @@ func _show_aftermath(won: bool) -> void:
 	flame.visible = has_daily_streak
 	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	streak_box.add_child(flame)
-	var losing_heart: Label = null
+	var losing_heart: Control = null
 	if is_endless:
 		var aftermath_hearts: HBoxContainer = HBoxContainer.new()
+		aftermath_hearts.name = "AftermathHearts"
 		aftermath_hearts.alignment = BoxContainer.ALIGNMENT_CENTER
 		aftermath_hearts.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		aftermath_hearts.add_theme_constant_override("separation", 8)
+		aftermath_hearts.add_theme_constant_override("separation", 6)
 		streak_box.add_child(aftermath_hearts)
 		var current_hearts: int = SaveManager.get_endless_hearts()
 		for index: int in range(SaveManager.ENDLESS_DAILY_HEARTS):
-			var heart: Label = _aftermath_label("♥", 30, UI_RED if index < current_hearts else Color("62578f"), _font_fredoka_bold)
-			heart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			heart.add_theme_color_override("font_outline_color", Color("090321"))
-			heart.add_theme_constant_override("outline_size", 2)
-			heart.modulate.a = 1.0 if index < current_hearts else 0.30
+			var heart: TextureRect = _create_aftermath_heart(index, index < current_hearts)
 			if is_endless_loss and index == current_hearts:
-				heart.add_theme_color_override("font_color", UI_RED)
-				heart.modulate.a = 1.0
+				heart.modulate = UI_RED
 				losing_heart = heart
 			aftermath_hearts.add_child(heart)
 	var streak_copy: VBoxContainer = VBoxContainer.new()
@@ -1648,7 +1660,18 @@ func _show_aftermath_legacy(won: bool) -> void:
 	elif is_endless_loss and is_instance_valid(losing_heart):
 		_animate_endless_heart_loss(layer, losing_heart)
 
-func _animate_endless_heart_loss(layer: Control, heart: Label) -> void:
+func _create_aftermath_heart(index: int, filled: bool) -> TextureRect:
+	var heart: TextureRect = TextureRect.new()
+	heart.name = "AftermathHeart%d" % (index + 1)
+	heart.texture = ICON_HEART
+	heart.custom_minimum_size = Vector2(26, 24)
+	heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	heart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	heart.modulate = UI_RED if filled else Color(0.79, 0.76, 0.85, 0.42)
+	return heart
+
+func _animate_endless_heart_loss(layer: Control, heart: Control) -> void:
 	await get_tree().create_timer(0.42).timeout
 	if not is_instance_valid(layer) or layer != _aftermath_layer or not is_instance_valid(heart):
 		return
@@ -1661,7 +1684,10 @@ func _animate_endless_heart_loss(layer: Control, heart: Label) -> void:
 	collapse.tween_property(heart, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	collapse.tween_property(heart, "rotation_degrees", 0.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	collapse.tween_property(heart, "modulate:a", 0.30, 0.24)
-	heart.add_theme_color_override("font_color", Color("62578f"))
+	collapse.tween_callback(func() -> void:
+		if is_instance_valid(heart):
+			heart.modulate = Color(0.79, 0.76, 0.85, 0.42)
+	)
 
 func _animate_streak_win(layer: Control, flame: Control, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
 	await get_tree().create_timer(STREAK_POP_DELAY).timeout
@@ -2260,19 +2286,23 @@ func _build_aftermath_result_pyramid() -> VBoxContainer:
 	pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
 	pyramid.add_theme_constant_override("separation", 3)
 	component.add_child(pyramid)
-	var row_colors: Array[Color] = [UI_MAGENTA, UI_RED, UI_TEAL, UI_YELLOW]
+	# This is the playable part of the board: the four group rows (2–5).
+	# Do not turn the two-word row into a one-tile apex here, because that makes
+	# a correct second-from-top row look like the top word was solved.
 	for layer_index: int in 4:
+		var row_length: int = layer_index + 2
 		var row: HBoxContainer = HBoxContainer.new()
 		row.name = "Layer%d" % (layer_index + 1)
+		row.set_meta("row_length", row_length)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
-		var found: bool = _aftermath_group_found_for_size(layer_index + 2)
-		var fill: Color = row_colors[layer_index] if found else Color("3a267c")
-		var border: Color = fill if found else Color("ff8066")
+		var found: bool = _aftermath_group_found_for_size(row_length)
+		var fill: Color = _row_fill(row_length) if found else Color("3a267c")
+		var border: Color = _row_border(row_length) if found else Color("ff8066")
 		var mark_text: String = "✓" if found else "×"
-		var mark_color: Color = UI_PRIMARY if found and layer_index == 3 else Color.WHITE if found else Color("ff9a86")
-		for _tile_index: int in layer_index + 1:
+		var mark_color: Color = _row_text(row_length) if found else Color("ff9a86")
+		for _tile_index: int in row_length:
 			var tile: PanelContainer = PanelContainer.new()
 			tile.custom_minimum_size = Vector2(42, 25)
 			tile.add_theme_stylebox_override("panel", _aftermath_pyramid_tile_style(fill, border, not found))

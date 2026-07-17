@@ -79,7 +79,26 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	assert(page.get_combined_minimum_size().y <= 810.0, "B1 aftermath is taller than the 844px phone viewport")
 	var pyramid: VBoxContainer = board.find_child("ResultPyramid", true, false) as VBoxContainer
 	assert(pyramid != null, "B1 aftermath did not create its result pyramid")
-	assert(pyramid.find_children("Layer*", "HBoxContainer", true, false).size() == 4, "Result pyramid must have exactly four layers")
+	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
+	assert(layers.size() == 4, "Result pyramid must have exactly four group layers")
+	for layer_index: int in layers.size():
+		var result_row: HBoxContainer = layers[layer_index] as HBoxContainer
+		var row_length: int = int(result_row.get_meta("row_length", 0))
+		assert(row_length == layer_index + 2, "Result pyramid layer %d must represent the matching game row" % (layer_index + 1))
+		assert(result_row.get_child_count() == row_length, "Result pyramid row %d must retain its %d word blocks" % [row_length, row_length])
+		var expected_found: bool = board.call("_aftermath_group_found_for_size", row_length)
+		for tile_index: int in result_row.get_child_count():
+			var tile: PanelContainer = result_row.get_child(tile_index) as PanelContainer
+			var mark: Label = tile.get_child(0) as Label
+			assert(mark.text == ("✓" if expected_found else "×"), "Result pyramid must match the rows solved in the game")
+	if GameState.game_mode == GameState.UNLIMITED_MODE:
+		var hearts: HBoxContainer = board.find_child("AftermathHearts", true, false) as HBoxContainer
+		assert(hearts != null, "Infinity aftermath is missing its heart row")
+		assert(hearts.get_child_count() == SaveManager.ENDLESS_DAILY_HEARTS, "Infinity aftermath must show every daily heart")
+		for index: int in hearts.get_child_count():
+			var heart: TextureRect = hearts.get_child(index) as TextureRect
+			assert(heart != null and heart.texture != null, "Aftermath hearts must use the outlined heart artwork, not font glyphs")
+			assert(heart.custom_minimum_size == Vector2(26, 24), "Aftermath heart sizing must match the home menu heart sizing")
 	var share: Button = board.find_child("ShareButton", true, false) as Button
 	var menu: Button = board.find_child("MenuButton", true, false) as Button
 	assert(share != null and share.text == SaveManager.text("share_result") and share.icon != null, "Share action is missing its label or icon")
