@@ -4,6 +4,7 @@ extends Control
 signal request_menu
 signal request_new_game
 signal request_tutorial_exit(completed: bool)
+signal request_mode_transition(mode: String)
 
 const ROW_LENGTHS: Array[int] = [1, 2, 3, 4, 5]
 const TILE_GAP: float = 6.0
@@ -1275,6 +1276,7 @@ func _show_aftermath(won: bool) -> void:
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
 
 	var primary_button: Button
+	var can_continue_to_endless: bool = not is_endless and SaveManager.can_start_endless()
 	if is_endless:
 		if heart_count > 0:
 			primary_button = _aftermath_button(SaveManager.text("endless_new_puzzle"), true, won)
@@ -1285,6 +1287,9 @@ func _show_aftermath(won: bool) -> void:
 		else:
 			primary_button = _aftermath_button(SaveManager.text("endless_ad_claimed"), true, false)
 			primary_button.visible = false
+	elif can_continue_to_endless:
+		primary_button = _aftermath_button(SaveManager.text("continue_to_unlimited"), true, won)
+		primary_button.pressed.connect(_on_daily_continue_to_unlimited_pressed)
 	else:
 		primary_button = _aftermath_button(SaveManager.text("share_result"), true, won)
 		primary_button.pressed.connect(func() -> void:
@@ -1292,9 +1297,26 @@ func _show_aftermath(won: bool) -> void:
 			primary_button.text = SaveManager.text("result_copied")
 		)
 	content.add_child(primary_button)
-	var menu_button: Button = _aftermath_button(SaveManager.text("back_to_home") if is_endless else SaveManager.text("menu"), false)
-	menu_button.pressed.connect(func() -> void: request_menu.emit())
-	content.add_child(menu_button)
+	if can_continue_to_endless:
+		var secondary_row: HBoxContainer = HBoxContainer.new()
+		secondary_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		secondary_row.add_theme_constant_override("separation", 10)
+		content.add_child(secondary_row)
+		var share_button: Button = _aftermath_button(SaveManager.text("share_result"), false)
+		share_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		share_button.pressed.connect(func() -> void:
+			_on_share_pressed()
+			share_button.text = SaveManager.text("result_copied")
+		)
+		secondary_row.add_child(share_button)
+		var home_button: Button = _aftermath_button(SaveManager.text("menu"), false)
+		home_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		home_button.pressed.connect(func() -> void: request_menu.emit())
+		secondary_row.add_child(home_button)
+	else:
+		var menu_button: Button = _aftermath_button(SaveManager.text("back_to_home") if is_endless else SaveManager.text("menu"), false)
+		menu_button.pressed.connect(func() -> void: request_menu.emit())
+		content.add_child(menu_button)
 
 	await get_tree().process_frame
 	if not is_instance_valid(sheet) or not is_instance_valid(layer):
@@ -1460,6 +1482,9 @@ func _dismiss_aftermath() -> void:
 func _on_endless_next_puzzle_pressed() -> void:
 	await _dismiss_aftermath()
 	request_new_game.emit()
+
+func _on_daily_continue_to_unlimited_pressed() -> void:
+	request_mode_transition.emit(GameState.UNLIMITED_MODE)
 
 func _on_rewarded_heart_earned() -> void:
 	# Main owns the persistent reward grant. Rebuild the visible Infinity sheet

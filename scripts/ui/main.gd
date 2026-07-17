@@ -467,6 +467,7 @@ func _connect_game_board(board: GameBoard) -> void:
 	board.request_menu.connect(show_main_menu)
 	board.request_new_game.connect(_start_next_game)
 	board.request_tutorial_exit.connect(_on_tutorial_exit)
+	board.request_mode_transition.connect(_transition_from_board_to_mode)
 
 func _start_next_game() -> void:
 	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
@@ -790,13 +791,18 @@ func _start_tutorial() -> void:
 func _on_tutorial_exit(completed: bool) -> void:
 	SaveManager.complete_onboarding()
 	if completed:
-		_continue_to_daily_from_tutorial()
+		_transition_from_board_to_mode(GameState.DAILY_MODE)
 		return
 	GameState.reset_debug_state()
 	show_main_menu()
 
-func _continue_to_daily_from_tutorial() -> void:
+func _transition_from_board_to_mode(mode: String) -> void:
 	if _is_transitioning:
+		return
+	if mode != GameState.DAILY_MODE and mode != GameState.UNLIMITED_MODE:
+		return
+	if mode == GameState.UNLIMITED_MODE and not SaveManager.can_start_endless():
+		show_main_menu()
 		return
 	_is_transitioning = true
 	_play_button.disabled = true
@@ -811,14 +817,18 @@ func _continue_to_daily_from_tutorial() -> void:
 	var cover_in: Tween = create_tween()
 	cover_in.tween_property(cover, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	await cover_in.finished
-	var tutorial_view: Control = _active_view
+	var previous_view: Control = _active_view
 	_active_view = null
-	if is_instance_valid(tutorial_view):
-		tutorial_view.queue_free()
+	if is_instance_valid(previous_view):
+		previous_view.queue_free()
 	await get_tree().process_frame
 	GameState.reset_debug_state()
-	var opened_daily: bool = GameState.view_daily_result() if SaveManager.is_daily_challenge_completed() else GameState.start_new_game(GameState.DAILY_MODE)
-	if not opened_daily:
+	var opened_mode: bool
+	if mode == GameState.DAILY_MODE:
+		opened_mode = GameState.view_daily_result() if SaveManager.is_daily_challenge_completed() else GameState.start_new_game(GameState.DAILY_MODE)
+	else:
+		opened_mode = GameState.start_new_game(GameState.UNLIMITED_MODE)
+	if not opened_mode:
 		cover.queue_free()
 		_is_transitioning = false
 		_play_button.disabled = false
