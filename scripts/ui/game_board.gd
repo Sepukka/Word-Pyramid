@@ -7,7 +7,7 @@ signal request_tutorial_exit(completed: bool)
 signal request_mode_transition(mode: String)
 
 const ROW_LENGTHS: Array[int] = [1, 2, 3, 4, 5]
-const TILE_GAP: float = 6.0
+const TILE_GAP: float = 4.0
 const ROW_BAND_OVERHANG: Vector2 = Vector2(7.0, 3.0)
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
@@ -146,8 +146,8 @@ func _build() -> void:
 	add_child(_create_game_decor())
 	var page_margin: MarginContainer = MarginContainer.new()
 	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	page_margin.add_theme_constant_override("margin_left", 10)
-	page_margin.add_theme_constant_override("margin_right", 10)
+	page_margin.add_theme_constant_override("margin_left", 6)
+	page_margin.add_theme_constant_override("margin_right", 6)
 	page_margin.add_theme_constant_override("margin_top", 12)
 	page_margin.add_theme_constant_override("margin_bottom", 16)
 	add_child(page_margin)
@@ -224,8 +224,8 @@ func _build() -> void:
 	_card.add_theme_stylebox_override("panel", _card_style())
 	page.add_child(_card)
 	var margin: MarginContainer = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_left", 4)
+	margin.add_theme_constant_override("margin_right", 4)
 	margin.add_theme_constant_override("margin_top", 8)
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_card.add_child(margin)
@@ -291,7 +291,9 @@ func _build() -> void:
 	_selection.add_theme_font_size_override("font_size", 12)
 	content.add_child(_selection)
 	_pyramid = VBoxContainer.new()
-	_pyramid.alignment = BoxContainer.ALIGNMENT_BEGIN
+	# Keep the final row close to the mistake indicators instead of leaving the
+	# VBox's unused vertical space beneath the pyramid.
+	_pyramid.alignment = BoxContainer.ALIGNMENT_END
 	_pyramid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_pyramid.add_theme_constant_override("separation", TILE_GAP)
 	content.add_child(_pyramid)
@@ -612,9 +614,9 @@ func _get_stable_word_order() -> Array[String]:
 func _layout_for_width() -> void:
 	if _card == null:
 		return
-	var card_width: float = clampf(size.x - 20.0, 304.0, 620.0)
+	var card_width: float = clampf(size.x - 12.0, 304.0, 620.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
-	var usable_width: float = card_width - 16.0
+	var usable_width: float = card_width - 8.0
 	var horizontal_tile_size: float = clampf((usable_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
 	# Use whichever axis is tighter so every word block remains a true square on
 	# phones and tablets without overflowing the available pyramid height.
