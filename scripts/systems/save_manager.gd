@@ -393,7 +393,7 @@ func complete_onboarding() -> void:
 	onboarding["version"] = ONBOARDING_VERSION
 	save_data()
 
-func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = []) -> void:
+func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false) -> void:
 	if won:
 		statistics["wins"] = int(statistics.get("wins", 0)) + 1
 		statistics["streak"] = int(statistics.get("streak", 0)) + 1
@@ -407,7 +407,8 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 			"won": won,
 			"correct_count": correct_count,
 			"total_count": total_count,
-			"solved_groups": solved_groups.duplicate()
+			"solved_groups": solved_groups.duplicate(),
+			"top_solved": top_solved
 		}
 	save_data()
 

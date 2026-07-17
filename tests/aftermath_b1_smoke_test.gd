@@ -14,6 +14,7 @@ func _ready() -> void:
 	GameState.selected_words.clear()
 	GameState.solved_groups = [0, 1, 2, 3]
 	GameState.result_solved_groups = [0, 1, 2]
+	GameState.result_top_solved = false
 	GameState.is_top_solved = true
 	GameState.is_finished = true
 	GameState.completed_won = false
@@ -45,6 +46,7 @@ func _ready() -> void:
 	GameState.game_mode = GameState.UNLIMITED_MODE
 	GameState.completed_won = true
 	GameState.result_solved_groups = [0, 1, 2, 3]
+	GameState.result_top_solved = true
 	board.call("_show_aftermath", true)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -80,13 +82,13 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	var pyramid: VBoxContainer = board.find_child("ResultPyramid", true, false) as VBoxContainer
 	assert(pyramid != null, "B1 aftermath did not create its result pyramid")
 	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
-	assert(layers.size() == 4, "Result pyramid must have exactly four group layers")
+	assert(layers.size() == 4, "Result pyramid must have exactly four layers")
 	for layer_index: int in layers.size():
 		var result_row: HBoxContainer = layers[layer_index] as HBoxContainer
 		var row_length: int = int(result_row.get_meta("row_length", 0))
-		assert(row_length == layer_index + 2, "Result pyramid layer %d must represent the matching game row" % (layer_index + 1))
+		assert(row_length == layer_index + 1, "Result pyramid layer %d must represent the matching game row" % (layer_index + 1))
 		assert(result_row.get_child_count() == row_length, "Result pyramid row %d must retain its %d word blocks" % [row_length, row_length])
-		var expected_found: bool = board.call("_aftermath_group_found_for_size", row_length)
+		var expected_found: bool = GameState.result_top_solved if row_length == 1 else board.call("_aftermath_group_found_for_size", row_length)
 		for tile_index: int in result_row.get_child_count():
 			var tile: PanelContainer = result_row.get_child(tile_index) as PanelContainer
 			var mark: Label = tile.get_child(0) as Label

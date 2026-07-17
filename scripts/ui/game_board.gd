@@ -2286,18 +2286,17 @@ func _build_aftermath_result_pyramid() -> VBoxContainer:
 	pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
 	pyramid.add_theme_constant_override("separation", 3)
 	component.add_child(pyramid)
-	# This is the playable part of the board: the four group rows (2–5).
-	# Do not turn the two-word row into a one-tile apex here, because that makes
-	# a correct second-from-top row look like the top word was solved.
+	# The compact result view keeps the top four game rows (1–4), with the
+	# one-word apex represented separately from the two-word group beneath it.
 	for layer_index: int in 4:
-		var row_length: int = layer_index + 2
+		var row_length: int = layer_index + 1
 		var row: HBoxContainer = HBoxContainer.new()
 		row.name = "Layer%d" % (layer_index + 1)
 		row.set_meta("row_length", row_length)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
-		var found: bool = _aftermath_group_found_for_size(row_length)
+		var found: bool = GameState.result_top_solved if row_length == 1 else _aftermath_group_found_for_size(row_length)
 		var fill: Color = _row_fill(row_length) if found else Color("3a267c")
 		var border: Color = _row_border(row_length) if found else Color("ff8066")
 		var mark_text: String = "✓" if found else "×"

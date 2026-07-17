@@ -39,6 +39,7 @@ var rewarded_hint_claimed: bool = false
 var hinted_words_by_row: Dictionary = {}
 var result_correct_count: int = -1
 var result_solved_groups: Array[int] = []
+var result_top_solved: bool = false
 var tutorial_allowed_words: Array[String] = []
 
 func start_tutorial() -> bool:
@@ -60,6 +61,7 @@ func start_tutorial() -> bool:
 	hinted_words_by_row.clear()
 	result_correct_count = -1
 	result_solved_groups.clear()
+	result_top_solved = false
 	tutorial_allowed_words.clear()
 	game_started.emit(str(puzzle.get("title", SaveManager.text("tutorial_title"))), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -121,6 +123,7 @@ func start_new_game(mode: String = "daily") -> bool:
 	hinted_words_by_row.clear()
 	result_correct_count = -1
 	result_solved_groups.clear()
+	result_top_solved = false
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -147,6 +150,7 @@ func view_daily_result() -> bool:
 	completed_won = bool(saved_result.get("won", false))
 	result_correct_count = int(saved_result.get("correct_count", _total_word_count() if completed_won else 0))
 	result_solved_groups.assign(_to_int_array(saved_result.get("solved_groups", [])))
+	result_top_solved = bool(saved_result.get("top_solved", completed_won))
 	if completed_won and result_solved_groups.is_empty():
 		for index: int in puzzle.get("groups", []).size():
 			result_solved_groups.append(index)
@@ -184,6 +188,7 @@ func restart_current() -> bool:
 	hinted_words_by_row.clear()
 	result_correct_count = -1
 	result_solved_groups.clear()
+	result_top_solved = false
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -208,6 +213,7 @@ func reset_debug_state() -> void:
 	hinted_words_by_row.clear()
 	result_correct_count = -1
 	result_solved_groups.clear()
+	result_top_solved = false
 	tutorial_allowed_words.clear()
 
 func has_resumable_game(mode: String) -> bool:
@@ -254,6 +260,7 @@ func restore_game() -> bool:
 	result_solved_groups.assign(_to_int_array(saved.get("result_solved_groups", [])))
 	is_finished = bool(saved.get("is_finished", false))
 	completed_won = bool(saved.get("completed_won", false))
+	result_top_solved = bool(saved.get("result_top_solved", completed_won))
 	if is_finished and result_correct_count < 0:
 		result_correct_count = _total_word_count() if completed_won else _player_correct_count()
 	if is_finished and completed_won and result_solved_groups.is_empty():
@@ -482,6 +489,7 @@ func check_selection() -> void:
 	if selected_words.size() == 1 and not is_top_solved:
 		if selected_words[0] == str(puzzle.get("top_word", "")):
 			is_top_solved = true
+			result_top_solved = true
 			SoundManager.success()
 			top_solved.emit(selected_words[0])
 			selected_words.clear()
@@ -520,6 +528,7 @@ func check_selection() -> void:
 	if attempts_left <= 0:
 		result_correct_count = _player_correct_count()
 		result_solved_groups.assign(solved_groups)
+		result_top_solved = is_top_solved
 		selected_words.clear()
 		is_auto_solving = true
 		_auto_solve_remaining()
@@ -592,6 +601,7 @@ func _finish(won: bool) -> void:
 	completed_won = won
 	if won:
 		result_solved_groups.assign(solved_groups)
+		result_top_solved = true
 	if result_correct_count < 0:
 		result_correct_count = _player_correct_count()
 	if game_mode == TUTORIAL_MODE:
@@ -601,7 +611,7 @@ func _finish(won: bool) -> void:
 	_save_active_game()
 	if not won and game_mode == UNLIMITED_MODE:
 		SaveManager.consume_endless_heart()
-	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups)
+	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved)
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
 	if game_mode == DAILY_MODE and SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
@@ -634,6 +644,7 @@ func _save_active_game() -> void:
 		"rewarded_hint_claimed": rewarded_hint_claimed,
 		"result_correct_count": result_correct_count,
 		"result_solved_groups": result_solved_groups.duplicate(),
+		"result_top_solved": result_top_solved,
 		"hinted_words_by_row": hinted_words_by_row.duplicate(true)
 	}
 	SaveManager.save_data()
