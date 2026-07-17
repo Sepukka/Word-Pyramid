@@ -33,6 +33,9 @@ const WRONG_SHAKE_PEAK: float = 6.0
 const WRONG_SHAKE_SETTLE: float = 3.0
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
+const TUTORIAL_WORD_BREAK: float = 0.24
+const TUTORIAL_HINT_BREAK: float = 1.15
+const TUTORIAL_CHECK_BREAK: float = 1.00
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
 
 var _card: PanelContainer
@@ -85,6 +88,9 @@ var _font_dm_sans_semibold: FontVariation
 var _tutorial_stage: int = 0
 var _tutorial_finishing: bool = false
 var _tutorial_spotlight: ColorRect
+var _tutorial_paused: bool = false
+var _tutorial_pause_id: int = 0
+var _tutorial_focus_tweens: Dictionary = {}
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -299,7 +305,7 @@ func _build() -> void:
 	_clear.visible = false
 	action_row.add_child(_clear)
 	_check = _action_button(SaveManager.text("check"), true)
-	_check.pressed.connect(GameState.check_selection)
+	_check.pressed.connect(_on_check_pressed)
 	action_row.add_child(_check)
 	_result = _action_button("", false)
 	_result.visible = false
@@ -479,12 +485,15 @@ func _create_word_tile(word: String) -> Button:
 	return tile
 
 func _on_word_tile_pressed(tile: Button, word: String) -> void:
+	var was_selected: bool = GameState.selected_words.has(word)
 	GameState.toggle_word(word)
 	# Toggle-mode buttons change their local pressed state before this callback.
 	# If GameState rejects an over-limit selection, immediately restore the
 	# visual state from the authoritative selection array.
 	if is_instance_valid(tile):
 		tile.set_pressed_no_signal(GameState.selected_words.has(word))
+	if GameState.game_mode == GameState.TUTORIAL_MODE and was_selected != GameState.selected_words.has(word):
+		_start_tutorial_break(TUTORIAL_WORD_BREAK)
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
@@ -726,7 +735,7 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		var selected: bool = selection.has(word)
 		var was_selected: bool = _displayed_selection.has(word)
 		var showing_wrong: bool = _wrong_guess_active and _wrong_guess_words.has(word)
-		var tutorial_blocked: bool = GameState.game_mode == GameState.TUTORIAL_MODE and not GameState.is_tutorial_word_allowed(word)
+		var tutorial_blocked: bool = GameState.game_mode == GameState.TUTORIAL_MODE and (_tutorial_paused or not GameState.is_tutorial_word_allowed(word))
 		var selection_blocked: bool = (is_at_limit and not selected) or tutorial_blocked
 		tile.button_pressed = selected
 		# Block excess taps at the Button level so they cannot animate, focus, or
@@ -736,15 +745,15 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing or selection_blocked else Control.FOCUS_ALL
 		_apply_word_tile_visual(tile, selected, showing_wrong)
-		if GameState.game_mode == GameState.TUTORIAL_MODE and GameState.is_tutorial_word_allowed(word) and not selected:
+		if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused and GameState.is_tutorial_word_allowed(word) and not selected:
 			tile.add_theme_stylebox_override("normal", _tutorial_tile_style())
 			tile.add_theme_stylebox_override("hover", _tutorial_tile_style())
 		_set_tile_lift(tile, false if showing_wrong else selected, was_selected != selected and not _is_placing)
 	_displayed_selection.assign(selection)
 	_clear.disabled = selection.is_empty() or GameState.is_finished
-	_check.disabled = not GameState.can_check_selection()
+	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
 	_update_selection(selection)
-	if GameState.game_mode == GameState.TUTORIAL_MODE:
+	if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused:
 		_update_tutorial_selection_message()
 
 func _on_group_solved(group: Dictionary) -> void:
@@ -1563,27 +1572,27 @@ func _apply_tutorial_stage() -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or GameState.is_finished:
 		return
 	var allowed: Array[String] = []
+	var guide_text: String = SaveManager.text("tutorial_select_group")
 	match _tutorial_stage:
 		0:
 			allowed = GameState.tutorial_group_words(2)
-			_message.text = SaveManager.text("tutorial_select_group")
 		1:
-			_message.text = SaveManager.text("tutorial_use_hint")
+			guide_text = SaveManager.text("tutorial_use_hint")
 		2:
 			allowed = GameState.tutorial_group_words(5)
-			_message.text = SaveManager.text("tutorial_finish_row")
+			guide_text = SaveManager.text("tutorial_finish_row")
 		3:
 			allowed = GameState.tutorial_group_words(3)
-			_message.text = SaveManager.text("tutorial_select_group")
 		4:
 			allowed = GameState.tutorial_group_words(4)
-			_message.text = SaveManager.text("tutorial_select_group")
 		5:
 			allowed = GameState.tutorial_group_words(1)
-			_message.text = SaveManager.text("tutorial_top_word")
+			guide_text = SaveManager.text("tutorial_top_word")
 	GameState.set_tutorial_allowed_words(allowed)
-	_hint.disabled = _tutorial_stage != 1
-	_check.disabled = not GameState.can_check_selection()
+	_hint.disabled = _tutorial_paused or _tutorial_stage != 1
+	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
+	if not _tutorial_paused:
+		_message.text = guide_text
 	_update_tutorial_spotlight()
 
 func _update_tutorial_selection_message() -> void:
@@ -1607,13 +1616,77 @@ func _update_tutorial_selection_message() -> void:
 func _update_tutorial_spotlight() -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or not is_instance_valid(_tutorial_spotlight):
 		return
+	if _tutorial_paused:
+		_tutorial_spotlight.visible = false
+		_clear_tutorial_focus()
+		return
+	_tutorial_spotlight.visible = true
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
-		tile.z_index = 21 if GameState.is_tutorial_word_allowed(word) else 0
+		var focused: bool = GameState.is_tutorial_word_allowed(word)
+		tile.z_index = 21 if focused else 0
+		_set_tutorial_focus(tile, focused)
 	_hint.z_index = 21 if _tutorial_stage == 1 else 0
+	_set_tutorial_focus(_hint, _tutorial_stage == 1)
 	var selection_ready: bool = not GameState.tutorial_allowed_words.is_empty() and GameState.selected_words.size() == GameState.tutorial_allowed_words.size()
 	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
+	_set_tutorial_focus(_check, selection_ready and GameState.can_check_selection())
 	_message.z_index = 22
+
+func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) -> void:
+	if not is_instance_valid(control):
+		return
+	if bool(control.get_meta("tutorial_focused", false)) == focused and animate:
+		return
+	control.set_meta("tutorial_focused", focused)
+	control.pivot_offset = control.size * 0.5
+	var key: int = control.get_instance_id()
+	var previous: Tween = _tutorial_focus_tweens.get(key) as Tween
+	if previous != null and previous.is_running():
+		previous.kill()
+	var target_scale: Vector2 = Vector2(1.035, 1.035) if focused else Vector2.ONE
+	if not animate:
+		control.scale = target_scale
+		_tutorial_focus_tweens.erase(key)
+		return
+	var tween: Tween = create_tween()
+	_tutorial_focus_tweens[key] = tween
+	tween.tween_property(control, "scale", target_scale, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func() -> void: _tutorial_focus_tweens.erase(key))
+
+func _clear_tutorial_focus() -> void:
+	for tile_value: Variant in _word_buttons.values():
+		var tile: Button = tile_value as Button
+		if tile != null:
+			tile.z_index = 0
+			_set_tutorial_focus(tile, false)
+	_hint.z_index = 0
+	_check.z_index = 0
+	_set_tutorial_focus(_hint, false)
+	_set_tutorial_focus(_check, false)
+
+func _start_tutorial_break(duration: float) -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE or _tutorial_finishing:
+		return
+	_tutorial_pause_id += 1
+	var pause_id: int = _tutorial_pause_id
+	_tutorial_paused = true
+	for tile_value: Variant in _word_buttons.values():
+		var tile: Button = tile_value as Button
+		if tile != null:
+			tile.disabled = true
+			# During the acknowledgement beat, keep only the player's actual
+			# selected state. The tutorial border and spotlight return afterward.
+			_apply_word_tile_visual(tile, GameState.selected_words.has(tile.text))
+	_hint.disabled = true
+	_check.disabled = true
+	_update_tutorial_spotlight()
+	await get_tree().create_timer(duration).timeout
+	if not is_inside_tree() or pause_id != _tutorial_pause_id or _tutorial_finishing or GameState.game_mode != GameState.TUTORIAL_MODE:
+		return
+	_tutorial_paused = false
+	_apply_tutorial_stage()
+	_on_selection_changed(GameState.selected_words)
 
 func _advance_tutorial_after_group(row_length: int) -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE:
@@ -1641,9 +1714,11 @@ func _on_tutorial_completed() -> void:
 	if _tutorial_finishing or GameState.game_mode != GameState.TUTORIAL_MODE:
 		return
 	_tutorial_finishing = true
+	_tutorial_paused = true
 	GameState.set_tutorial_allowed_words([])
 	_hint.disabled = true
 	_check.disabled = true
+	_update_tutorial_spotlight()
 	_message.text = SaveManager.text("tutorial_complete")
 	await get_tree().create_timer(1.35).timeout
 	if is_inside_tree():
@@ -1663,7 +1738,16 @@ func _on_hint_pressed() -> void:
 	if bool(_hint.get_meta("rewarded_ad", false)):
 		AdManager.request_rewarded_hint()
 	else:
+		if GameState.game_mode == GameState.TUTORIAL_MODE:
+			_start_tutorial_break(TUTORIAL_HINT_BREAK)
 		GameState.request_hint()
+
+func _on_check_pressed() -> void:
+	if not GameState.can_check_selection():
+		return
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_start_tutorial_break(TUTORIAL_CHECK_BREAK)
+	GameState.check_selection()
 
 func _show_instructions() -> void:
 	_message.text = SaveManager.text("instructions_text")
