@@ -498,7 +498,7 @@ func _build_pyramid() -> void:
 func _create_word_tile(word: String) -> Button:
 	var tile: Button = Button.new()
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
-	tile.text = word
+	tile.text = _display_word(word)
 	tile.toggle_mode = true
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
@@ -522,7 +522,7 @@ func _on_word_tile_pressed(tile: Button, word: String) -> void:
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
-	tile.text = word
+	tile.text = _display_word(word)
 	tile.disabled = true
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
@@ -536,7 +536,7 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 
 func _create_placed_tile(word: String, row_length: int) -> Label:
 	var tile: Label = Label.new()
-	tile.text = word
+	tile.text = _display_word(word)
 	tile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -666,6 +666,12 @@ func _uniform_tile_font_size(tile_size: float) -> int:
 	# One responsive size is shared by every word tile. Longer compounds still
 	# use the condensed Fredoka variation, but are not arbitrarily made smaller.
 	return clampi(floori(tile_size * 0.17), 9, 13)
+
+func _display_word(word: String) -> String:
+	var display_breaks_value: Variant = GameState.puzzle.get("display_breaks", {})
+	if display_breaks_value is Dictionary:
+		return str((display_breaks_value as Dictionary).get(word, word))
+	return word
 
 func _tile_font(word: String) -> FontVariation:
 	return _font_fredoka_condensed if word.length() >= 10 else _font_fredoka_semibold
@@ -919,7 +925,7 @@ func _animate_row_swap(swap: Dictionary) -> void:
 
 func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: Vector2, fill_color: Color, border_color: Color) -> void:
 	var ghost: Label = Label.new()
-	ghost.text = word
+	ghost.text = _display_word(word)
 	ghost.position = start - block_size * 0.5
 	ghost.size = block_size
 	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -29,13 +29,13 @@
       {"size":3,"label":"States of matter","words":["SOLID","LIQUID","GAS"]},
       {"size":4,"label":"Lab equipment","words":["BEAKER","PIPETTE","FLASK","BUNSEN"]},
       {"size":5,"label":"Human senses","words":["SIGHT","HEARING","TOUCH","TASTE","SMELL"]}
-    ],"top_word":"MICROSCOPE"},
+    ],"top_word":"MICROSCOPE","display_breaks":{"MICROSCOPE":"MICRO\nSCOPE"}},
     {"id":"unlimited_006","title":"Sporting Life","groups":[
       {"size":2,"label":"Tennis strokes","words":["SERVE","VOLLEY"]},
       {"size":3,"label":"Olympic swimming strokes","words":["FREESTYLE","BACKSTROKE","BUTTERFLY"]},
       {"size":4,"label":"Football positions","words":["GOALKEEPER","DEFENDER","MIDFIELDER","STRIKER"]},
       {"size":5,"label":"Things at a stadium","words":["SEATS","SCOREBOARD","WHISTLE","MASCOT","TURNSTILE"]}
-    ],"top_word":"CHAMPION"},
+    ],"top_word":"CHAMPION","display_breaks":{"BACKSTROKE":"BACK\nSTROKE","GOALKEEPER":"GOAL\nKEEPER","MIDFIELDER":"MID\nFIELDER","SCOREBOARD":"SCORE\nBOARD"}},
     {"id":"unlimited_007","title":"Office Day","groups":[
       {"size":2,"label":"Office stationery","words":["STAPLER","PAPERCLIP"]},
       {"size":3,"label":"Keyboard keys","words":["RETURN","SHIFT","ESCAPE"]},

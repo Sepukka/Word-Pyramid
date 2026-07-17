@@ -156,4 +156,20 @@ func validate_puzzle(puzzle: Dictionary) -> PackedStringArray:
 		errors.append("groups must contain 14 unique words")
 	if all_words.has(str(puzzle.get("top_word", "")).to_upper()):
 		errors.append("top word must not occur in a group")
+	var display_breaks_value: Variant = puzzle.get("display_breaks", {})
+	if not (display_breaks_value is Dictionary):
+		errors.append("display_breaks must be an object")
+	else:
+		var display_breaks: Dictionary = display_breaks_value
+		var top_word: String = str(puzzle.get("top_word", "")).strip_edges().to_upper()
+		for word_value: Variant in display_breaks:
+			var word: String = str(word_value).strip_edges().to_upper()
+			var display: String = str(display_breaks[word_value]).strip_edges()
+			if not all_words.has(word) and word != top_word:
+				errors.append("display_breaks references an unknown word: %s" % word)
+			elif display.is_empty() or _compact_display_word(display) != _compact_display_word(word):
+				errors.append("display_breaks must only add whitespace to: %s" % word)
 	return errors
+
+func _compact_display_word(word: String) -> String:
+	return word.to_upper().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
