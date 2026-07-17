@@ -1632,23 +1632,33 @@ func _update_tutorial_spotlight() -> void:
 func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) -> void:
 	if not is_instance_valid(control):
 		return
-	if bool(control.get_meta("tutorial_focused", false)) == focused and animate:
-		return
-	control.set_meta("tutorial_focused", focused)
-	control.pivot_offset = control.size * 0.5
 	var key: int = control.get_instance_id()
 	var previous: Tween = _tutorial_focus_tweens.get(key) as Tween
+	var already_focused: bool = bool(control.get_meta("tutorial_focused", false)) == focused
+	if animate and already_focused:
+		if focused and previous != null and previous.is_running():
+			return
+		if not focused and control.scale.is_equal_approx(Vector2.ONE):
+			return
+	control.set_meta("tutorial_focused", focused)
+	control.pivot_offset = control.size * 0.5
 	if previous != null and previous.is_running():
 		previous.kill()
-	var target_scale: Vector2 = Vector2(1.035, 1.035) if focused else Vector2.ONE
 	if not animate:
-		control.scale = target_scale
+		control.scale = Vector2(1.035, 1.035) if focused else Vector2.ONE
 		_tutorial_focus_tweens.erase(key)
 		return
 	var tween: Tween = create_tween()
 	_tutorial_focus_tweens[key] = tween
-	tween.tween_property(control, "scale", target_scale, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(func() -> void: _tutorial_focus_tweens.erase(key))
+	if focused:
+		# Keep the prompt visibly alive instead of relying on a one-time scale
+		# change that is easy to miss on a phone-sized tile.
+		tween.set_loops()
+		tween.tween_property(control, "scale", Vector2(1.06, 1.06), 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(control, "scale", Vector2(1.025, 1.025), 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	else:
+		tween.tween_property(control, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(func() -> void: _tutorial_focus_tweens.erase(key))
 
 func _clear_tutorial_focus() -> void:
 	for tile_value: Variant in _word_buttons.values():
