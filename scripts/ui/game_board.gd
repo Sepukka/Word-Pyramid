@@ -248,15 +248,24 @@ func _build() -> void:
 	_message.add_theme_font_override("font", FONT_DM_SANS)
 	_message.add_theme_font_size_override("font_size", 13)
 	_message.add_theme_color_override("font_color", UI_MUTED_TEXT)
-	content.add_child(_message)
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		_message.custom_minimum_size = Vector2(0, 64)
+		# A plain Control isolates the VBox from the Label's changing wrapped-text
+		# minimum height, so every tutorial instruction occupies the same space.
+		var message_slot: Control = Control.new()
+		message_slot.custom_minimum_size = Vector2(0, 76)
+		message_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		message_slot.clip_contents = true
+		content.add_child(message_slot)
+		message_slot.add_child(_message)
+		_message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_message.add_theme_font_override("font", _font_fredoka_semibold)
 		_message.add_theme_font_size_override("font_size", 18)
 		_message.add_theme_color_override("font_color", UI_TEXT)
 		_message.add_theme_stylebox_override("normal", _tutorial_guide_style())
 		_message.z_index = 22
+	else:
+		content.add_child(_message)
 	_selection = Label.new()
 	_selection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
