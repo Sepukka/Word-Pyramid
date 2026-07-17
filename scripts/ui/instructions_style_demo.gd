@@ -100,48 +100,53 @@ func _show_variant(index: int) -> void:
 	tween.tween_property(variant, "position:y", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _build_pyramid_journey() -> Control:
-	var root := _full_root(CREAM)
-	_add_circle(root, Vector2(-46, 64), 122.0, YELLOW, 0.46)
-	_add_tilted_shape(root, Vector2(335, 88), Vector2(92, 136), LAVENDER.lightened(0.10), 13.0, 0.55)
-	var page_margin := _full_margin(14, 14, 14, 14)
+	var root := _full_root(PURPLE)
+	_add_circle(root, Vector2(304, -60), 148.0, YELLOW, 0.82)
+	_add_tilted_shape(root, Vector2(-48, 555), Vector2(102, 118), Color("a9e8df"), -14.0, 0.28)
+	var page_margin := _full_margin(14, 14, 13, 14)
 	root.add_child(page_margin)
-	var page := _vbox(9)
+	var page := _vbox(8)
 	page.name = "VariantPage"
 	page_margin.add_child(page)
 
-	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), PURPLE, DARK_MUTED))
-	var example_card := _panel(PURPLE, PURPLE, 27, 0, true)
+	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), WHITE, Color(1, 1, 1, 0.66)))
+	var example_card := _panel(WHITE, Color(1, 1, 1, 0.16), 24, 0, true)
 	example_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(example_card)
-	var example_margin := _margin(15, 15, 14, 14)
+	var example_margin := _margin(14, 14, 12, 12)
 	example_card.add_child(example_margin)
-	var example := _vbox(8)
+	var example := _vbox(7)
 	example_margin.add_child(example)
-	var example_title := _label(_t("instructions_example"), 13, YELLOW, _dm_sans_semibold)
+	var example_title := _label(_t("instructions_example"), 13, PURPLE, _dm_sans_semibold)
 	example_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	example.add_child(example_title)
-	example.add_child(_word_pool_example())
-	var connection := _label(_t("instructions_same_group"), 14, WHITE, _fredoka_semibold)
+	example.add_child(_word_pool_example(false, false))
+	var connection := _label(_t("instructions_same_group"), 14, PURPLE, _fredoka_semibold)
 	connection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	connection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	example.add_child(connection)
 	example.add_child(_mini_check_button())
-	var correct_band := _panel(PURPLE_LIGHT, Color("5942a2"), 16, 1)
+	var correct_band := _panel(Color("d9f7f2"), TEAL, 16, 1)
 	example.add_child(correct_band)
 	var correct_margin := _margin(10, 10, 8, 8)
 	correct_band.add_child(correct_margin)
-	var correct_label := _label(_t("instructions_correct_row"), 12, WHITE, _dm_sans_semibold)
+	var correct_label := _label(_t("instructions_correct_row"), 12, PURPLE, _dm_sans_semibold)
 	correct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	correct_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	correct_margin.add_child(correct_label)
 	example.add_child(_locked_group_example())
-	var next := _label(_t("instructions_top_body"), 12, Color(1, 1, 1, 0.72), FONT_DM_SANS)
+	var next := _label(_t("instructions_top_body"), 12, DARK_MUTED, FONT_DM_SANS)
 	next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	example.add_child(next)
-	example.add_child(_instruction_pyramid())
+	example.add_child(_labeled_pyramid())
+	var tools := HBoxContainer.new()
+	tools.add_theme_constant_override("separation", 8)
+	example.add_child(tools)
+	tools.add_child(_tool_card(SaveManager.text("hint").to_upper(), _t("instructions_hint_body"), LAVENDER))
+	tools.add_child(_tool_card("!", _t("instructions_mistake_body"), CORAL))
 	page.add_child(_back_button())
-	page.add_child(_concept_note(_t("instructions_concept_a")))
+	page.add_child(_concept_note(_t("instructions_concept_a"), Color(1, 1, 1, 0.58)))
 	return root
 
 func _build_lesson_cards() -> Control:
@@ -160,7 +165,7 @@ func _build_lesson_cards() -> Control:
 	page.add_child(lesson_stack)
 	lesson_stack.add_child(_clear_step_card("1", _t("instructions_find_title"), _t("instructions_find_body"), TEAL, _word_pool_example(true)))
 	lesson_stack.add_child(_clear_step_card("2", _t("instructions_check_title"), _t("instructions_check_body"), YELLOW, _check_and_lock_example()))
-	lesson_stack.add_child(_clear_step_card("3", _t("instructions_top_title"), _t("instructions_top_body"), CORAL, _top_example()))
+	lesson_stack.add_child(_clear_step_card("3", _t("instructions_top_title"), _t("instructions_top_body"), CORAL, _any_order_example()))
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 8)
 	lesson_stack.add_child(tools)
@@ -171,14 +176,9 @@ func _build_lesson_cards() -> Control:
 	return root
 
 func _build_quick_reference() -> Control:
-	var root := _full_root(CREAM)
-	var hero := PanelContainer.new()
-	hero.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	hero.offset_bottom = 185.0
-	hero.add_theme_stylebox_override("panel", _style(PURPLE, PURPLE, 0, 0))
-	root.add_child(hero)
-	_add_circle(root, Vector2(-38, 88), 104.0, YELLOW, 0.74)
-	_add_tilted_shape(root, Vector2(332, 68), Vector2(86, 112), Color("efb9dd"), 14.0, 0.62)
+	var root := _full_root(PURPLE)
+	_add_circle(root, Vector2(-52, 100), 116.0, YELLOW, 0.46)
+	_add_tilted_shape(root, Vector2(330, 70), Vector2(92, 124), Color("efb9dd"), 14.0, 0.54)
 	var page_margin := _full_margin(14, 14, 13, 14)
 	root.add_child(page_margin)
 	var page := _vbox(9)
@@ -193,7 +193,7 @@ func _build_quick_reference() -> Control:
 	reference.add_child(reference_margin)
 	var content := _vbox(8)
 	reference_margin.add_child(content)
-	var goal := _label(_t("instructions_top_title").to_upper(), 12, MUTED, _dm_sans_semibold)
+	var goal := _label(_t("instructions_group_sizes"), 12, MUTED, _dm_sans_semibold)
 	goal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(goal)
 	content.add_child(_labeled_pyramid())
@@ -219,11 +219,12 @@ func _build_quick_reference() -> Control:
 	page.add_child(_concept_note(_t("instructions_concept_c"), DARK_MUTED))
 	return root
 
-func _word_pool_example(compact: bool = false) -> VBoxContainer:
+func _word_pool_example(compact: bool = false, dark_background: bool = true) -> VBoxContainer:
 	var stack := _vbox(4)
 	stack.name = "WordPoolExample"
 	if not compact:
-		var pool_label := _label(_t("instructions_pool"), 10, Color(1, 1, 1, 0.58), _dm_sans_semibold)
+		var pool_color := Color(1, 1, 1, 0.58) if dark_background else MUTED
+		var pool_label := _label(_t("instructions_pool"), 10, pool_color, _dm_sans_semibold)
 		pool_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stack.add_child(pool_label)
 	var selected_words: Array[String] = [
@@ -339,6 +340,21 @@ func _tool_card(mark: String, body: String, accent: Color) -> PanelContainer:
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(description)
 	return card
+
+func _any_order_example() -> VBoxContainer:
+	var stack := _vbox(3)
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	var rows := HBoxContainer.new()
+	rows.alignment = BoxContainer.ALIGNMENT_CENTER
+	rows.add_theme_constant_override("separation", 5)
+	stack.add_child(rows)
+	var colors: Array[Color] = [LAVENDER, CORAL, TEAL, Color("7edbcf"), YELLOW]
+	for row_size: int in [1, 2, 3, 4, 5]:
+		rows.add_child(_number_badge(str(row_size), colors[row_size - 1], PURPLE))
+	var order := _label(_t("instructions_choose_top"), 10, MUTED, _dm_sans_semibold)
+	order.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(order)
+	return stack
 
 func _labeled_pyramid() -> VBoxContainer:
 	var component := _vbox(5)

@@ -22,6 +22,7 @@ func _ready() -> void:
 			assert(page.get_combined_minimum_size().y <= 758.0, "Instructions variant %d overflows phone height in %s" % [variant_index, language])
 			var back: Button = demo.find_child("BackToGame", true, false) as Button
 			assert(back != null and back.visible, "Instructions variant %d has no return button" % variant_index)
+			assert(_has_label_fragment(demo, SaveManager.text("instructions_choose_top")), "Instructions variant %d does not say rows can be solved in any order" % variant_index)
 			if variant_index < 2:
 				assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions variant %d lacks a concrete word example" % variant_index)
 			else:
@@ -45,3 +46,10 @@ func _ready() -> void:
 	board.queue_free()
 	await get_tree().process_frame
 	get_tree().quit()
+
+func _has_label_fragment(root: Node, fragment: String) -> bool:
+	for node: Node in root.find_children("*", "Label", true, false):
+		var label: Label = node as Label
+		if label != null and label.text.contains(fragment):
+			return true
+	return false
