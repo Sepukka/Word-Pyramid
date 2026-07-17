@@ -174,7 +174,7 @@ func _build() -> void:
 	top_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	top_bar.add_theme_constant_override("separation", 10)
 	header_content.add_child(top_bar)
-	var header_side_width: float = 104.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 78.0
+	var header_side_width: float = 78.0
 	var back: Button = Button.new()
 	back.text = SaveManager.text("tutorial_skip") if GameState.game_mode == GameState.TUTORIAL_MODE else "←  " + SaveManager.text("back")
 	back.custom_minimum_size = Vector2(header_side_width, 36)
@@ -626,7 +626,11 @@ func _layout_for_width() -> void:
 	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
 	# Match the 1.0.2 Android build: blocks use the five-word row for width and
 	# the available phone height separately, producing the slightly taller shape.
-	var pyramid_height: float = clampf(size.y - 365.0, 290.0, 480.0)
+	# The tutorial reserves a stable 76 px guide slot in place of the normal
+	# single-line message. Deduct the extra space here so its board and controls
+	# fit the same phone viewport instead of extending below the screen.
+	var tutorial_guide_reservation: float = 60.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 0.0
+	var pyramid_height: float = clampf(size.y - 365.0 - tutorial_guide_reservation, 290.0, 480.0)
 	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
 	var shared_font_size: int = _uniform_tile_font_size(tile_size)
 	for word: String in _word_buttons:
