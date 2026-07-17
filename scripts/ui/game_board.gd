@@ -2188,6 +2188,7 @@ func _show_instructions() -> void:
 	_instructions_layer = INSTRUCTIONS_STYLE_DEMO_SCENE.instantiate() as Control
 	_instructions_layer.z_index = 60
 	_instructions_layer.connect("dismiss_requested", _on_instructions_dismissed)
+	_instructions_layer.connect("hint_requested", _on_instructions_hint_requested)
 	add_child(_instructions_layer)
 
 func _on_instructions_dismissed() -> void:
@@ -2195,6 +2196,10 @@ func _on_instructions_dismissed() -> void:
 		return
 	_instructions_layer.queue_free()
 	_instructions_layer = null
+
+func _on_instructions_hint_requested() -> void:
+	_on_instructions_dismissed()
+	call_deferred("_on_hint_pressed")
 
 func _action_button(label_text: String, filled: bool = false) -> Button:
 	var button: Button = Button.new()

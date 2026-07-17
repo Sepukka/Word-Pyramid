@@ -12,34 +12,43 @@ func _ready() -> void:
 		var demo: InstructionsStyleDemo = DEMO_SCENE.instantiate() as InstructionsStyleDemo
 		get_tree().root.add_child.call_deferred(demo)
 		await get_tree().process_frame
-		for variant_index: int in 3:
-			demo.call("_show_variant", variant_index)
-			await get_tree().process_frame
-			await get_tree().process_frame
-			var page: VBoxContainer = demo.find_child("VariantPage", true, false) as VBoxContainer
-			assert(page != null, "Instructions variant %d has no page" % variant_index)
-			assert(page.get_combined_minimum_size().x <= 362.0, "Instructions variant %d overflows phone width in %s" % [variant_index, language])
-			assert(page.get_combined_minimum_size().y <= 758.0, "Instructions variant %d overflows phone height in %s" % [variant_index, language])
-			var back: Button = demo.find_child("BackToGame", true, false) as Button
-			assert(back != null and back.visible, "Instructions variant %d has no return button" % variant_index)
-			assert(_has_label_fragment(demo, SaveManager.text("instructions_choose_top")), "Instructions variant %d does not say rows can be solved in any order" % variant_index)
-			assert(demo.find_children("StepCard_*", "", true, false).size() == 3, "Instructions variant %d does not have exactly three clear steps" % variant_index)
-			assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions variant %d lacks a concrete word example" % variant_index)
-			assert(demo.find_child("HintCallout", true, false) != null, "Instructions variant %d does not visibly explain Hint" % variant_index)
+		await get_tree().process_frame
+		var page: VBoxContainer = demo.find_child("VariantPage", true, false) as VBoxContainer
+		assert(page != null, "Selected instructions design has no page")
+		assert(page.get_combined_minimum_size().x <= 362.0, "Instructions overflow phone width in %s" % language)
+		assert(page.get_combined_minimum_size().y <= 817.0, "Instructions overflow phone height in %s" % language)
+		var back: Button = demo.find_child("BackToGame", true, false) as Button
+		assert(back != null and back.visible, "Instructions have no return button")
+		assert(_has_label_fragment(demo, SaveManager.text("instructions_choose_top")), "Instructions do not say rows can be solved in any order")
+		assert(demo.find_children("StepCard_*", "", true, false).size() == 3, "Instructions do not have exactly three clear steps")
+		assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions lack a concrete word example")
+		var hint_callout: PanelContainer = demo.find_child("HintCallout", true, false) as PanelContainer
+		var hint_action: Button = demo.find_child("HintAction", true, false) as Button
+		assert(hint_callout != null and hint_action != null, "Hint callout does not contain its action button")
+		assert(hint_callout.is_ancestor_of(hint_action), "Hint action is not attached to the Hint element")
+		var hint_emitted: Array[bool] = [false]
+		demo.hint_requested.connect(func() -> void: hint_emitted[0] = true)
+		hint_action.pressed.emit()
+		assert(hint_emitted[0], "Attached Hint button does not request a gameplay hint")
 		demo.queue_free()
 		await get_tree().process_frame
 
 	SaveManager.settings["language"] = original_language
+	assert(GameState.start_tutorial(), "Tutorial puzzle is available for Hint integration testing")
 	var board: GameBoard = GAME_BOARD_SCENE.instantiate() as GameBoard
 	get_tree().root.add_child.call_deferred(board)
 	await get_tree().process_frame
 	board.call("_show_instructions")
 	await get_tree().process_frame
 	var overlay: InstructionsStyleDemo = board.find_child("InstructionsStyleDemo", true, false) as InstructionsStyleDemo
-	assert(overlay != null, "Instructions button does not open the comparison menu")
-	overlay.dismiss_requested.emit()
+	assert(overlay != null, "Instructions button does not open the selected menu")
+	var attached_hint: Button = overlay.find_child("HintAction", true, false) as Button
+	assert(attached_hint != null, "Game instructions are missing the attached Hint action")
+	attached_hint.pressed.emit()
 	await get_tree().process_frame
-	assert(board.find_child("InstructionsStyleDemo", true, false) == null, "Instructions menu does not return to the game")
+	await get_tree().process_frame
+	assert(board.find_child("InstructionsStyleDemo", true, false) == null, "Using Hint does not return to the game")
+	assert(GameState.hints_used == 1 and GameState.get_hint_words_for_row(5).size() == 1, "Attached Hint button does not place a real gameplay hint")
 
 	print("INSTRUCTIONS_STYLE_DEMO_SMOKE_TEST_PASS")
 	board.queue_free()

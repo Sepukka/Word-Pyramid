@@ -2,6 +2,7 @@ class_name InstructionsStyleDemo
 extends Control
 
 signal dismiss_requested
+signal hint_requested
 
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
@@ -21,10 +22,6 @@ const DARK_MUTED := Color("5d5286")
 var _fredoka_semibold: FontVariation
 var _fredoka_bold: FontVariation
 var _dm_sans_semibold: FontVariation
-var _variant_host: Control
-var _variant_buttons: Array[Button] = []
-var _variant_names: Array[String] = []
-var _current_variant: int = 0
 var _closing: bool = false
 
 func _ready() -> void:
@@ -33,80 +30,19 @@ func _ready() -> void:
 	_fredoka_semibold = _font_variation(FONT_FREDOKA, 600, 0.16)
 	_fredoka_bold = _font_variation(FONT_FREDOKA, 700, 0.35)
 	_dm_sans_semibold = _font_variation(FONT_DM_SANS, 600, 0.08)
-	_variant_names = [_t("instructions_variant_a"), _t("instructions_variant_b"), _t("instructions_variant_c")]
-	_build_comparison_screen()
-	_show_variant(0)
+	var instructions_page := _build_three_step_variant(2)
+	add_child(instructions_page)
+	instructions_page.modulate.a = 0.0
+	instructions_page.position.y = 8.0
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(instructions_page, "modulate:a", 1.0, 0.18)
+	tween.tween_property(instructions_page, "position:y", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_ESCAPE:
 		_close()
-	elif event.keycode == KEY_LEFT:
-		_show_variant(posmod(_current_variant - 1, _variant_names.size()))
-	elif event.keycode == KEY_RIGHT:
-		_show_variant((_current_variant + 1) % _variant_names.size())
-
-func _build_comparison_screen() -> void:
-	var background := ColorRect.new()
-	background.color = CREAM
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
-
-	_variant_host = Control.new()
-	_variant_host.name = "VariantHost"
-	_variant_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_variant_host.offset_top = 58.0
-	add_child(_variant_host)
-
-	var comparison_bar := PanelContainer.new()
-	comparison_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	comparison_bar.offset_bottom = 58.0
-	comparison_bar.add_theme_stylebox_override("panel", _style(CREAM, CREAM, 0, 0))
-	add_child(comparison_bar)
-	var bar_margin := _margin(8, 8, 8, 8)
-	comparison_bar.add_child(bar_margin)
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 6)
-	bar_margin.add_child(tabs)
-	for index: int in _variant_names.size():
-		var tab := Button.new()
-		tab.text = _variant_names[index]
-		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tab.custom_minimum_size.y = 42.0
-		tab.focus_mode = Control.FOCUS_NONE
-		tab.add_theme_font_override("font", _dm_sans_semibold)
-		tab.add_theme_font_size_override("font_size", 11)
-		tab.pressed.connect(_show_variant.bind(index))
-		tabs.add_child(tab)
-		_variant_buttons.append(tab)
-
-func _show_variant(index: int) -> void:
-	_current_variant = clampi(index, 0, _variant_names.size() - 1)
-	for child: Node in _variant_host.get_children():
-		child.queue_free()
-	for button_index: int in _variant_buttons.size():
-		_style_tab(_variant_buttons[button_index], button_index == _current_variant)
-	var variant: Control
-	match _current_variant:
-		0: variant = _build_pyramid_journey()
-		1: variant = _build_lesson_cards()
-		_: variant = _build_quick_reference()
-	_variant_host.add_child(variant)
-	variant.modulate.a = 0.0
-	variant.position.y = 8.0
-	var tween := create_tween().set_parallel(true)
-	tween.tween_property(variant, "modulate:a", 1.0, 0.18)
-	tween.tween_property(variant, "position:y", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-func _build_pyramid_journey() -> Control:
-	return _build_three_step_variant(0)
-
-func _build_lesson_cards() -> Control:
-	return _build_three_step_variant(1)
-
-func _build_quick_reference() -> Control:
-	return _build_three_step_variant(2)
 
 func _build_three_step_variant(style_index: int) -> Control:
 	var root := _full_root(PURPLE)
@@ -305,12 +241,14 @@ func _prominent_hint_card(style_index: int) -> PanelContainer:
 		border = YELLOW
 	var card := _panel(fill, border, 18, 2, true)
 	card.name = "HintCallout"
-	card.custom_minimum_size.y = 62.0
+	card.custom_minimum_size.y = 104.0
 	var margin := _margin(12, 12, 9, 9)
 	card.add_child(margin)
+	var stack := _vbox(7)
+	margin.add_child(stack)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 11)
-	margin.add_child(row)
+	stack.add_child(row)
 	var badge := _number_badge("H", YELLOW if style_index == 1 else PURPLE, PURPLE if style_index == 1 else YELLOW)
 	badge.custom_minimum_size = Vector2(42, 42)
 	row.add_child(badge)
@@ -321,6 +259,23 @@ func _prominent_hint_card(style_index: int) -> PanelContainer:
 	var description := _label(_t("instructions_hint_note"), 11, body_color, _dm_sans_semibold)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(description)
+	var hint_button := Button.new()
+	hint_button.name = "HintAction"
+	hint_button.text = _t("instructions_use_hint")
+	hint_button.custom_minimum_size.y = 38.0
+	hint_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint_button.focus_mode = Control.FOCUS_NONE
+	hint_button.add_theme_font_override("font", _fredoka_semibold)
+	hint_button.add_theme_font_size_override("font_size", 14)
+	hint_button.add_theme_color_override("font_color", PURPLE)
+	hint_button.add_theme_color_override("font_hover_color", PURPLE)
+	hint_button.add_theme_color_override("font_pressed_color", PURPLE)
+	hint_button.add_theme_stylebox_override("normal", _style(YELLOW, YELLOW, 13, 0, true))
+	hint_button.add_theme_stylebox_override("hover", _style(Color("ffe23d"), YELLOW, 13, 0, true))
+	hint_button.add_theme_stylebox_override("pressed", _style(Color("e9c400"), Color("e9c400"), 13, 0))
+	hint_button.disabled = GameState.is_finished or GameState.is_auto_solving
+	hint_button.pressed.connect(func() -> void: hint_requested.emit())
+	stack.add_child(hint_button)
 	return card
 
 func _check_and_lock_example() -> HBoxContainer:
