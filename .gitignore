@@ -1,4 +1,5 @@
 .godot/
 *.tmp
 *.log
+.godot-test-data/
 android/

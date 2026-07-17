@@ -8,6 +8,8 @@ var _expected_font_size: int
 var _layout_checks: int = 0
 
 func _ready() -> void:
+	SaveManager.save_path = "res://.godot-test-data/auto_solve_save.json"
+	SaveManager.progression = SaveManager.DEFAULT_PROGRESSION.duplicate(true)
 	get_tree().root.size = Vector2i(390, 844)
 	var puzzles: Array[Dictionary] = PuzzleLoader.get_puzzles(GameState.DAILY_MODE)
 	assert(not puzzles.is_empty(), "Auto-solve layout test needs a puzzle")
@@ -77,4 +79,3 @@ func _verify_fixed_block_metrics() -> void:
 			var placed_tile: Label = placed_value as Label
 			assert(placed_tile.size.is_equal_approx(_expected_tile_size), "A placed word block changed size during automatic completion")
 			assert(placed_tile.get_theme_font_size("font_size") == _expected_font_size, "A placed word block changed font size during automatic completion")
-

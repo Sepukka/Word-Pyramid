@@ -6,10 +6,17 @@ const PUZZLE_PATHS: Dictionary = {
 }
 const DAILY_MODE: String = "daily"
 const UNLIMITED_MODE: String = "unlimited"
+const DIFFICULTY_METADATA_PATH: String = "res://data/puzzle_difficulty.json"
+const DEFAULT_DIFFICULTY_TIER: int = 2
+const DEFAULT_DIFFICULTY_RATING: int = 900
+const TARGET_WIN_OFFSET: float = 170.0
+const SELECTION_SIGMA: float = 85.0
 
 var _puzzles_by_mode: Dictionary = {}
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _language: String = "en"
+var _difficulty_metadata: Dictionary = {}
+var _difficulty_overrides: Dictionary = {}
 
 func _ready() -> void:
 	_rng.randomize()
@@ -17,6 +24,7 @@ func _ready() -> void:
 
 func load_puzzles() -> bool:
 	_puzzles_by_mode.clear()
+	_load_difficulty_metadata()
 	_language = str(SaveManager.settings.get("language", "en"))
 	if not PUZZLE_PATHS.has(_language):
 		_language = "en"
@@ -54,6 +62,7 @@ func _load_pool(mode: String, path: String) -> bool:
 	for candidate: Variant in parsed["puzzles"]:
 		if candidate is Dictionary:
 			var puzzle_data: Dictionary = candidate.duplicate(true)
+			_apply_difficulty_metadata(puzzle_data)
 			var scheduled_date: String = str(schedule.get(str(puzzle_data.get("id", "")), ""))
 			if not scheduled_date.is_empty():
 				puzzle_data["date"] = scheduled_date
@@ -107,6 +116,49 @@ func get_next_unplayed_puzzle(mode: String, played_ids: Array[String]) -> Dictio
 		return {}
 	return choices[_rng.randi_range(0, choices.size() - 1)].duplicate(true)
 
+func get_next_unplayed_puzzle_for_skill(mode: String, played_ids: Array[String], player_rating: float, rated_games: int) -> Dictionary:
+	var choices: Array[Dictionary] = []
+	for puzzle: Dictionary in get_puzzles(mode):
+		if not played_ids.has(str(puzzle.get("id", ""))):
+			choices.append(puzzle)
+	if choices.is_empty():
+		return {}
+	# The first five rated games deliberately climb through the easier part of
+	# the pool. Afterwards, target roughly a 72% expected win rate.
+	var target_rating: float = 780.0 + float(rated_games) * 35.0 if rated_games < 5 else player_rating - TARGET_WIN_OFFSET
+	var weights: Array[float] = []
+	var total_weight: float = 0.0
+	for candidate: Dictionary in choices:
+		var difference: float = float(get_effective_difficulty_rating(candidate)) - target_rating
+		var weight: float = maxf(exp(-(difference * difference) / (2.0 * SELECTION_SIGMA * SELECTION_SIGMA)), 0.001)
+		weights.append(weight)
+		total_weight += weight
+	var roll: float = _rng.randf() * total_weight
+	for index: int in choices.size():
+		roll -= weights[index]
+		if roll <= 0.0:
+			return choices[index].duplicate(true)
+	return choices.back().duplicate(true)
+
+func get_effective_difficulty_rating(puzzle: Dictionary) -> int:
+	var puzzle_id: String = str(puzzle.get("id", ""))
+	if _difficulty_overrides.has(puzzle_id):
+		return clampi(int(_difficulty_overrides[puzzle_id]), 500, 1600)
+	return clampi(int(puzzle.get("difficulty_rating", DEFAULT_DIFFICULTY_RATING)), 500, 1600)
+
+func get_difficulty_tier(puzzle: Dictionary) -> int:
+	return clampi(int(puzzle.get("difficulty", DEFAULT_DIFFICULTY_TIER)), 1, 5)
+
+func set_difficulty_overrides(ratings_by_puzzle_id: Dictionary) -> void:
+	# Future backend integration can feed population-adjusted ratings through
+	# this seam. Local metadata remains the fallback and is never overwritten.
+	_difficulty_overrides.clear()
+	for puzzle_id: Variant in ratings_by_puzzle_id:
+		_difficulty_overrides[str(puzzle_id)] = clampi(int(ratings_by_puzzle_id[puzzle_id]), 500, 1600)
+
+func clear_difficulty_overrides() -> void:
+	_difficulty_overrides.clear()
+
 func get_puzzles(mode: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var pool_value: Variant = _puzzles_by_mode.get(mode, [])
@@ -156,6 +208,12 @@ func validate_puzzle(puzzle: Dictionary) -> PackedStringArray:
 		errors.append("groups must contain 14 unique words")
 	if all_words.has(str(puzzle.get("top_word", "")).to_upper()):
 		errors.append("top word must not occur in a group")
+	var difficulty_tier: int = int(puzzle.get("difficulty", 0))
+	var difficulty_rating: int = int(puzzle.get("difficulty_rating", 0))
+	if difficulty_tier < 1 or difficulty_tier > 5:
+		errors.append("difficulty must be between 1 and 5")
+	if difficulty_rating < 500 or difficulty_rating > 1600:
+		errors.append("difficulty_rating must be between 500 and 1600")
 	var display_breaks_value: Variant = puzzle.get("display_breaks", {})
 	if not (display_breaks_value is Dictionary):
 		errors.append("display_breaks must be an object")
@@ -173,3 +231,23 @@ func validate_puzzle(puzzle: Dictionary) -> PackedStringArray:
 
 func _compact_display_word(word: String) -> String:
 	return word.to_upper().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+
+func _load_difficulty_metadata() -> void:
+	_difficulty_metadata.clear()
+	var file: FileAccess = FileAccess.open(DIFFICULTY_METADATA_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("Could not open puzzle difficulty metadata; using defaults.")
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is Dictionary and (parsed as Dictionary).get("puzzles", null) is Dictionary:
+		_difficulty_metadata = ((parsed as Dictionary)["puzzles"] as Dictionary).duplicate(true)
+	else:
+		push_warning("Puzzle difficulty metadata has an invalid format; using defaults.")
+
+func _apply_difficulty_metadata(puzzle: Dictionary) -> void:
+	var puzzle_id: String = str(puzzle.get("id", ""))
+	var metadata_value: Variant = _difficulty_metadata.get(puzzle_id, {})
+	var metadata: Dictionary = metadata_value if metadata_value is Dictionary else {}
+	puzzle["difficulty"] = clampi(int(metadata.get("tier", DEFAULT_DIFFICULTY_TIER)), 1, 5)
+	puzzle["difficulty_rating"] = clampi(int(metadata.get("rating", DEFAULT_DIFFICULTY_RATING)), 500, 1600)
+	puzzle["difficulty_source"] = "local_metadata" if not metadata.is_empty() else "default"

@@ -40,6 +40,7 @@ var hinted_words_by_row: Dictionary = {}
 var result_correct_count: int = -1
 var result_solved_groups: Array[int] = []
 var result_top_solved: bool = false
+var result_progression: Dictionary = {}
 var tutorial_allowed_words: Array[String] = []
 
 func start_tutorial() -> bool:
@@ -62,6 +63,7 @@ func start_tutorial() -> bool:
 	result_correct_count = -1
 	result_solved_groups.clear()
 	result_top_solved = false
+	result_progression.clear()
 	tutorial_allowed_words.clear()
 	game_started.emit(str(puzzle.get("title", SaveManager.text("tutorial_title"))), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -104,7 +106,12 @@ func start_new_game(mode: String = "daily") -> bool:
 	if game_mode == DAILY_MODE:
 		puzzle = PuzzleLoader.get_daily_puzzle(daily_date)
 	else:
-		puzzle = PuzzleLoader.get_next_unplayed_puzzle(game_mode, played_ids)
+		puzzle = PuzzleLoader.get_next_unplayed_puzzle_for_skill(
+			game_mode,
+			played_ids,
+			SaveManager.get_player_skill_rating(),
+			SaveManager.get_rated_games()
+		)
 	if puzzle.is_empty():
 		puzzle_pool_completed.emit(game_mode)
 		return false
@@ -124,6 +131,7 @@ func start_new_game(mode: String = "daily") -> bool:
 	result_correct_count = -1
 	result_solved_groups.clear()
 	result_top_solved = false
+	result_progression.clear()
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -151,6 +159,8 @@ func view_daily_result() -> bool:
 	result_correct_count = int(saved_result.get("correct_count", _total_word_count() if completed_won else 0))
 	result_solved_groups.assign(_to_int_array(saved_result.get("solved_groups", [])))
 	result_top_solved = bool(saved_result.get("top_solved", completed_won))
+	var saved_progression: Variant = saved_result.get("progression_reward", {})
+	result_progression = saved_progression.duplicate(true) if saved_progression is Dictionary else {}
 	if completed_won and result_solved_groups.is_empty():
 		for index: int in puzzle.get("groups", []).size():
 			result_solved_groups.append(index)
@@ -189,6 +199,7 @@ func restart_current() -> bool:
 	result_correct_count = -1
 	result_solved_groups.clear()
 	result_top_solved = false
+	result_progression.clear()
 	_save_active_game()
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
@@ -214,6 +225,7 @@ func reset_debug_state() -> void:
 	result_correct_count = -1
 	result_solved_groups.clear()
 	result_top_solved = false
+	result_progression.clear()
 	tutorial_allowed_words.clear()
 
 func has_resumable_game(mode: String) -> bool:
@@ -261,6 +273,8 @@ func restore_game() -> bool:
 	is_finished = bool(saved.get("is_finished", false))
 	completed_won = bool(saved.get("completed_won", false))
 	result_top_solved = bool(saved.get("result_top_solved", completed_won))
+	var saved_progression: Variant = saved.get("result_progression", {})
+	result_progression = saved_progression.duplicate(true) if saved_progression is Dictionary else {}
 	if is_finished and result_correct_count < 0:
 		result_correct_count = _total_word_count() if completed_won else _player_correct_count()
 	if is_finished and completed_won and result_solved_groups.is_empty():
@@ -608,10 +622,21 @@ func _finish(won: bool) -> void:
 		tutorial_allowed_words.clear()
 		tutorial_completed.emit()
 		return
+	var solved_row_count: int = result_solved_groups.size() + (1 if result_top_solved else 0)
+	var max_attempts: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var mistakes_used: int = clampi(max_attempts - attempts_left, 0, max_attempts)
+	result_progression = SaveManager.record_progression_result(
+		puzzle,
+		game_mode,
+		won,
+		solved_row_count,
+		mistakes_used,
+		hints_used
+	)
 	_save_active_game()
 	if not won and game_mode == UNLIMITED_MODE:
 		SaveManager.consume_endless_heart()
-	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved)
+	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved, result_progression)
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
 	if game_mode == DAILY_MODE and SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
@@ -645,6 +670,7 @@ func _save_active_game() -> void:
 		"result_correct_count": result_correct_count,
 		"result_solved_groups": result_solved_groups.duplicate(),
 		"result_top_solved": result_top_solved,
+		"result_progression": result_progression.duplicate(true),
 		"hinted_words_by_row": hinted_words_by_row.duplicate(true)
 	}
 	SaveManager.save_data()

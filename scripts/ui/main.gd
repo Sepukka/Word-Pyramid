@@ -288,7 +288,10 @@ func _apply_home_texts() -> void:
 	else:
 		_play_button.text = "Pelaa päivän haaste ->" if is_finnish else "Play Today's Challenge ->"
 	_unlimited_title.text = "∞ %s" % SaveManager.text("unlimited_button")
-	_unlimited_subtitle.text = SaveManager.text("endless_subtitle")
+	_unlimited_subtitle.text = "%s · %s" % [
+		SaveManager.text("endless_subtitle"),
+		SaveManager.text("level_short") % SaveManager.get_player_level()
+	]
 	var hearts: int = SaveManager.get_endless_hearts()
 	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
 	if hearts > 0:
@@ -487,6 +490,8 @@ func show_statistics() -> void:
 	_add_stat(panel, SaveManager.text("wins"), str(wins))
 	_add_stat(panel, SaveManager.text("losses"), str(losses))
 	_add_stat(panel, SaveManager.text("win_rate"), "%d%%" % rate)
+	_add_stat(panel, SaveManager.text("player_level"), str(SaveManager.get_player_level()))
+	_add_stat(panel, SaveManager.text("total_xp"), str(SaveManager.get_total_xp()))
 	_add_stat(panel, SaveManager.text("current_streak"), str(SaveManager.statistics.get("streak", 0)))
 	_add_stat(panel, SaveManager.text("best_streak"), str(SaveManager.statistics.get("best_streak", 0)))
 	var back: Button = _make_button(SaveManager.text("back"))

@@ -392,7 +392,7 @@ func refresh() -> void:
 	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
 	_selection.visible = not is_tutorial
 	_message.text = SaveManager.text("tutorial_select_group") if is_tutorial else (SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message"))
-	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s" % SaveManager.text("unlimited_mode_label").to_upper())
+	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s · %s" % [SaveManager.text("unlimited_mode_label").to_upper(), (SaveManager.text("difficulty_short") % PuzzleLoader.get_difficulty_tier(GameState.puzzle)).to_upper()])
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
 	_build_pyramid()
 	_update_mistakes()
@@ -1313,7 +1313,40 @@ func _show_aftermath(won: bool) -> void:
 	score_badge.add_child(score_margin)
 	var solved_group_score: Label = _aftermath_label("%d / 5  %s" % [solved_row_count, SaveManager.text("stat_rows").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold)
 	solved_group_score.name = "SolvedGroupScore"
-	score_margin.add_child(solved_group_score)
+	var score_stack: VBoxContainer = VBoxContainer.new()
+	score_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	score_stack.add_theme_constant_override("separation", 2)
+	score_margin.add_child(score_stack)
+	score_stack.add_child(solved_group_score)
+	var progression_reward: Dictionary = GameState.result_progression
+	var total_xp_after: int = int(progression_reward.get("total_xp_after", SaveManager.get_total_xp()))
+	var level_after: int = int(progression_reward.get("level_after", SaveManager.get_player_level(total_xp_after)))
+	var xp_gained: int = int(progression_reward.get("xp_gained", 0))
+	var level_before: int = int(progression_reward.get("level_before", level_after))
+	var xp_copy: String = SaveManager.text("level_up") % level_after if level_after > level_before else SaveManager.text("level_short") % level_after
+	if xp_gained > 0:
+		xp_copy = "%s · %s" % [SaveManager.text("xp_earned") % xp_gained, xp_copy]
+	var xp_reward_label: Label = _aftermath_label(xp_copy, 11, Color("67569e"), _font_dm_sans_semibold)
+	xp_reward_label.name = "XpRewardLabel"
+	score_stack.add_child(xp_reward_label)
+	var level_progress: Dictionary = SaveManager.get_level_progress(total_xp_after)
+	var xp_progress: ProgressBar = ProgressBar.new()
+	xp_progress.name = "XpProgress"
+	xp_progress.custom_minimum_size = Vector2(180, 6)
+	xp_progress.max_value = float(level_progress.get("required", 1))
+	xp_progress.value = float(level_progress.get("current", 0))
+	xp_progress.show_percentage = false
+	var xp_background: StyleBoxFlat = StyleBoxFlat.new()
+	xp_background.bg_color = Color("ded5f1")
+	xp_background.corner_radius_top_left = 3
+	xp_background.corner_radius_top_right = 3
+	xp_background.corner_radius_bottom_left = 3
+	xp_background.corner_radius_bottom_right = 3
+	var xp_fill: StyleBoxFlat = xp_background.duplicate()
+	xp_fill.bg_color = UI_MAGENTA
+	xp_progress.add_theme_stylebox_override("background", xp_background)
+	xp_progress.add_theme_stylebox_override("fill", xp_fill)
+	score_stack.add_child(xp_progress)
 
 	card.add_child(_build_aftermath_result_pyramid())
 

@@ -3,6 +3,7 @@ extends Node
 const GAME_BOARD_SCENE: PackedScene = preload("res://scenes/game_board.tscn")
 
 func _ready() -> void:
+	SaveManager.save_path = "res://.godot-test-data/aftermath_save.json"
 	get_tree().root.size = Vector2i(390, 844)
 	var original_language: String = str(SaveManager.settings.get("language", "en"))
 	SaveManager.settings["language"] = "en"
@@ -24,6 +25,12 @@ func _ready() -> void:
 	GameState.attempts_left = 0
 	GameState.hints_used = 1
 	GameState.result_correct_count = 7
+	GameState.result_progression = {
+		"xp_gained": 42,
+		"total_xp_after": 142,
+		"level_before": 1,
+		"level_after": 2,
+	}
 	SaveManager.endless_state = {
 		"date": Time.get_date_string_from_system(),
 		"hearts": SaveManager.ENDLESS_DAILY_HEARTS,
@@ -86,6 +93,10 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	var score: Label = board.find_child("SolvedGroupScore", true, false) as Label
 	var expected_rows: int = GameState.result_solved_groups.size() + (1 if GameState.result_top_solved else 0)
 	assert(score != null and score.text.begins_with("%d / 5" % expected_rows), "Aftermath row score must include the top-word result")
+	var xp_reward: Label = board.find_child("XpRewardLabel", true, false) as Label
+	var xp_progress: ProgressBar = board.find_child("XpProgress", true, false) as ProgressBar
+	assert(xp_reward != null and xp_reward.text.contains("42 XP"), "Aftermath must show the XP earned from this result")
+	assert(xp_progress != null and xp_progress.max_value > 0.0, "Aftermath must show progress toward the next level")
 	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
 	assert(layers.size() == 5, "Result pyramid must mirror all five game-board layers")
 	var total_blocks: int = 0

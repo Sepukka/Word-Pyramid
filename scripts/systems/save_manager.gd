@@ -5,6 +5,16 @@ const SAVE_PATH: String = "user://word_pyramid_save.json"
 const ENDLESS_DAILY_HEARTS: int = 3
 const ONBOARDING_VERSION: int = 1
 const DEFAULT_ONBOARDING: Dictionary = {"version": 0, "language_selected": false}
+const DEFAULT_PROGRESSION: Dictionary = {
+	"total_xp": 0,
+	"skill_rating": 900.0,
+	"rated_games": 0,
+	"puzzle_attempt_counts": {}
+}
+const SKILL_RATING_MIN: float = 500.0
+const SKILL_RATING_MAX: float = 1600.0
+const FIRST_GAMES_K: float = 48.0
+const ESTABLISHED_K: float = 24.0
 const TEXT: Dictionary = {
 	"en": {
 		"settings": "Settings",
@@ -92,6 +102,12 @@ const TEXT: Dictionary = {
 		"stat_groups": "Groups",
 		"stat_rows": "Rows",
 		"stat_hints_used": "Hints used",
+		"level_short": "Level %d",
+		"player_level": "Level",
+		"total_xp": "Total XP",
+		"difficulty_short": "Difficulty %d",
+		"xp_earned": "+%d XP",
+		"level_up": "Level up! %d",
 		"instructions": "Instructions",
 		"instructions_title": "How to play",
 		"instructions_subtitle": "Find and lock all five rows — in any order.",
@@ -246,6 +262,12 @@ const TEXT: Dictionary = {
 		"stat_groups": "Ryhmät",
 		"stat_rows": "Rivit",
 		"stat_hints_used": "Vihjeet",
+		"level_short": "Taso %d",
+		"player_level": "Taso",
+		"total_xp": "XP yhteensä",
+		"difficulty_short": "Vaikeus %d",
+		"xp_earned": "+%d XP",
+		"level_up": "Taso nousi! %d",
 		"instructions": "Ohjeet",
 		"instructions_title": "Näin pelaat",
 		"instructions_subtitle": "Etsi ja lukitse kaikki viisi riviä — missä järjestyksessä tahansa.",
@@ -323,15 +345,18 @@ var daily_results: Dictionary = {}
 var played_puzzle_ids: Dictionary = {"daily": [], "unlimited": []}
 var endless_state: Dictionary = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 var onboarding: Dictionary = DEFAULT_ONBOARDING.duplicate(true)
+var progression: Dictionary = DEFAULT_PROGRESSION.duplicate(true)
+# Tests can redirect writes without changing the production save location.
+var save_path: String = SAVE_PATH
 
 func _ready() -> void:
 	load_data()
 
 func load_data() -> void:
 	reset_to_defaults()
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path):
 		return
-	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var file: FileAccess = FileAccess.open(save_path, FileAccess.READ)
 	if file == null:
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
@@ -345,6 +370,8 @@ func load_data() -> void:
 	played_puzzle_ids = _merge_dictionary(played_puzzle_ids, saved.get("played_puzzle_ids", {}))
 	endless_state = _merge_dictionary(endless_state, saved.get("endless_state", {}))
 	onboarding = _merge_dictionary(onboarding, saved.get("onboarding", {}))
+	progression = _merge_dictionary(progression, saved.get("progression", {}))
+	_sanitize_progression()
 
 func reset_to_defaults() -> void:
 	settings = DEFAULT_SETTINGS.duplicate(true)
@@ -354,15 +381,16 @@ func reset_to_defaults() -> void:
 	played_puzzle_ids = {"daily": [], "unlimited": []}
 	endless_state = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 	onboarding = DEFAULT_ONBOARDING.duplicate(true)
+	progression = DEFAULT_PROGRESSION.duplicate(true)
 
 func reset_all_data() -> void:
 	reset_to_defaults()
 	save_data()
 
 func save_data() -> void:
-	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file: FileAccess = FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
-		push_warning("Could not save data to %s" % SAVE_PATH)
+		push_warning("Could not save data to %s" % save_path)
 		return
 	var data: Dictionary = {
 		"settings": settings,
@@ -371,7 +399,8 @@ func save_data() -> void:
 		"daily_results": daily_results,
 		"played_puzzle_ids": played_puzzle_ids,
 		"endless_state": endless_state,
-		"onboarding": onboarding
+		"onboarding": onboarding,
+		"progression": progression
 	}
 	file.store_string(JSON.stringify(data))
 
@@ -395,7 +424,7 @@ func complete_onboarding() -> void:
 	onboarding["version"] = ONBOARDING_VERSION
 	save_data()
 
-func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false) -> void:
+func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false, progression_reward: Dictionary = {}) -> void:
 	if won:
 		statistics["wins"] = int(statistics.get("wins", 0)) + 1
 		statistics["streak"] = int(statistics.get("streak", 0)) + 1
@@ -410,7 +439,8 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 			"correct_count": correct_count,
 			"total_count": total_count,
 			"solved_groups": solved_groups.duplicate(),
-			"top_solved": top_solved
+			"top_solved": top_solved,
+			"progression_reward": progression_reward.duplicate(true)
 		}
 	save_data()
 
@@ -461,6 +491,99 @@ func consume_daily_streak_animation(day_key: String) -> bool:
 	daily_results[day_key] = result
 	save_data()
 	return true
+
+func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
+	var old_total_xp: int = get_total_xp()
+	var old_level: int = get_player_level(old_total_xp)
+	var old_skill: float = get_player_skill_rating()
+	var tier: int = PuzzleLoader.get_difficulty_tier(puzzle)
+	var puzzle_rating: int = PuzzleLoader.get_effective_difficulty_rating(puzzle)
+	var rows_ratio: float = clampf(float(solved_rows) / 5.0, 0.0, 1.0)
+	var mistake_ratio: float = clampf(float(mistakes_used) / maxf(float(settings.get("attempts", 4)), 1.0), 0.0, 1.0)
+	var hint_ratio: float = clampf(float(hints_used) / 2.0, 0.0, 1.0)
+	var performance: float = clampf(0.55 * (1.0 if won else 0.0) + 0.45 * rows_ratio - 0.08 * mistake_ratio - 0.10 * hint_ratio, 0.0, 1.0)
+	var puzzle_key: String = "%s:%s" % [PuzzleLoader.get_language(), str(puzzle.get("id", ""))]
+	var attempt_counts_value: Variant = progression.get("puzzle_attempt_counts", {})
+	var attempt_counts: Dictionary = attempt_counts_value if attempt_counts_value is Dictionary else {}
+	var previous_attempts: int = maxi(int(attempt_counts.get(puzzle_key, 0)), 0)
+	var repeat_xp_multiplier: float = 1.0 if previous_attempts == 0 else 0.65
+	var raw_xp: float = 30.0 + 10.0 * float(tier) + 25.0 * performance if won else 5.0 + 10.0 * rows_ratio
+	var xp_gained: int = maxi(roundi(raw_xp * repeat_xp_multiplier), 1)
+	var new_total_xp: int = old_total_xp + xp_gained
+	var new_level: int = get_player_level(new_total_xp)
+	var skill_delta: float = 0.0
+	var new_skill: float = old_skill
+	if mode == "unlimited":
+		var rated_games: int = get_rated_games()
+		var expected: float = expected_success(old_skill, float(puzzle_rating))
+		var k_factor: float = FIRST_GAMES_K if rated_games < 10 else ESTABLISHED_K
+		var repeat_rating_multiplier: float = 1.0 if previous_attempts == 0 else 0.35
+		skill_delta = clampf(k_factor * repeat_rating_multiplier * (performance - expected), -32.0, 32.0)
+		new_skill = clampf(old_skill + skill_delta, SKILL_RATING_MIN, SKILL_RATING_MAX)
+		progression["rated_games"] = rated_games + 1
+	progression["total_xp"] = new_total_xp
+	progression["skill_rating"] = new_skill
+	attempt_counts[puzzle_key] = previous_attempts + 1
+	progression["puzzle_attempt_counts"] = attempt_counts
+	var reward: Dictionary = {
+		"xp_gained": xp_gained,
+		"total_xp_before": old_total_xp,
+		"total_xp_after": new_total_xp,
+		"level_before": old_level,
+		"level_after": new_level,
+		"skill_before": old_skill,
+		"skill_after": new_skill,
+		"skill_delta": skill_delta,
+		"performance": performance,
+		"difficulty": tier,
+		"difficulty_rating": puzzle_rating,
+		"repeat_attempt": previous_attempts > 0
+	}
+	save_data()
+	return reward
+
+func get_total_xp() -> int:
+	return maxi(int(progression.get("total_xp", 0)), 0)
+
+func get_player_skill_rating() -> float:
+	return clampf(float(progression.get("skill_rating", 900.0)), SKILL_RATING_MIN, SKILL_RATING_MAX)
+
+func get_rated_games() -> int:
+	return maxi(int(progression.get("rated_games", 0)), 0)
+
+func xp_threshold_for_level(level: int) -> int:
+	return roundi(100.0 * pow(float(maxi(level - 1, 0)), 1.6))
+
+func get_player_level(total_xp: int = -1) -> int:
+	var xp: int = get_total_xp() if total_xp < 0 else maxi(total_xp, 0)
+	var level: int = maxi(floori(pow(float(xp) / 100.0, 1.0 / 1.6)) + 1, 1)
+	while xp >= xp_threshold_for_level(level + 1):
+		level += 1
+	while level > 1 and xp < xp_threshold_for_level(level):
+		level -= 1
+	return level
+
+func get_level_progress(total_xp: int = -1) -> Dictionary:
+	var xp: int = get_total_xp() if total_xp < 0 else maxi(total_xp, 0)
+	var level: int = get_player_level(xp)
+	var current_threshold: int = xp_threshold_for_level(level)
+	var next_threshold: int = xp_threshold_for_level(level + 1)
+	return {
+		"level": level,
+		"current": xp - current_threshold,
+		"required": maxi(next_threshold - current_threshold, 1),
+		"total_xp": xp
+	}
+
+func expected_success(player_rating: float, puzzle_rating: float) -> float:
+	return 1.0 / (1.0 + pow(10.0, (puzzle_rating - player_rating) / 400.0))
+
+func _sanitize_progression() -> void:
+	progression["total_xp"] = get_total_xp()
+	progression["skill_rating"] = get_player_skill_rating()
+	progression["rated_games"] = get_rated_games()
+	if not (progression.get("puzzle_attempt_counts", {}) is Dictionary):
+		progression["puzzle_attempt_counts"] = {}
 
 func get_endless_hearts(day_key: String = "") -> int:
 	_refresh_endless_day(day_key)
