@@ -16,9 +16,9 @@ const MUTED: Color = Color("8b80b6")
 const DARK_MUTED: Color = Color("5d5286")
 
 const VARIANT_NAMES: Array[String] = [
-	"A  Celebration",
-	"B  Pyramid recap",
-	"C  Nordic scorecard",
+	"B1  Home card",
+	"B2  Layered",
+	"B3  Scoreboard",
 ]
 
 var _fredoka_semibold: FontVariation
@@ -99,36 +99,38 @@ func _show_variant(index: int) -> void:
 	tween.tween_property(variant, "position:y", 0.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _build_celebration_dashboard() -> Control:
-	var root: Control = _full_root(PURPLE)
+	var root: Control = _full_root(CREAM)
 	_add_circle(root, Vector2(-42, 92), 128.0, YELLOW)
-	_add_tilted_shape(root, Vector2(324, 126), Vector2(104, 154), LAVENDER, 12.0)
+	_add_tilted_shape(root, Vector2(324, 126), Vector2(104, 154), LAVENDER.lightened(0.12), 12.0)
 
 	var page_margin: MarginContainer = _full_margin(16, 16, 18, 16)
 	root.add_child(page_margin)
 	var page: VBoxContainer = _vbox(12)
+	page.name = "VariantPage"
 	page_margin.add_child(page)
 
 	var eyebrow_row: HBoxContainer = HBoxContainer.new()
 	page.add_child(eyebrow_row)
 	eyebrow_row.add_child(_chip("DAILY CHALLENGE", PURPLE, YELLOW))
 	eyebrow_row.add_child(_spacer(true))
-	var brand: Label = _label("WORD PYRAMID", 12, Color(1, 1, 1, 0.68), _dm_sans_semibold)
+	var brand: Label = _label("WORD PYRAMID", 12, MUTED, _dm_sans_semibold)
 	brand.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	eyebrow_row.add_child(brand)
 
-	var heading: Label = _label("Puzzle complete!", 34, WHITE, _fredoka_bold)
+	var heading: Label = _label("Round complete", 34, PURPLE, _fredoka_bold)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(heading)
-	var subheading: Label = _label("Beautiful work — every group found.", 14, Color(1, 1, 1, 0.72), FONT_DM_SANS)
+	var subheading: Label = _label("Three groups found — here is your pyramid.", 14, DARK_MUTED, FONT_DM_SANS)
 	subheading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(subheading)
 
-	var result_card: PanelContainer = _panel(CREAM, Color(1, 1, 1, 0.18), 28, 0, true)
+	var result_card: PanelContainer = _panel(PURPLE, PURPLE, 28, 0, true)
 	result_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(result_card)
 	var card_margin: MarginContainer = _margin(18, 18, 20, 18)
 	result_card.add_child(card_margin)
 	var card: VBoxContainer = _vbox(14)
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
 	card_margin.add_child(card)
 
 	var score_badge: PanelContainer = _panel(YELLOW, YELLOW, 24, 0)
@@ -140,35 +142,35 @@ func _build_celebration_dashboard() -> Control:
 	score_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	score_row.add_theme_constant_override("separation", 8)
 	score_margin.add_child(score_row)
-	score_row.add_child(_label("✓", 25, PURPLE, _fredoka_bold))
-	score_row.add_child(_label("4 / 4 groups", 23, PURPLE, _fredoka_bold))
+	score_row.add_child(_label("3 / 4 groups", 23, PURPLE, _fredoka_bold))
 
-	var streak: PanelContainer = _panel(PURPLE_SOFT, Color("ded5f6"), 22, 1)
+	card.add_child(_mini_result_pyramid())
+
+	var streak: PanelContainer = _panel(PURPLE_LIGHT, Color("523a9c"), 22, 1)
 	card.add_child(streak)
 	var streak_margin: MarginContainer = _margin(14, 14, 12, 12)
 	streak.add_child(streak_margin)
 	var streak_row: HBoxContainer = HBoxContainer.new()
 	streak_row.add_theme_constant_override("separation", 12)
 	streak_margin.add_child(streak_row)
-	var streak_mark: Label = _label("7", 40, PURPLE, _fredoka_bold)
+	var streak_mark: Label = _label("7", 40, YELLOW, _fredoka_bold)
 	streak_mark.custom_minimum_size.x = 52.0
 	streak_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	streak_row.add_child(streak_mark)
 	var streak_copy: VBoxContainer = _vbox(1)
 	streak_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	streak_row.add_child(streak_copy)
-	streak_copy.add_child(_label("day streak", 20, PURPLE, _fredoka_semibold))
-	streak_copy.add_child(_label("A new personal best", 12, DARK_MUTED, FONT_DM_SANS))
+	streak_copy.add_child(_label("day streak", 20, WHITE, _fredoka_semibold))
+	streak_copy.add_child(_label("Keep it going tomorrow", 12, Color(1, 1, 1, 0.62), FONT_DM_SANS))
 	streak_row.add_child(_chip("BEST", PURPLE, YELLOW))
 
 	var stats: HBoxContainer = HBoxContainer.new()
 	stats.add_theme_constant_override("separation", 8)
 	card.add_child(stats)
-	stats.add_child(_stat_card("1", "MISTAKE", CORAL, CREAM))
-	stats.add_child(_stat_card("4 / 4", "GROUPS", TEAL, CREAM))
+	stats.add_child(_stat_card("4", "MISTAKES", CORAL, CREAM))
+	stats.add_child(_stat_card("3 / 4", "GROUPS", TEAL, CREAM))
 	stats.add_child(_stat_card("1", "HINT", Color("a642df"), CREAM))
 
-	card.add_child(_spacer(false))
 	card.add_child(_primary_button("Continue to unlimited", YELLOW, PURPLE))
 	var actions: HBoxContainer = HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 8)
@@ -176,7 +178,7 @@ func _build_celebration_dashboard() -> Control:
 	actions.add_child(_secondary_button("Share result", PURPLE, CREAM))
 	actions.add_child(_secondary_button("Menu", PURPLE, CREAM))
 
-	page.add_child(_concept_note("A · Strong celebration and clear next action"))
+	page.add_child(_concept_note("B1 · Closest to the purple home challenge card", DARK_MUTED))
 	return root
 
 func _build_pyramid_recap() -> Control:
@@ -191,6 +193,7 @@ func _build_pyramid_recap() -> Control:
 	var page_margin: MarginContainer = _full_margin(16, 16, 18, 16)
 	root.add_child(page_margin)
 	var page: VBoxContainer = _vbox(10)
+	page.name = "VariantPage"
 	page_margin.add_child(page)
 
 	var top_row: HBoxContainer = HBoxContainer.new()
@@ -199,10 +202,10 @@ func _build_pyramid_recap() -> Control:
 	top_row.add_child(_spacer(true))
 	top_row.add_child(_label("Daily · Today", 12, Color(1, 1, 1, 0.70), _dm_sans_semibold))
 
-	var heading: Label = _label("You solved it", 32, WHITE, _fredoka_bold)
+	var heading: Label = _label("Today's result", 32, WHITE, _fredoka_bold)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(heading)
-	var subheading: Label = _label("Your finished pyramid", 13, Color(1, 1, 1, 0.68), FONT_DM_SANS)
+	var subheading: Label = _label("Three groups found", 13, Color(1, 1, 1, 0.68), FONT_DM_SANS)
 	subheading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(subheading)
 
@@ -212,6 +215,7 @@ func _build_pyramid_recap() -> Control:
 	var card_margin: MarginContainer = _margin(18, 18, 18, 16)
 	pyramid_card.add_child(card_margin)
 	var card: VBoxContainer = _vbox(11)
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
 	card_margin.add_child(card)
 
 	card.add_child(_mini_result_pyramid())
@@ -228,7 +232,7 @@ func _build_pyramid_recap() -> Control:
 	var score_box: VBoxContainer = _vbox(0)
 	score_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	score.add_child(score_box)
-	var score_value: Label = _label("100%", 30, YELLOW, _fredoka_bold)
+	var score_value: Label = _label("3 / 4", 30, YELLOW, _fredoka_bold)
 	score_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_box.add_child(score_value)
 	var score_label: Label = _label("COMPLETED", 10, Color(1, 1, 1, 0.62), _dm_sans_semibold)
@@ -237,8 +241,8 @@ func _build_pyramid_recap() -> Control:
 	var metrics: VBoxContainer = _vbox(7)
 	metrics.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	score_row.add_child(metrics)
-	metrics.add_child(_metric_row("Groups", "4 / 4", TEAL))
-	metrics.add_child(_metric_row("Mistakes", "1", CORAL))
+	metrics.add_child(_metric_row("Groups", "3 / 4", TEAL))
+	metrics.add_child(_metric_row("Mistakes", "4", CORAL))
 	metrics.add_child(_metric_row("Hints used", "1", Color("a642df")))
 
 	var streak_band: PanelContainer = _panel(Color("fff7cc"), YELLOW, 20, 1)
@@ -251,10 +255,9 @@ func _build_pyramid_recap() -> Control:
 	streak_row.add_child(_spacer(true))
 	streak_row.add_child(_label("+1 today", 12, DARK_MUTED, _dm_sans_semibold))
 
-	card.add_child(_spacer(false))
 	card.add_child(_primary_button("Share your pyramid", PURPLE, WHITE))
 	card.add_child(_secondary_button("Back to menu", PURPLE, WHITE))
-	page.add_child(_concept_note("B · Makes the completed puzzle the hero", DARK_MUTED))
+	page.add_child(_concept_note("B2 · Layered hero with a bright, compact recap", DARK_MUTED))
 	return root
 
 func _build_nordic_scorecard() -> Control:
@@ -265,6 +268,7 @@ func _build_nordic_scorecard() -> Control:
 	var page_margin: MarginContainer = _full_margin(16, 16, 18, 16)
 	root.add_child(page_margin)
 	var page: VBoxContainer = _vbox(11)
+	page.name = "VariantPage"
 	page_margin.add_child(page)
 
 	var brand_row: HBoxContainer = HBoxContainer.new()
@@ -278,10 +282,10 @@ func _build_nordic_scorecard() -> Control:
 	var overline: Label = _label("TODAY'S RESULT", 11, YELLOW, _dm_sans_semibold)
 	overline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_copy.add_child(overline)
-	var title: Label = _label("Nicely done.", 34, WHITE, _fredoka_bold)
+	var title: Label = _label("So close.", 34, WHITE, _fredoka_bold)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_copy.add_child(title)
-	var subtitle: Label = _label("A calm, complete view of your run.", 13, Color(1, 1, 1, 0.66), FONT_DM_SANS)
+	var subtitle: Label = _label("Your pyramid tells the full story.", 13, Color(1, 1, 1, 0.66), FONT_DM_SANS)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_copy.add_child(subtitle)
 
@@ -291,6 +295,7 @@ func _build_nordic_scorecard() -> Control:
 	var card_margin: MarginContainer = _margin(18, 18, 18, 18)
 	scorecard.add_child(card_margin)
 	var card: VBoxContainer = _vbox(12)
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
 	card_margin.add_child(card)
 
 	var summary: HBoxContainer = HBoxContainer.new()
@@ -302,7 +307,7 @@ func _build_nordic_scorecard() -> Control:
 	var grade_box: VBoxContainer = _vbox(-2)
 	grade_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	grade.add_child(grade_box)
-	var grade_value: Label = _label("4/4", 32, PURPLE, _fredoka_bold)
+	var grade_value: Label = _label("3/4", 32, PURPLE, _fredoka_bold)
 	grade_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	grade_box.add_child(grade_value)
 	var grade_label: Label = _label("GROUPS", 10, PURPLE, _dm_sans_semibold)
@@ -312,57 +317,67 @@ func _build_nordic_scorecard() -> Control:
 	summary_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary_copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	summary.add_child(summary_copy)
-	summary_copy.add_child(_label("Daily complete", 23, PURPLE, _fredoka_bold))
-	summary_copy.add_child(_label("4 of 4 groups found", 13, DARK_MUTED, FONT_DM_SANS))
+	summary_copy.add_child(_label("Round complete", 23, PURPLE, _fredoka_bold))
+	summary_copy.add_child(_label("3 of 4 groups found", 13, DARK_MUTED, FONT_DM_SANS))
 	summary_copy.add_child(_label("7 day streak", 12, TEAL.darkened(0.18), _dm_sans_semibold))
+	card.add_child(_mini_result_pyramid())
 
 	card.add_child(_section_label("YOUR RUN"))
-	card.add_child(_score_bar("Groups found", "4 / 4", 1.0, TEAL))
-	card.add_child(_score_bar("Mistakes", "1", 0.25, CORAL))
+	card.add_child(_score_bar("Groups found", "3 / 4", 0.75, TEAL))
+	card.add_child(_score_bar("Mistakes", "4", 1.0, CORAL))
 	card.add_child(_score_bar("Hints used", "1", 0.50, Color("a642df")))
 
-	card.add_child(_section_label("THIS WEEK"))
-	var week: HBoxContainer = HBoxContainer.new()
-	week.add_theme_constant_override("separation", 6)
-	card.add_child(week)
-	for day: String in ["M", "T", "W", "T", "F", "S", "S"]:
-		var active: bool = week.get_child_count() < 7
-		var day_panel: PanelContainer = _panel(YELLOW if active else PURPLE_SOFT, YELLOW if active else PURPLE_SOFT, 15, 0)
-		day_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		day_panel.custom_minimum_size.y = 34.0
-		week.add_child(day_panel)
-		var day_label: Label = _label(day, 12, PURPLE if active else MUTED, _dm_sans_semibold)
-		day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		day_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		day_panel.add_child(day_label)
-
-	card.add_child(_spacer(false))
 	card.add_child(_primary_button("Continue", YELLOW, PURPLE))
 	var bottom_row: HBoxContainer = HBoxContainer.new()
 	bottom_row.add_theme_constant_override("separation", 8)
 	card.add_child(bottom_row)
 	bottom_row.add_child(_secondary_button("Share", PURPLE, CREAM))
 	bottom_row.add_child(_secondary_button("Menu", PURPLE, CREAM))
-	page.add_child(_concept_note("C · Premium, calm and statistics-forward"))
+	page.add_child(_concept_note("B3 · More game-like, with progress and weekly context"))
 	return root
 
 func _mini_result_pyramid() -> VBoxContainer:
+	var component: VBoxContainer = _vbox(8)
 	var pyramid: VBoxContainer = _vbox(4)
-	for row_size: int in [1, 2, 3, 4]:
+	pyramid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	component.add_child(pyramid)
+	var row_colors: Array[Color] = [Color("a642df"), CORAL, TEAL, YELLOW, Color("8f79c9")]
+	for row_size: int in [1, 2, 3, 4, 5]:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
+		var group_found: bool = row_size >= 2 and row_size <= 4
+		var fill: Color = row_colors[row_size - 1] if group_found else Color("e5dff2")
+		var border: Color = fill if group_found else CORAL
+		var mark_text: String = "✓" if group_found else "×"
+		var mark_color: Color = WHITE if group_found and row_size < 4 else PURPLE if group_found else CORAL
 		for tile_index: int in row_size:
-			var colors: Array[Color] = [Color("9c5df2"), CORAL, TEAL, YELLOW]
-			var tile: PanelContainer = _panel(colors[row_size - 1], colors[row_size - 1], 9, 0)
-			tile.custom_minimum_size = Vector2(48, 30)
+			var tile: PanelContainer = _panel(fill, border, 9, 2 if not group_found else 0)
+			tile.custom_minimum_size = Vector2(44, 27)
 			row.add_child(tile)
-			var mark: Label = _label("✓", 15, WHITE if row_size < 4 else PURPLE, _fredoka_bold)
+			var mark: Label = _label(mark_text, 14, mark_color, _fredoka_bold)
 			mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			tile.add_child(mark)
-	return pyramid
+	var legend: HBoxContainer = HBoxContainer.new()
+	legend.alignment = BoxContainer.ALIGNMENT_CENTER
+	legend.add_theme_constant_override("separation", 14)
+	component.add_child(legend)
+	legend.add_child(_legend_item(TEAL, "Found"))
+	legend.add_child(_legend_item(CORAL, "Missed"))
+	return component
+
+func _legend_item(color: Color, text_value: String) -> HBoxContainer:
+	var item: HBoxContainer = HBoxContainer.new()
+	item.add_theme_constant_override("separation", 5)
+	var dot: Panel = Panel.new()
+	dot.custom_minimum_size = Vector2(9, 9)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dot.add_theme_stylebox_override("panel", _style(color, color, 5, 0))
+	item.add_child(dot)
+	item.add_child(_label(text_value, 10, MUTED, _dm_sans_semibold))
+	return item
 
 func _stat_card(value_text: String, caption: String, accent: Color, background: Color) -> PanelContainer:
 	var stat: PanelContainer = _panel(background, Color("e5def1"), 18, 1)
