@@ -1654,8 +1654,8 @@ func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) 
 		# Keep the prompt visibly alive instead of relying on a one-time scale
 		# change that is easy to miss on a phone-sized tile.
 		tween.set_loops()
-		tween.tween_property(control, "scale", Vector2(1.06, 1.06), 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tween.tween_property(control, "scale", Vector2(1.025, 1.025), 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(control, "scale", Vector2(1.06, 1.06), 0.50).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(control, "scale", Vector2(1.025, 1.025), 0.60).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	else:
 		tween.tween_property(control, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tween.tween_callback(func() -> void: _tutorial_focus_tweens.erase(key))
