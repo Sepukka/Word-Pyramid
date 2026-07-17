@@ -309,6 +309,30 @@ func request_hint() -> void:
 	if hints_used >= hint_limit and not rewarded_hint_claimed:
 		rewarded_hint_required.emit()
 		return
+	var target: Dictionary = _find_next_hint_target()
+	if target.is_empty():
+		return
+	var group: Dictionary = target["group"]
+	var row_length: int = int(target["row_length"])
+	var hinted_word: String = str(target["word"])
+	var existing_hints: Array[String] = get_hint_words_for_row(row_length)
+	# A hint tile becomes locked and cannot remain part of the player's active
+	# selection. Remove it first so visual and gameplay state stay synchronized.
+	if selected_words.has(hinted_word):
+		selected_words.erase(hinted_word)
+		last_failed_active = false
+	existing_hints.append(hinted_word)
+	hinted_words_by_row[row_length] = existing_hints
+	_unlock_newly_valid_hint_guess(group)
+	hints_used += 1
+	_save_active_game()
+	hint_placed.emit(hinted_word, row_length)
+	hint_provided.emit(SaveManager.text("hint_placed") % hinted_word)
+	hint_count_changed.emit(hints_used, hint_limit)
+	selection_changed.emit(selected_words)
+
+func _find_next_hint_target() -> Dictionary:
+	var candidates: Dictionary = {}
 	for row_length: int in [5, 4, 3, 2]:
 		for index: int in puzzle.get("groups", []).size():
 			if solved_groups.has(index):
@@ -317,32 +341,46 @@ func request_hint() -> void:
 			if int(group.get("size", 0)) != row_length:
 				continue
 			var words: Array[String] = _to_string_array(group.get("words", []))
-			if words.is_empty():
-				continue
 			var existing_hints: Array[String] = get_hint_words_for_row(row_length)
 			var hinted_word: String = ""
 			for candidate: String in words:
 				if not existing_hints.has(candidate):
 					hinted_word = candidate
 					break
-			if hinted_word.is_empty():
-				continue
-			# A hint tile becomes locked and cannot remain part of the player's
-			# active selection. Remove it first so the visible selected state and
-			# the underlying selection always stay in sync.
-			if selected_words.has(hinted_word):
-				selected_words.erase(hinted_word)
-				last_failed_active = false
-			existing_hints.append(hinted_word)
-			hinted_words_by_row[row_length] = existing_hints
-			_unlock_newly_valid_hint_guess(group)
-			hints_used += 1
-			_save_active_game()
-			hint_placed.emit(hinted_word, row_length)
-			hint_provided.emit(SaveManager.text("hint_placed") % hinted_word)
-			hint_count_changed.emit(hints_used, hint_limit)
-			selection_changed.emit(selected_words)
-			return
+			if not hinted_word.is_empty():
+				candidates[row_length] = {
+					"group": group,
+					"row_length": row_length,
+					"word": hinted_word,
+					"word_count": words.size(),
+					"hint_count": existing_hints.size(),
+				}
+			break
+	# First distribute hints across separate rows, from the bottom upward.
+	for row_length: int in [5, 4, 3, 2]:
+		if candidates.has(row_length) and int((candidates[row_length] as Dictionary)["hint_count"]) == 0:
+			return candidates[row_length]
+	# Once each available row has a hint, repeat the least-hinted rows first.
+	# Never complete a row using hints while another non-completing option exists.
+	var best: Dictionary = {}
+	var best_hint_count: int = 1000000
+	for row_length: int in [5, 4, 3, 2]:
+		if not candidates.has(row_length):
+			continue
+		var candidate: Dictionary = candidates[row_length]
+		var candidate_hint_count: int = int(candidate["hint_count"])
+		if candidate_hint_count + 1 >= int(candidate["word_count"]):
+			continue
+		if candidate_hint_count < best_hint_count:
+			best = candidate
+			best_hint_count = candidate_hint_count
+	if not best.is_empty():
+		return best
+	# If every remaining option would finish its row, keep bottom-to-top order.
+	for row_length: int in [5, 4, 3, 2]:
+		if candidates.has(row_length):
+			return candidates[row_length]
+	return {}
 
 func grant_rewarded_hint() -> void:
 	if is_finished or is_auto_solving or game_mode == "unlimited" or rewarded_hint_claimed:

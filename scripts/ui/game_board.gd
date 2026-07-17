@@ -524,6 +524,9 @@ func _on_word_tile_pressed(tile: Button, word: String) -> void:
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
+	tile.name = "HintedTile_%d" % row_length
+	tile.set_meta("hinted", true)
+	tile.set_meta("row_length", row_length)
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
 	tile.text = _display_word(word)
 	tile.disabled = true
@@ -532,8 +535,10 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
-	tile.add_theme_color_override("font_disabled_color", UI_TEXT)
-	tile.add_theme_stylebox_override("disabled", _tile_style(UI_SURFACE, UI_BORDER))
+	# Hinted tiles are rebuilt whenever the board refreshes. Apply the row style
+	# to the disabled state itself so the locked color survives that rebuild.
+	tile.add_theme_color_override("font_disabled_color", _row_text(row_length))
+	tile.add_theme_stylebox_override("disabled", _tile_style(_row_fill(row_length), _row_border(row_length)))
 	tile.tooltip_text = SaveManager.text("hint_tooltip")
 	return tile
 
