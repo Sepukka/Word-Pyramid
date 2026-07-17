@@ -22,6 +22,10 @@ func _ready() -> void:
 			assert(page.get_combined_minimum_size().y <= 758.0, "Instructions variant %d overflows phone height in %s" % [variant_index, language])
 			var back: Button = demo.find_child("BackToGame", true, false) as Button
 			assert(back != null and back.visible, "Instructions variant %d has no return button" % variant_index)
+			if variant_index < 2:
+				assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions variant %d lacks a concrete word example" % variant_index)
+			else:
+				assert(demo.find_child("LabeledPyramid", true, false) != null, "Quick-reference variant lacks the labeled pyramid")
 		demo.queue_free()
 		await get_tree().process_frame
 
