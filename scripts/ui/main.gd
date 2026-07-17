@@ -244,11 +244,13 @@ func _apply_unlimited_button_style() -> void:
 	_unlimited_button.add_theme_font_size_override("font_size", 16)
 	_unlimited_button.add_theme_constant_override("outline_size", 0)
 	for heart_node: Node in _endless_hearts_row.get_children():
-		var heart: Label = heart_node as Label
-		heart.add_theme_font_override("font", _font_fredoka_bold)
-		heart.add_theme_font_size_override("font_size", 24)
-		heart.add_theme_color_override("font_outline_color", UI_PRIMARY)
-		heart.add_theme_constant_override("outline_size", 1)
+		var heart := heart_node as TextureRect
+		if heart == null:
+			continue
+		heart.custom_minimum_size = Vector2(26, 24)
+		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		heart.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _apply_endless_status_style() -> void:
 	_endless_heart_label.add_theme_font_override("font", _font_dm_sans_semibold)
@@ -319,9 +321,12 @@ func _apply_home_texts() -> void:
 func _update_home_heart_icons(hearts: int) -> void:
 	var index: int = 0
 	for heart_node: Node in _endless_hearts_row.get_children():
-		var heart: Label = heart_node as Label
-		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
-		heart.modulate.a = 1.0 if index < hearts else 0.48
+		var heart := heart_node as TextureRect
+		if heart == null:
+			continue
+		var heart_color: Color = UI_RED if index < hearts else Color("c9c3da")
+		heart_color.a = 1.0 if index < hearts else 0.48
+		heart.modulate = heart_color
 		index += 1
 
 func _on_endless_countdown_tick() -> void:

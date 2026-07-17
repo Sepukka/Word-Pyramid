@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dgsmu2t5m8jkd" path="res://scripts/ui/main.gd" id="1_main"]
 [ext_resource type="Texture2D" uid="uid://ccgbysyxddyrb" path="res://assets/home_background_logo.png" id="2_art"]
+[ext_resource type="Texture2D" path="res://assets/heart.svg" id="3_heart"]
 
 [node name="Main" type="Control" unique_id=1563371808]
 layout_mode = 3
@@ -226,20 +227,32 @@ text = "Endless word pyramids"
 
 [node name="Hearts" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header"]
 layout_mode = 2
-theme_override_constants/separation = 5
+theme_override_constants/separation = 6
 alignment = 1
 
-[node name="Heart1" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+[node name="Heart1" type="TextureRect" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+custom_minimum_size = Vector2(26, 24)
 layout_mode = 2
-text = "♥"
+mouse_filter = 2
+texture = ExtResource("3_heart")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="Heart2" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+[node name="Heart2" type="TextureRect" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+custom_minimum_size = Vector2(26, 24)
 layout_mode = 2
-text = "♥"
+mouse_filter = 2
+texture = ExtResource("3_heart")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="Heart3" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+[node name="Heart3" type="TextureRect" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/Hearts"]
+custom_minimum_size = Vector2(26, 24)
 layout_mode = 2
-text = "♥"
+mouse_filter = 2
+texture = ExtResource("3_heart")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="UnlimitedButton" type="Button" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent" unique_id=439591078]
 custom_minimum_size = Vector2(0, 48)
@@ -262,7 +275,7 @@ vertical_alignment = 1
 [node name="RewardHeartButton" type="Button" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus"]
 custom_minimum_size = Vector2(142, 34)
 layout_mode = 2
-text = "Watch ad  +1 ♥"
+text = "Watch ad  +1 heart"
 
 [node name="HintSpacer" type="Control" parent="HomeLayer/Content" unique_id=1657566125]
 custom_minimum_size = Vector2(0, 4)
