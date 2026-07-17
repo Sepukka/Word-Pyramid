@@ -5,7 +5,8 @@ const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const PURPLE: Color = Color("1a0a5e")
 const YELLOW: Color = Color("ffd600")
 const MUTED: Color = Color("d9d1f3")
-const TILE_SIZE: float = 72.0
+const TILE_WIDTH: float = 70.0
+const TILE_HEIGHT: float = 91.0
 const SAMPLE_WORDS: Array[String] = [
 	"KAUNOKIRJALLISUUS",
 	"SUOSIONOSOITUKSET",
@@ -51,7 +52,7 @@ func _build() -> void:
 	var title: Label = _label("Long-word tile comparison", 25, Color.WHITE, _fredoka_semibold)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	page.add_child(title)
-	var intro: Label = _label("Same 72 × 72 px blocks and the same words in every option. Compare clarity, wrapping, and personality.", 13, MUTED, FONT_DM_SANS)
+	var intro: Label = _label("Same 70 × 91 px blocks used by the 1.0.2 phone layout and the same words in every option. Compare clarity, wrapping, and personality.", 13, MUTED, FONT_DM_SANS)
 	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	page.add_child(intro)
@@ -91,7 +92,7 @@ func _add_variant(parent: VBoxContainer, heading: String, description: String, f
 
 func _sample_tile(word: String, font: Font, font_size: int, balanced_wrap: bool, outlined: bool) -> Button:
 	var tile: Button = Button.new()
-	tile.custom_minimum_size = Vector2(TILE_SIZE, TILE_SIZE)
+	tile.custom_minimum_size = Vector2(TILE_WIDTH, TILE_HEIGHT)
 	tile.text = _balanced_two_lines(word) if balanced_wrap else word
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
