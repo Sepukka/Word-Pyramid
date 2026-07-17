@@ -24,9 +24,6 @@ const UI_YELLOW: Color = Color("ffd600")
 const UI_MAGENTA: Color = Color("b939ff")
 const UI_RED: Color = Color("ff5533")
 const UI_TEAL: Color = Color("00bfa5")
-const UI_MINT: Color = Color("9ee3cf")
-const UI_LAVENDER: Color = Color("c9b8ff")
-const UI_PEACH: Color = Color("ffb49f")
 const SELECTED_FILL: Color = UI_PRIMARY
 const SELECTED_BORDER: Color = UI_PRIMARY
 const WRONG_TILE_FILL: Color = Color("fff2ee")
@@ -159,7 +156,6 @@ func _build() -> void:
 	page.add_theme_constant_override("separation", 10)
 	page_margin.add_child(page)
 	var header_card: PanelContainer = PanelContainer.new()
-	header_card.name = "GameHeader"
 	header_card.add_theme_stylebox_override("panel", _header_card_style())
 	page.add_child(header_card)
 	var header_margin: MarginContainer = MarginContainer.new()
@@ -175,7 +171,7 @@ func _build() -> void:
 	top_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	top_bar.add_theme_constant_override("separation", 10)
 	header_content.add_child(top_bar)
-	var header_side_width: float = 104.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 96.0
+	var header_side_width: float = 104.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 78.0
 	var back: Button = Button.new()
 	back.text = SaveManager.text("tutorial_skip") if GameState.game_mode == GameState.TUTORIAL_MODE else "←  " + SaveManager.text("back")
 	back.custom_minimum_size = Vector2(header_side_width, 36)
@@ -202,7 +198,7 @@ func _build() -> void:
 	game_title.text = "▲  Word Pyramid"
 	game_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	game_title.add_theme_font_override("font", _font_fredoka_bold)
-	game_title.add_theme_font_size_override("font_size", 18)
+	game_title.add_theme_font_size_override("font_size", 21)
 	game_title.add_theme_color_override("font_color", Color.WHITE)
 	title_stack.add_child(game_title)
 	_mode_label = Label.new()
@@ -211,32 +207,12 @@ func _build() -> void:
 	_mode_label.add_theme_font_size_override("font_size", 10)
 	_mode_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.62))
 	title_stack.add_child(_mode_label)
-	var header_right: HBoxContainer = HBoxContainer.new()
-	header_right.custom_minimum_size = Vector2(header_side_width, 36)
-	header_right.alignment = BoxContainer.ALIGNMENT_END
-	header_right.add_theme_constant_override("separation", 6)
-	top_bar.add_child(header_right)
 	_endless_header_hearts = HBoxContainer.new()
-	_endless_header_hearts.custom_minimum_size = Vector2(50, 34)
+	# Match the back-button width so the title remains geometrically centered.
+	_endless_header_hearts.custom_minimum_size = Vector2(header_side_width, 36)
 	_endless_header_hearts.alignment = BoxContainer.ALIGNMENT_END
-	_endless_header_hearts.add_theme_constant_override("separation", 2)
-	header_right.add_child(_endless_header_hearts)
-	var help: Button = Button.new()
-	help.name = "HelpButton"
-	help.text = "?"
-	help.tooltip_text = SaveManager.text("instructions")
-	help.custom_minimum_size = Vector2(34, 34)
-	help.add_theme_font_override("font", _font_fredoka_bold)
-	help.add_theme_font_size_override("font_size", 16)
-	help.add_theme_color_override("font_color", UI_PRIMARY)
-	help.add_theme_color_override("font_hover_color", UI_PRIMARY)
-	help.add_theme_color_override("font_pressed_color", UI_PRIMARY)
-	help.add_theme_stylebox_override("normal", _header_help_style(Color.WHITE))
-	help.add_theme_stylebox_override("hover", _header_help_style(UI_YELLOW))
-	help.add_theme_stylebox_override("pressed", _header_help_style(Color("e9c400")))
-	help.pressed.connect(_show_instructions)
-	help.visible = GameState.game_mode != GameState.TUTORIAL_MODE
-	header_right.add_child(help)
+	_endless_header_hearts.add_theme_constant_override("separation", 3)
+	top_bar.add_child(_endless_header_hearts)
 	_puzzle_title = Label.new()
 	_puzzle_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_puzzle_title.add_theme_font_override("font", _font_fredoka_bold)
@@ -257,6 +233,23 @@ func _build() -> void:
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 8)
 	margin.add_child(content)
+	var top: HBoxContainer = HBoxContainer.new()
+	content.add_child(top)
+	var spacer: Control = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
+	var instructions: Button = Button.new()
+	instructions.text = "?  " + SaveManager.text("instructions")
+	instructions.add_theme_font_override("font", _font_dm_sans_semibold)
+	instructions.add_theme_font_size_override("font_size", 12)
+	instructions.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	instructions.add_theme_color_override("font_hover_color", UI_TEXT)
+	instructions.add_theme_stylebox_override("normal", _small_pill_style(Color("f4f0ff"), UI_BORDER))
+	instructions.add_theme_stylebox_override("hover", _small_pill_style(Color("ebe4fb"), Color("bcaef0")))
+	instructions.add_theme_stylebox_override("pressed", _small_pill_style(Color("e1d8f5"), Color("a99be0")))
+	instructions.pressed.connect(_show_instructions)
+	instructions.visible = GameState.game_mode != GameState.TUTORIAL_MODE
+	top.add_child(instructions)
 	var title: Label = Label.new()
 	title.text = SaveManager.text("board_title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -297,22 +290,11 @@ func _build() -> void:
 	_selection.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	_selection.add_theme_font_size_override("font_size", 12)
 	content.add_child(_selection)
-	var pyramid_card: PanelContainer = PanelContainer.new()
-	pyramid_card.name = "PyramidCard"
-	pyramid_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	pyramid_card.add_theme_stylebox_override("panel", _pyramid_card_style())
-	content.add_child(pyramid_card)
-	var pyramid_margin: MarginContainer = MarginContainer.new()
-	pyramid_margin.add_theme_constant_override("margin_left", 10)
-	pyramid_margin.add_theme_constant_override("margin_right", 10)
-	pyramid_margin.add_theme_constant_override("margin_top", 12)
-	pyramid_margin.add_theme_constant_override("margin_bottom", 12)
-	pyramid_card.add_child(pyramid_margin)
 	_pyramid = VBoxContainer.new()
 	_pyramid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_pyramid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_pyramid.add_theme_constant_override("separation", TILE_GAP)
-	pyramid_margin.add_child(_pyramid)
+	content.add_child(_pyramid)
 	_lives_row = HBoxContainer.new()
 	_lives_row.custom_minimum_size = Vector2(0, 14)
 	_lives_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -320,7 +302,6 @@ func _build() -> void:
 	_lives_row.add_theme_constant_override("separation", 7)
 	content.add_child(_lives_row)
 	var action_dock: PanelContainer = PanelContainer.new()
-	action_dock.name = "ActionDock"
 	action_dock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	action_dock.add_theme_stylebox_override("panel", _action_dock_style())
 	content.add_child(action_dock)
@@ -330,10 +311,19 @@ func _build() -> void:
 	dock_margin.add_theme_constant_override("margin_top", 10)
 	dock_margin.add_theme_constant_override("margin_bottom", 12)
 	action_dock.add_child(dock_margin)
+	var dock_content: VBoxContainer = VBoxContainer.new()
+	dock_content.add_theme_constant_override("separation", 7)
+	dock_margin.add_child(dock_content)
+	_mistakes = Label.new()
+	_mistakes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mistakes.add_theme_font_override("font", _font_dm_sans_semibold)
+	_mistakes.add_theme_font_size_override("font_size", 12)
+	_mistakes.add_theme_color_override("font_color", Color(1, 1, 1, 0.68))
+	dock_content.add_child(_mistakes)
 	var action_row: HBoxContainer = HBoxContainer.new()
 	action_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_row.add_theme_constant_override("separation", 8)
-	dock_margin.add_child(action_row)
+	action_row.add_theme_constant_override("separation", 10)
+	dock_content.add_child(action_row)
 	_hint = _action_button(_hint_button_label(SaveManager.text("hint_count") % 2))
 	_hint.pressed.connect(_on_hint_pressed)
 	action_row.add_child(_hint)
@@ -341,14 +331,6 @@ func _build() -> void:
 	_clear.pressed.connect(GameState.clear_selection)
 	_clear.visible = false
 	action_row.add_child(_clear)
-	_mistakes = Label.new()
-	_mistakes.custom_minimum_size = Vector2(62, 0)
-	_mistakes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_mistakes.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_mistakes.add_theme_font_override("font", _font_fredoka_semibold)
-	_mistakes.add_theme_font_size_override("font_size", 13)
-	_mistakes.add_theme_color_override("font_color", UI_PEACH)
-	action_row.add_child(_mistakes)
 	_check = _action_button("✓  " + SaveManager.text("check"), true)
 	_check.pressed.connect(_on_check_pressed)
 	action_row.add_child(_check)
@@ -508,7 +490,6 @@ func _build_pyramid() -> void:
 			tile_wrapper.add_child(tile)
 			tile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			tile.set_meta("row_length", row_length)
-			_apply_word_tile_visual(tile, false)
 			_word_buttons[word] = tile
 			_word_tile_wrappers[word] = tile_wrapper
 	_layout_for_width()
@@ -548,10 +529,8 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
-	tile.add_theme_color_override("font_disabled_color", UI_TEXT)
-	var hinted_style: StyleBoxFlat = _tile_style(Color("fffdf8"), _row_tile_outline(row_length))
-	hinted_style.set_border_width_all(2)
-	tile.add_theme_stylebox_override("disabled", hinted_style)
+	tile.add_theme_color_override("font_disabled_color", _row_text(row_length))
+	tile.add_theme_stylebox_override("disabled", _tile_style(_row_fill(row_length), _row_border(row_length)))
 	tile.tooltip_text = SaveManager.text("hint_tooltip")
 	return tile
 
@@ -640,8 +619,8 @@ func _layout_for_width() -> void:
 	# The five-word row already consumes the available width on phones. Grow the
 	# pyramid vertically instead, while every tier keeps the same block height
 	# and centered 1-2-3-4-5 geometry.
-	var reserved_height: float = 430.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 405.0
-	var pyramid_height: float = clampf(size.y - reserved_height, 275.0, 455.0)
+	var reserved_height: float = 425.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 400.0
+	var pyramid_height: float = clampf(size.y - reserved_height, 280.0, 460.0)
 	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
@@ -674,19 +653,14 @@ func _layout_for_width() -> void:
 		var row_width: float = tile_size * row_length + TILE_GAP * float(row_length - 1)
 		row_wrapper.custom_minimum_size = Vector2(row_width, tile_height)
 		row_wrapper.size = Vector2(row_width, tile_height)
-	# During play the compact mistakes counter sits between Hint and Check. Result
-	# actions still use balanced half-width buttons after that counter is hidden.
+	# The dock has 10 px inner margins on both sides and a 10 px button gap.
 	var action_width: float = clampf((usable_width - 34.0) / 2.0, 130.0, 260.0)
 	for action_button: Button in _action_buttons:
 		action_button.custom_minimum_size = Vector2(action_width, 52.0)
 		action_button.add_theme_font_size_override("font_size", 16)
-	var hint_width: float = clampf(usable_width * 0.27, 78.0, 92.0)
-	var mistakes_width: float = clampf(usable_width * 0.18, 54.0, 64.0)
-	var check_width: float = maxf(usable_width - 24.0 - hint_width - mistakes_width - 16.0, 94.0)
-	_hint.custom_minimum_size = Vector2(hint_width, 52.0)
+	_hint.custom_minimum_size = Vector2(82.0, 52.0)
 	_hint.add_theme_font_size_override("font_size", 14)
-	_mistakes.custom_minimum_size = Vector2(mistakes_width, 52.0)
-	_check.custom_minimum_size = Vector2(check_width, 52.0)
+	_check.custom_minimum_size = Vector2(max(usable_width - 116.0, 180.0), 52.0)
 	_check.add_theme_font_size_override("font_size", 17)
 
 func _tile_font_size(word: String, tile_size: float) -> int:
@@ -725,8 +699,7 @@ func _update_mistakes() -> void:
 	_mistakes.visible = true
 	_lives_row.visible = true
 	var maximum: int = int(SaveManager.settings.get("attempts", 4))
-	_mistakes.text = "✕  %d/%d" % [GameState.attempts_left, maximum]
-	_mistakes.tooltip_text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
+	_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
 	_update_lives(maximum - GameState.attempts_left, maximum)
 	_update_endless_header_hearts()
 
@@ -745,8 +718,8 @@ func _update_endless_header_hearts() -> void:
 		heart.add_theme_font_override("font", _font_fredoka_bold)
 		heart.add_theme_font_size_override("font_size", 18)
 		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
-		heart.add_theme_color_override("font_outline_color", Color("341769"))
-		heart.add_theme_constant_override("outline_size", 2)
+		heart.add_theme_color_override("font_outline_color", UI_PRIMARY)
+		heart.add_theme_constant_override("outline_size", 1)
 		heart.modulate.a = 1.0 if index < hearts else 0.42
 		_endless_header_hearts.add_child(heart)
 
@@ -1066,24 +1039,22 @@ func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) 
 		style = _selected_tile_style()
 		text_color = Color.WHITE
 	else:
-		style = _tile_style(UI_SURFACE, _row_tile_outline(int(tile.get_meta("row_length", 0))))
+		style = _tile_style(UI_SURFACE, UI_BORDER)
 		text_color = UI_TEXT
 	tile.add_theme_stylebox_override("normal", style)
 	tile.add_theme_stylebox_override("pressed", style)
 	tile.add_theme_stylebox_override("hover_pressed", style)
 	tile.add_theme_stylebox_override("disabled", style)
-	var hover_style: StyleBoxFlat = _tile_style(UI_SURFACE, _row_tile_outline(int(tile.get_meta("row_length", 0))))
-	hover_style.set_border_width_all(2)
-	tile.add_theme_stylebox_override("hover", style if selected or wrong else hover_style)
+	tile.add_theme_stylebox_override("hover", style if selected or wrong else _tile_style(UI_SURFACE, Color("a89dd4")))
 	_apply_tile_text_colors(tile, text_color)
 	tile.add_theme_color_override("font_disabled_color", text_color)
 
 func _selected_tile_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = _tile_style(SELECTED_FILL, UI_LAVENDER)
+	var style: StyleBoxFlat = _tile_style(SELECTED_FILL, SELECTED_BORDER)
 	style.set_border_width_all(2)
-	style.shadow_color = Color(0.79, 0.72, 1.0, 0.42)
-	style.shadow_size = 10
-	style.shadow_offset = Vector2(0, 6)
+	style.shadow_color = Color(0.102, 0.039, 0.369, 0.32)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 8)
 	return style
 
 func _tutorial_tile_style() -> StyleBoxFlat:
@@ -1149,7 +1120,6 @@ func _show_play_actions() -> void:
 	_clear.visible = false
 	_result.visible = false
 	_share.visible = false
-	_mistakes.visible = GameState.game_mode != GameState.TUTORIAL_MODE
 	_hint.disabled = false
 	_check.disabled = not GameState.can_check_selection()
 
@@ -1159,7 +1129,6 @@ func _show_result_actions() -> void:
 	_clear.visible = false
 	_result.visible = true
 	_share.visible = true
-	_mistakes.visible = false
 	_result.disabled = false
 	_share.disabled = false
 	_result.text = "▦  " + _result_score_text()
@@ -2049,13 +2018,11 @@ func _create_game_decor() -> Control:
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(base)
-	# A restrained set of Nordic-inspired shapes keeps the warm background playful
-	# without competing with the word tiles.
-	_add_game_decor_shape(layer, Vector2(-48, -42), Vector2(142, 142), UI_YELLOW, 0.16, 71)
-	_add_game_decor_shape(layer, Vector2(size.x - 72, 112), Vector2(92, 44), UI_MINT, 0.18, 18, -8.0)
-	_add_game_decor_shape(layer, Vector2(-18, size.y * 0.43), Vector2(54, 54), UI_LAVENDER, 0.16, 8, 45.0)
-	_add_game_decor_shape(layer, Vector2(size.x - 84, size.y - 122), Vector2(112, 96), UI_PEACH, 0.14, 48, 12.0)
-	_add_game_decor_shape(layer, Vector2(30, size.y - 76), Vector2(28, 28), UI_MINT, 0.14, 14)
+	_add_game_decor_shape(layer, Vector2(-52, -42), Vector2(150, 150), UI_YELLOW, 0.18, 75)
+	_add_game_decor_shape(layer, Vector2(size.x - 82, 92), Vector2(74, 74), UI_MAGENTA, 0.10, 18, 16.0)
+	_add_game_decor_shape(layer, Vector2(-18, size.y * 0.47), Vector2(64, 64), UI_TEAL, 0.09, 32)
+	_add_game_decor_shape(layer, Vector2(size.x - 88, size.y - 126), Vector2(112, 112), UI_RED, 0.11, 56)
+	_add_game_decor_shape(layer, Vector2(26, size.y - 92), Vector2(28, 28), UI_MAGENTA, 0.08, 14, -12.0)
 	return layer
 
 func _add_game_decor_shape(parent: Control, position: Vector2, shape_size: Vector2, color: Color, alpha: float, radius: int, rotation_value: float = 0.0) -> void:
@@ -2080,7 +2047,7 @@ func _header_card_style() -> StyleBoxFlat:
 	style.bg_color = UI_PRIMARY
 	style.border_color = Color("3a2874")
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(24)
+	style.set_corner_radius_all(22)
 	style.shadow_color = Color(0.10, 0.04, 0.37, 0.20)
 	style.shadow_size = 10
 	style.shadow_offset = Vector2(0, 6)
@@ -2098,15 +2065,16 @@ func _header_button_style(fill: Color) -> StyleBoxFlat:
 	style.content_margin_bottom = 6
 	return style
 
-func _header_help_style(fill: Color) -> StyleBoxFlat:
+func _small_pill_style(fill: Color, border: Color) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = fill
-	style.border_color = Color(1, 1, 1, 0.42)
+	style.border_color = border
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(17)
-	style.shadow_color = Color(0.04, 0.01, 0.18, 0.20)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(0, 2)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
 	return style
 
 func _card_style() -> StyleBoxFlat:
@@ -2114,7 +2082,7 @@ func _card_style() -> StyleBoxFlat:
 	style.bg_color = Color(1, 1, 1, 0.94)
 	style.border_color = Color("e9e3f7")
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(28)
+	style.set_corner_radius_all(24)
 	style.shadow_color = Color(0.10, 0.04, 0.37, 0.12)
 	style.shadow_size = 12
 	style.shadow_offset = Vector2(0, 7)
@@ -2150,26 +2118,18 @@ func _life_dot_style(used: bool) -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 1)
 	return style
 
-func _pyramid_card_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = UI_PRIMARY
-	style.border_color = Color("3b2877")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(26)
-	style.shadow_color = Color(0.10, 0.04, 0.37, 0.22)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(0, 7)
-	return style
-
 func _row_band_style(row_length: int) -> StyleBoxFlat:
+	var colors: Dictionary = {
+		1: Color("f3efff"),
+		2: Color("fff0f4"),
+		3: Color("fff3e8"),
+		4: Color("ebfaf7"),
+		5: Color("fff8dc"),
+	}
 	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0.045)
-	var outline: Color = _row_tile_outline(row_length)
-	outline.a = 0.18
-	style.border_color = outline
-	style.set_border_width_all(1)
+	style.bg_color = colors.get(row_length, UI_SURFACE_TINT)
 	style.set_corner_radius_all(16)
-	style.shadow_color = Color(0.02, 0.01, 0.12, 0.12)
+	style.shadow_color = Color(0.102, 0.039, 0.369, 0.04)
 	style.shadow_size = 2
 	style.shadow_offset = Vector2(0, 2)
 	return style
@@ -2179,7 +2139,7 @@ func _action_dock_style() -> StyleBoxFlat:
 	style.bg_color = UI_PRIMARY
 	style.border_color = Color("3a2874")
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(24)
+	style.set_corner_radius_all(20)
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.20)
 	style.shadow_size = 9
 	style.shadow_offset = Vector2(0, 5)
@@ -2188,10 +2148,10 @@ func _action_dock_style() -> StyleBoxFlat:
 func _tile_style(color: Color, border_color: Color) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = color
-	style.corner_radius_top_left = 16
-	style.corner_radius_top_right = 16
-	style.corner_radius_bottom_left = 16
-	style.corner_radius_bottom_right = 16
+	style.corner_radius_top_left = 14
+	style.corner_radius_top_right = 14
+	style.corner_radius_bottom_left = 14
+	style.corner_radius_bottom_right = 14
 	style.border_color = border_color
 	style.set_border_width_all(1)
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.13)
@@ -2223,15 +2183,6 @@ func _row_border(row_length: int) -> Color:
 		5: return UI_YELLOW
 		_: return UI_BORDER
 
-func _row_tile_outline(row_length: int) -> Color:
-	match row_length:
-		1: return Color("bca7f4")
-		2: return Color("ff9c8a")
-		3: return Color("ffbf9f")
-		4: return Color("83d8c4")
-		5: return Color("e5c436")
-		_: return UI_BORDER
-
 func _row_text(row_length: int) -> Color:
 	match row_length:
 		1: return Color.WHITE
@@ -2255,10 +2206,10 @@ func _category_card_style(row_length: int) -> StyleBoxFlat:
 func _button_style(color: Color, border_color: Color = UI_BORDER) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = color
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
+	style.corner_radius_top_left = 15
+	style.corner_radius_top_right = 15
+	style.corner_radius_bottom_left = 15
+	style.corner_radius_bottom_right = 15
 	style.border_color = border_color
 	style.set_border_width_all(2)
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.10)
