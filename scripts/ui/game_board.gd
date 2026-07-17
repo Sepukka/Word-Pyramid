@@ -33,7 +33,6 @@ const WRONG_SHAKE_PEAK: float = 6.0
 const WRONG_SHAKE_SETTLE: float = 3.0
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
-const TUTORIAL_WORD_BREAK: float = 0.24
 const TUTORIAL_HINT_BREAK: float = 1.15
 const TUTORIAL_CHECK_BREAK: float = 1.00
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
@@ -485,15 +484,12 @@ func _create_word_tile(word: String) -> Button:
 	return tile
 
 func _on_word_tile_pressed(tile: Button, word: String) -> void:
-	var was_selected: bool = GameState.selected_words.has(word)
 	GameState.toggle_word(word)
 	# Toggle-mode buttons change their local pressed state before this callback.
 	# If GameState rejects an over-limit selection, immediately restore the
 	# visual state from the authoritative selection array.
 	if is_instance_valid(tile):
 		tile.set_pressed_no_signal(GameState.selected_words.has(word))
-	if GameState.game_mode == GameState.TUTORIAL_MODE and was_selected != GameState.selected_words.has(word):
-		_start_tutorial_break(TUTORIAL_WORD_BREAK)
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
