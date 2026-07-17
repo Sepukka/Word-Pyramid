@@ -628,7 +628,13 @@ func _get_stable_word_order() -> Array[String]:
 func _layout_for_width() -> void:
 	if _card == null:
 		return
-	var card_width: float = clampf(size.x - 16.0, 304.0, 620.0)
+	# Rebuilding rows during the automatic finish must not derive a new block
+	# size from transient Control geometry. The viewport is the stable phone
+	# canvas and only changes when the actual window/device layout changes.
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var layout_width: float = viewport_size.x if viewport_size.x > 0.0 else size.x
+	var layout_height: float = viewport_size.y if viewport_size.y > 0.0 else size.y
+	var card_width: float = clampf(layout_width - 16.0, 304.0, 620.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
 	var usable_width: float = card_width
 	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
@@ -638,7 +644,7 @@ func _layout_for_width() -> void:
 	# single-line message. Deduct the extra space here so its board and controls
 	# fit the same phone viewport instead of extending below the screen.
 	var tutorial_guide_reservation: float = 60.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 0.0
-	var pyramid_height: float = clampf(size.y - 365.0 - tutorial_guide_reservation, 290.0, 480.0)
+	var pyramid_height: float = clampf(layout_height - 365.0 - tutorial_guide_reservation, 290.0, 480.0)
 	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
 	var shared_font_size: int = _uniform_tile_font_size(tile_size)
 	for word: String in _word_buttons:
@@ -1201,7 +1207,7 @@ func _show_aftermath(won: bool) -> void:
 	var is_endless_loss: bool = is_endless and not won
 	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
 	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
-	var solved_group_count: int = 4 if won else clampi(GameState.result_solved_groups.size(), 0, 4)
+	var solved_row_count: int = 5 if won else clampi(GameState.result_solved_groups.size() + (1 if GameState.result_top_solved else 0), 0, 5)
 
 	var layer: Control = Control.new()
 	layer.name = "AftermathLayer"
@@ -1305,7 +1311,7 @@ func _show_aftermath(won: bool) -> void:
 	score_margin.add_theme_constant_override("margin_top", 8)
 	score_margin.add_theme_constant_override("margin_bottom", 8)
 	score_badge.add_child(score_margin)
-	var solved_group_score: Label = _aftermath_label("%d / 4  %s" % [solved_group_count, SaveManager.text("stat_groups").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold)
+	var solved_group_score: Label = _aftermath_label("%d / 5  %s" % [solved_row_count, SaveManager.text("stat_rows").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold)
 	solved_group_score.name = "SolvedGroupScore"
 	score_margin.add_child(solved_group_score)
 
@@ -1387,7 +1393,7 @@ func _show_aftermath(won: bool) -> void:
 	stats_row.add_theme_constant_override("separation", 8)
 	card.add_child(stats_row)
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_mistakes"), str(mistakes), UI_YELLOW if mistakes == 0 else Color("ff8066")))
-	stats_row.add_child(_stat_pill(SaveManager.text("stat_groups"), "%d / 4" % solved_group_count, UI_TEAL))
+	stats_row.add_child(_stat_pill(SaveManager.text("stat_rows"), "%d / 5" % solved_row_count, UI_TEAL))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
 
 	var primary_button: Button
@@ -1598,7 +1604,8 @@ func _show_aftermath_legacy(won: bool) -> void:
 	content.add_child(stats_row)
 	stats_row.visible = not is_endless_loss
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_mistakes"), str(mistakes), UI_YELLOW if mistakes == 0 else Color("ff8066")))
-	stats_row.add_child(_stat_pill(SaveManager.text("stat_groups"), "%d / 4" % clampi(GameState.solved_groups.size(), 0, 4), UI_TEAL))
+	var legacy_solved_rows: int = clampi(GameState.result_solved_groups.size() + (1 if GameState.result_top_solved else 0), 0, 5)
+	stats_row.add_child(_stat_pill(SaveManager.text("stat_rows"), "%d / 5" % legacy_solved_rows, UI_TEAL))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
 
 	var primary_button: Button

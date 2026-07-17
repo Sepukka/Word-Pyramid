@@ -84,7 +84,8 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	var pyramid: VBoxContainer = board.find_child("ResultPyramid", true, false) as VBoxContainer
 	assert(pyramid != null, "B1 aftermath did not create its result pyramid")
 	var score: Label = board.find_child("SolvedGroupScore", true, false) as Label
-	assert(score != null and score.text.begins_with("%d / 4" % GameState.result_solved_groups.size()), "Aftermath group score must match the recorded result")
+	var expected_rows: int = GameState.result_solved_groups.size() + (1 if GameState.result_top_solved else 0)
+	assert(score != null and score.text.begins_with("%d / 5" % expected_rows), "Aftermath row score must include the top-word result")
 	var layers: Array[Node] = pyramid.find_children("Layer*", "HBoxContainer", true, false)
 	assert(layers.size() == 5, "Result pyramid must mirror all five game-board layers")
 	var total_blocks: int = 0
