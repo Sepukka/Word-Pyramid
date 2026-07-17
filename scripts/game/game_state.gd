@@ -13,10 +13,12 @@ signal hint_placed(word: String, row_length: int)
 signal hint_count_changed(used: int, limit: int)
 signal rewarded_hint_required
 signal puzzle_pool_completed(mode: String)
+signal tutorial_completed
 
 const FREE_HINT_LIMIT: int = 2
 const DAILY_MODE: String = "daily"
 const UNLIMITED_MODE: String = "unlimited"
+const TUTORIAL_MODE: String = "tutorial"
 const AUTO_SOLVE_ROW_INTERVAL: float = 0.95
 
 var puzzle: Dictionary = {}
@@ -36,6 +38,47 @@ var hints_used: int = 0
 var rewarded_hint_claimed: bool = false
 var hinted_words_by_row: Dictionary = {}
 var result_correct_count: int = -1
+var tutorial_allowed_words: Array[String] = []
+
+func start_tutorial() -> bool:
+	game_mode = TUTORIAL_MODE
+	daily_date = ""
+	puzzle = _tutorial_puzzle(PuzzleLoader.get_language())
+	selected_words.clear()
+	solved_groups.clear()
+	is_top_solved = false
+	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	hints_used = 0
+	rewarded_hint_claimed = false
+	is_finished = false
+	completed_won = false
+	is_auto_solving = false
+	wrong_guesses.clear()
+	last_failed_guess.clear()
+	last_failed_active = false
+	hinted_words_by_row.clear()
+	result_correct_count = -1
+	tutorial_allowed_words.clear()
+	game_started.emit(str(puzzle.get("title", SaveManager.text("tutorial_title"))), attempts_left)
+	hint_count_changed.emit(hints_used, _get_hint_limit())
+	return true
+
+func set_tutorial_allowed_words(words: Array[String]) -> void:
+	tutorial_allowed_words.assign(words)
+	selection_changed.emit(selected_words)
+
+func is_tutorial_word_allowed(word: String) -> bool:
+	return game_mode != TUTORIAL_MODE or tutorial_allowed_words.has(word)
+
+func tutorial_group_words(row_length: int) -> Array[String]:
+	if row_length == 1:
+		return [str(puzzle.get("top_word", ""))]
+	for group_value: Variant in puzzle.get("groups", []):
+		if group_value is Dictionary:
+			var group: Dictionary = group_value
+			if int(group.get("size", 0)) == row_length:
+				return _get_required_words(group)
+	return []
 
 func start_new_game(mode: String = "daily") -> bool:
 	if not _is_valid_mode(mode):
@@ -156,6 +199,7 @@ func reset_debug_state() -> void:
 	rewarded_hint_claimed = false
 	hinted_words_by_row.clear()
 	result_correct_count = -1
+	tutorial_allowed_words.clear()
 
 func has_resumable_game(mode: String) -> bool:
 	var saved: Dictionary = SaveManager.active_game
@@ -219,6 +263,8 @@ func restore_game() -> bool:
 
 func toggle_word(word: String) -> void:
 	if is_finished or is_auto_solving or is_word_solved(word):
+		return
+	if game_mode == TUTORIAL_MODE and not tutorial_allowed_words.has(word):
 		return
 	last_failed_active = false
 	var selecting: bool = not selected_words.has(word)
@@ -494,6 +540,10 @@ func _finish(won: bool) -> void:
 	completed_won = won
 	if result_correct_count < 0:
 		result_correct_count = _player_correct_count()
+	if game_mode == TUTORIAL_MODE:
+		tutorial_allowed_words.clear()
+		tutorial_completed.emit()
+		return
 	_save_active_game()
 	if not won and game_mode == UNLIMITED_MODE:
 		SaveManager.consume_endless_heart()
@@ -510,6 +560,8 @@ func _is_valid_mode(mode: String) -> bool:
 	return mode == DAILY_MODE or mode == UNLIMITED_MODE
 
 func _save_active_game() -> void:
+	if game_mode == TUTORIAL_MODE:
+		return
 	SaveManager.active_game = {
 		"puzzle": puzzle.duplicate(true),
 		"selected_words": selected_words.duplicate(),
@@ -574,3 +626,28 @@ func _to_int_array(values: Variant) -> Array[int]:
 		for value: Variant in values:
 			result.append(int(value))
 	return result
+
+func _tutorial_puzzle(language: String) -> Dictionary:
+	if language == "fi":
+		return {
+			"id": "tutorial-fi",
+			"title": "Eläinmaailma",
+			"top_word": "ELÄIN",
+			"groups": [
+				{"size": 2, "label": "Lemmikit", "words": ["KISSA", "KOIRA"]},
+				{"size": 3, "label": "Maatilan eläimet", "words": ["LEHMÄ", "SIKA", "KANA"]},
+				{"size": 4, "label": "Linnut", "words": ["KOTKA", "PÖLLÖ", "JOUTSEN", "ANKKA"]},
+				{"size": 5, "label": "Meren eläimet", "words": ["HAI", "VALAS", "HYLJE", "RAPU", "RAUSKU"]}
+			]
+		}
+	return {
+		"id": "tutorial-en",
+		"title": "Animal World",
+		"top_word": "ANIMAL",
+		"groups": [
+			{"size": 2, "label": "Pets", "words": ["CAT", "DOG"]},
+			{"size": 3, "label": "Farm animals", "words": ["COW", "PIG", "HEN"]},
+			{"size": 4, "label": "Birds", "words": ["EAGLE", "OWL", "SWAN", "DUCK"]},
+			{"size": 5, "label": "Sea animals", "words": ["SHARK", "WHALE", "SEAL", "CRAB", "RAY"]}
+		]
+	}

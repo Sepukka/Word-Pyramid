@@ -3,6 +3,8 @@ extends Node
 const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "music_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
 const ENDLESS_DAILY_HEARTS: int = 3
+const ONBOARDING_VERSION: int = 1
+const DEFAULT_ONBOARDING: Dictionary = {"version": 0, "language_selected": false}
 const TEXT: Dictionary = {
 	"en": {
 		"settings": "Settings",
@@ -39,6 +41,18 @@ const TEXT: Dictionary = {
 		"sound_effects": "Sound effects",
 		"music": "Music",
 		"settings_note": "New attempt settings are applied when a new puzzle starts.",
+		"replay_tutorial": "Replay tutorial",
+		"choose_language_title": "Choose your language",
+		"choose_language_subtitle": "Valitse kieli · You can change this later in Settings.",
+		"tutorial_mode_label": "Tutorial",
+		"tutorial_title": "Practice Pyramid",
+		"tutorial_skip": "Skip tutorial",
+		"tutorial_select_group": "Tap the highlighted words that belong together.",
+		"tutorial_press_check": "Great! Now press Check to place the group.",
+		"tutorial_use_hint": "Hints lock one word into its correct row. Press Hint.",
+		"tutorial_finish_row": "Select the remaining highlighted words, then press Check.",
+		"tutorial_top_word": "Finish the pyramid: select the highlighted top word and press Check.",
+		"tutorial_complete": "You're ready!",
 		"debug_reset_progress": "Debug: Reset all progress",
 		"debug_reset_confirm": "Tap again to reset everything",
 		"back": "Back",
@@ -139,6 +153,18 @@ const TEXT: Dictionary = {
 		"sound_effects": "Äänitehosteet",
 		"music": "Musiikki",
 		"settings_note": "Uusi yritysmäärä tulee käyttöön, kun uusi pulma alkaa.",
+		"replay_tutorial": "Pelaa opastus uudelleen",
+		"choose_language_title": "Valitse kieli",
+		"choose_language_subtitle": "Choose your language · Voit vaihtaa kielen myöhemmin asetuksista.",
+		"tutorial_mode_label": "Opastus",
+		"tutorial_title": "Harjoituspyramidi",
+		"tutorial_skip": "Ohita opastus",
+		"tutorial_select_group": "Napauta korostettuja sanoja, jotka kuuluvat yhteen.",
+		"tutorial_press_check": "Hyvä! Sijoita ryhmä painamalla Tarkista.",
+		"tutorial_use_hint": "Vihje lukitsee yhden sanan oikealle riville. Paina Vihje.",
+		"tutorial_finish_row": "Valitse loput korostetut sanat ja paina Tarkista.",
+		"tutorial_top_word": "Viimeistele pyramidi: valitse korostettu huippusana ja paina Tarkista.",
+		"tutorial_complete": "Olet valmis pelaamaan!",
 		"debug_reset_progress": "Debug: Nollaa kaikki edistyminen",
 		"debug_reset_confirm": "Nollaa kaikki napauttamalla uudelleen",
 		"back": "Takaisin",
@@ -212,6 +238,7 @@ var active_game: Dictionary = {}
 var daily_results: Dictionary = {}
 var played_puzzle_ids: Dictionary = {"daily": [], "unlimited": []}
 var endless_state: Dictionary = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
+var onboarding: Dictionary = DEFAULT_ONBOARDING.duplicate(true)
 
 func _ready() -> void:
 	load_data()
@@ -233,6 +260,7 @@ func load_data() -> void:
 	daily_results = _dictionary_or_empty(saved.get("daily_results", {}))
 	played_puzzle_ids = _merge_dictionary(played_puzzle_ids, saved.get("played_puzzle_ids", {}))
 	endless_state = _merge_dictionary(endless_state, saved.get("endless_state", {}))
+	onboarding = _merge_dictionary(onboarding, saved.get("onboarding", {}))
 
 func reset_to_defaults() -> void:
 	settings = DEFAULT_SETTINGS.duplicate(true)
@@ -241,6 +269,7 @@ func reset_to_defaults() -> void:
 	daily_results = {}
 	played_puzzle_ids = {"daily": [], "unlimited": []}
 	endless_state = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
+	onboarding = DEFAULT_ONBOARDING.duplicate(true)
 
 func reset_all_data() -> void:
 	reset_to_defaults()
@@ -257,7 +286,8 @@ func save_data() -> void:
 		"active_game": active_game,
 		"daily_results": daily_results,
 		"played_puzzle_ids": played_puzzle_ids,
-		"endless_state": endless_state
+		"endless_state": endless_state,
+		"onboarding": onboarding
 	}
 	file.store_string(JSON.stringify(data))
 
@@ -265,6 +295,21 @@ func text(key: String) -> String:
 	var language: String = str(settings.get("language", DEFAULT_SETTINGS["language"]))
 	var table: Dictionary = TEXT.get(language, TEXT["en"])
 	return str(table.get(key, TEXT["en"].get(key, key)))
+
+func needs_language_onboarding() -> bool:
+	return int(onboarding.get("version", 0)) < ONBOARDING_VERSION and not bool(onboarding.get("language_selected", false))
+
+func needs_tutorial_onboarding() -> bool:
+	return int(onboarding.get("version", 0)) < ONBOARDING_VERSION
+
+func mark_onboarding_language_selected() -> void:
+	onboarding["language_selected"] = true
+	save_data()
+
+func complete_onboarding() -> void:
+	onboarding["language_selected"] = true
+	onboarding["version"] = ONBOARDING_VERSION
+	save_data()
 
 func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0) -> void:
 	if won:

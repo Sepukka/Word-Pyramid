@@ -95,6 +95,7 @@ func _ready() -> void:
 	_endless_countdown_timer.start()
 	resized.connect(_layout_home_layout)
 	show_main_menu()
+	call_deferred("_continue_onboarding")
 
 func _reload_editable_home_scene() -> void:
 	get_tree().reload_current_scene()
@@ -451,6 +452,7 @@ func show_game() -> void:
 	var board: GameBoard = GameBoardScene.instantiate()
 	board.request_menu.connect(show_main_menu)
 	board.request_new_game.connect(_start_next_game)
+	board.request_tutorial_exit.connect(_on_tutorial_exit)
 	board.modulate.a = 0.0
 	add_child(board)
 	_active_view = board
@@ -596,6 +598,18 @@ func show_settings() -> void:
 	note.add_theme_font_size_override("font_size", 12)
 	note.add_theme_color_override("font_color", UI_MUTED_TEXT)
 	panel.add_child(note)
+	var tutorial_button: Button = Button.new()
+	tutorial_button.text = SaveManager.text("replay_tutorial")
+	tutorial_button.custom_minimum_size = Vector2(0, 44)
+	tutorial_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tutorial_button.add_theme_font_override("font", _font_fredoka_semibold)
+	tutorial_button.add_theme_font_size_override("font_size", 14)
+	tutorial_button.add_theme_color_override("font_color", UI_TEXT)
+	tutorial_button.add_theme_stylebox_override("normal", _mode_button_style(UI_SURFACE_TINT, UI_BORDER))
+	tutorial_button.add_theme_stylebox_override("hover", _mode_button_style(Color("e4dcf6"), UI_PRIMARY))
+	tutorial_button.add_theme_stylebox_override("pressed", _mode_button_style(Color("ddd3f1"), UI_PRIMARY))
+	tutorial_button.pressed.connect(_start_tutorial)
+	panel.add_child(tutorial_button)
 	var reset_button: Button = Button.new()
 	reset_button.text = SaveManager.text("debug_reset_progress")
 	reset_button.custom_minimum_size = Vector2(0, 44)
@@ -688,6 +702,93 @@ func _dismiss_settings() -> void:
 	_settings_dismissing = false
 	show_main_menu()
 
+func _continue_onboarding() -> void:
+	if _is_transitioning:
+		call_deferred("_continue_onboarding")
+		return
+	if SaveManager.needs_language_onboarding():
+		_show_language_onboarding()
+	elif SaveManager.needs_tutorial_onboarding():
+		_start_tutorial()
+
+func _show_language_onboarding() -> void:
+	_show_home()
+	_clear_content()
+	var overlay: Control = Control.new()
+	overlay.name = "LanguageOnboarding"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+	_active_view = overlay
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0.10, 0.04, 0.37, 0.58)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 20)
+	overlay.add_child(center)
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(clampf(size.x - 40.0, 300.0, 390.0), 0)
+	card.add_theme_stylebox_override("panel", _round_style(UI_SURFACE, UI_BORDER, 26))
+	center.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 32)
+	margin.add_theme_constant_override("margin_bottom", 32)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 16)
+	margin.add_child(content)
+	var mark: Label = Label.new()
+	mark.text = "▲"
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.add_theme_font_override("font", _font_fredoka_bold)
+	mark.add_theme_font_size_override("font_size", 34)
+	mark.add_theme_color_override("font_color", UI_MAGENTA)
+	content.add_child(mark)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("choose_language_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 27)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(title)
+	var subtitle: Label = Label.new()
+	subtitle.text = SaveManager.text("choose_language_subtitle")
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_override("font", FONT_DM_SANS)
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	content.add_child(subtitle)
+	for language: Dictionary in [{"label": "English", "code": "en"}, {"label": "Suomi", "code": "fi"}]:
+		var language_button: Button = _make_button(str(language["label"]))
+		language_button.custom_minimum_size = Vector2(0, 54)
+		language_button.add_theme_font_override("font", _font_fredoka_semibold)
+		language_button.add_theme_font_size_override("font_size", 18)
+		language_button.pressed.connect(_select_onboarding_language.bind(str(language["code"])))
+		content.add_child(language_button)
+
+func _select_onboarding_language(language_code: String) -> void:
+	if not PuzzleLoader.set_language(language_code):
+		return
+	SaveManager.mark_onboarding_language_selected()
+	_apply_home_texts()
+	_start_tutorial()
+
+func _start_tutorial() -> void:
+	if _is_transitioning:
+		return
+	_clear_content()
+	if GameState.start_tutorial():
+		show_game()
+
+func _on_tutorial_exit(_completed: bool) -> void:
+	SaveManager.complete_onboarding()
+	GameState.reset_debug_state()
+	show_main_menu()
+
 func _add_language_chip(row: HBoxContainer, label_text: String, language_code: String) -> void:
 	var selected: bool = PuzzleLoader.get_language() == language_code
 	var button: Button = _chip_button(label_text, selected)
@@ -728,6 +829,7 @@ func _on_debug_reset_pressed(button: Button) -> void:
 	if pool_notice != null:
 		pool_notice.queue_free()
 	show_main_menu()
+	call_deferred("_continue_onboarding")
 
 func _settings_toggle(label_text: String) -> CheckButton:
 	var button: CheckButton = CheckButton.new()

@@ -3,6 +3,7 @@ extends Control
 
 signal request_menu
 signal request_new_game
+signal request_tutorial_exit(completed: bool)
 
 const ROW_LENGTHS: Array[int] = [1, 2, 3, 4, 5]
 const TILE_GAP: float = 6.0
@@ -81,6 +82,8 @@ var _font_fredoka_semibold: FontVariation
 var _font_fredoka_condensed: FontVariation
 var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
+var _tutorial_stage: int = 0
+var _tutorial_finishing: bool = false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -107,6 +110,8 @@ func _ready() -> void:
 		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
 	AdManager.rewarded_ad_unavailable.connect(_on_rewarded_ad_unavailable)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
+	if not GameState.tutorial_completed.is_connected(_on_tutorial_completed):
+		GameState.tutorial_completed.connect(_on_tutorial_completed)
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
@@ -150,14 +155,19 @@ func _build() -> void:
 	top_bar.add_theme_constant_override("separation", 10)
 	page.add_child(top_bar)
 	var back: Button = Button.new()
-	back.text = "< " + SaveManager.text("back")
+	back.text = SaveManager.text("tutorial_skip") if GameState.game_mode == GameState.TUTORIAL_MODE else "< " + SaveManager.text("back")
 	back.custom_minimum_size = Vector2(73, 34)
 	back.add_theme_font_override("font", _font_dm_sans_semibold)
 	back.add_theme_font_size_override("font_size", 13)
 	back.add_theme_stylebox_override("normal", _outline_button_style(UI_SURFACE))
 	back.add_theme_stylebox_override("hover", _outline_button_style(UI_SURFACE_TINT))
 	back.add_theme_color_override("font_color", UI_TEXT)
-	back.pressed.connect(func() -> void: request_menu.emit())
+	back.pressed.connect(func() -> void:
+		if GameState.game_mode == GameState.TUTORIAL_MODE:
+			request_tutorial_exit.emit(false)
+		else:
+			request_menu.emit()
+	)
 	top_bar.add_child(back)
 	var title_stack: VBoxContainer = VBoxContainer.new()
 	title_stack.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -318,8 +328,9 @@ func refresh() -> void:
 	if not is_node_ready():
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
-	_message.text = SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message")
-	_mode_label.text = SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s" % SaveManager.text("unlimited_mode_label").to_upper()
+	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
+	_message.text = SaveManager.text("tutorial_select_group") if is_tutorial else (SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message"))
+	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s" % SaveManager.text("unlimited_mode_label").to_upper())
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
 	_build_pyramid()
 	_update_mistakes()
@@ -329,6 +340,9 @@ func refresh() -> void:
 	else:
 		_game_was_running = true
 		_show_play_actions()
+		if is_tutorial:
+			_tutorial_stage = 0
+			_apply_tutorial_stage()
 
 func _build_pyramid() -> void:
 	for tween_value: Variant in _tile_motion_tweens.values():
@@ -625,6 +639,12 @@ func _single_line_font_size(text: String, available_width: float, maximum_size: 
 	return clampi(estimated_size, 7, maximum_size)
 
 func _update_mistakes() -> void:
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_mistakes.visible = false
+		_lives_row.visible = false
+		return
+	_mistakes.visible = true
+	_lives_row.visible = true
 	var maximum: int = int(SaveManager.settings.get("attempts", 4))
 	_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
 	_update_lives(maximum - GameState.attempts_left, maximum)
@@ -688,7 +708,8 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		var selected: bool = selection.has(word)
 		var was_selected: bool = _displayed_selection.has(word)
 		var showing_wrong: bool = _wrong_guess_active and _wrong_guess_words.has(word)
-		var selection_blocked: bool = is_at_limit and not selected
+		var tutorial_blocked: bool = GameState.game_mode == GameState.TUTORIAL_MODE and not GameState.is_tutorial_word_allowed(word)
+		var selection_blocked: bool = (is_at_limit and not selected) or tutorial_blocked
 		tile.button_pressed = selected
 		# Block excess taps at the Button level so they cannot animate, focus, or
 		# emit a pressed signal. The disabled overrides below keep blocked tiles
@@ -697,11 +718,16 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing or selection_blocked else Control.FOCUS_ALL
 		_apply_word_tile_visual(tile, selected, showing_wrong)
+		if GameState.game_mode == GameState.TUTORIAL_MODE and GameState.is_tutorial_word_allowed(word) and not selected:
+			tile.add_theme_stylebox_override("normal", _tutorial_tile_style())
+			tile.add_theme_stylebox_override("hover", _tutorial_tile_style())
 		_set_tile_lift(tile, false if showing_wrong else selected, was_selected != selected and not _is_placing)
 	_displayed_selection.assign(selection)
 	_clear.disabled = selection.is_empty() or GameState.is_finished
 	_check.disabled = not GameState.can_check_selection()
 	_update_selection(selection)
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_update_tutorial_selection_message()
 
 func _on_group_solved(group: Dictionary) -> void:
 	var row_length: int = int(group.get("size", 0))
@@ -718,6 +744,8 @@ func _on_group_solved(group: Dictionary) -> void:
 		_row_reveal_tween.tween_callback(func() -> void: _show_placed_row(row_length))
 		_row_reveal_tween.tween_interval(0.24)
 		_row_reveal_tween.tween_callback(func() -> void: _activate_category_card(row_length, group))
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		call_deferred("_advance_tutorial_after_group", row_length)
 
 func _on_top_solved(_word: String) -> void:
 	_on_group_solved({"size": 1, "words": [str(GameState.puzzle.get("top_word", ""))]})
@@ -974,6 +1002,14 @@ func _selected_tile_style() -> StyleBoxFlat:
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.32)
 	style.shadow_size = 8
 	style.shadow_offset = Vector2(0, 8)
+	return style
+
+func _tutorial_tile_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = _tile_style(Color("fff8dc"), UI_MAGENTA)
+	style.set_border_width_all(3)
+	style.shadow_color = Color(0.725, 0.224, 1.0, 0.18)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3)
 	return style
 
 func _on_game_finished(won: bool, top_word: String) -> void:
@@ -1432,6 +1468,10 @@ func _on_hint_placed(word: String, row_length: int) -> void:
 		locked_tile.modulate.a = 0.0
 	if _hinted_tiles.has(word):
 		call_deferred("_animate_hint_to_locked_slot", word, source_point, source_size, has_source, displaced_word, displaced_point, displaced_size)
+	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 1:
+		_tutorial_stage = 2
+		_hint.disabled = true
+		call_deferred("_advance_tutorial_after_hint")
 
 func _swap_hint_word_order(hinted_word: String, displaced_word: String) -> void:
 	var hinted_index: int = _word_order.find(hinted_word)
@@ -1483,6 +1523,84 @@ func _on_hint_count_changed(used: int, limit: int) -> void:
 	else:
 		_set_hint_button_text(SaveManager.text("bonus_hint"))
 		_hint.disabled = false
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		_hint.disabled = _tutorial_stage != 1
+
+func _apply_tutorial_stage() -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE or GameState.is_finished:
+		return
+	var allowed: Array[String] = []
+	match _tutorial_stage:
+		0:
+			allowed = GameState.tutorial_group_words(2)
+			_message.text = SaveManager.text("tutorial_select_group")
+		1:
+			_message.text = SaveManager.text("tutorial_use_hint")
+		2:
+			allowed = GameState.tutorial_group_words(5)
+			_message.text = SaveManager.text("tutorial_finish_row")
+		3:
+			allowed = GameState.tutorial_group_words(3)
+			_message.text = SaveManager.text("tutorial_select_group")
+		4:
+			allowed = GameState.tutorial_group_words(4)
+			_message.text = SaveManager.text("tutorial_select_group")
+		5:
+			allowed = GameState.tutorial_group_words(1)
+			_message.text = SaveManager.text("tutorial_top_word")
+	GameState.set_tutorial_allowed_words(allowed)
+	_hint.disabled = _tutorial_stage != 1
+	_check.disabled = not GameState.can_check_selection()
+
+func _update_tutorial_selection_message() -> void:
+	if _tutorial_stage == 1:
+		_message.text = SaveManager.text("tutorial_use_hint")
+		_hint.disabled = false
+		_check.disabled = true
+		return
+	var expected_count: int = GameState.tutorial_allowed_words.size()
+	if expected_count > 0 and GameState.selected_words.size() == expected_count:
+		_message.text = SaveManager.text("tutorial_press_check")
+	elif _tutorial_stage == 2:
+		_message.text = SaveManager.text("tutorial_finish_row")
+	elif _tutorial_stage == 5:
+		_message.text = SaveManager.text("tutorial_top_word")
+	else:
+		_message.text = SaveManager.text("tutorial_select_group")
+
+func _advance_tutorial_after_group(row_length: int) -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE:
+		return
+	if _is_placing:
+		await get_tree().create_timer(0.90).timeout
+		if not is_inside_tree() or GameState.game_mode != GameState.TUTORIAL_MODE:
+			return
+	if _tutorial_stage == 0 and row_length == 2:
+		_tutorial_stage = 1
+	elif _tutorial_stage == 2 and row_length == 5:
+		_tutorial_stage = 3
+	elif _tutorial_stage == 3 and row_length == 3:
+		_tutorial_stage = 4
+	elif _tutorial_stage == 4 and row_length == 4:
+		_tutorial_stage = 5
+	_apply_tutorial_stage()
+
+func _advance_tutorial_after_hint() -> void:
+	await get_tree().create_timer(0.58).timeout
+	if is_inside_tree() and GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 2:
+		_apply_tutorial_stage()
+
+func _on_tutorial_completed() -> void:
+	if _tutorial_finishing or GameState.game_mode != GameState.TUTORIAL_MODE:
+		return
+	_tutorial_finishing = true
+	GameState.set_tutorial_allowed_words([])
+	_hint.disabled = true
+	_check.disabled = true
+	_message.text = SaveManager.text("tutorial_complete")
+	await get_tree().create_timer(1.35).timeout
+	if is_inside_tree():
+		request_tutorial_exit.emit(true)
 
 func _on_rewarded_hint_required() -> void:
 	_set_hint_button_text(SaveManager.text("ad_hint"), true)
