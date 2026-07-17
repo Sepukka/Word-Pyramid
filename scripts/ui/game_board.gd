@@ -1287,7 +1287,7 @@ func _show_aftermath(won: bool) -> void:
 	streak_margin.add_theme_constant_override("margin_top", 10)
 	streak_margin.add_theme_constant_override("margin_bottom", 10)
 	streak_panel.add_child(streak_margin)
-	var streak_box: HBoxContainer = HBoxContainer.new()
+	var streak_box: BoxContainer = VBoxContainer.new() if is_endless else HBoxContainer.new()
 	streak_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	streak_box.add_theme_constant_override("separation", 10)
 	streak_margin.add_child(streak_box)
@@ -1321,14 +1321,19 @@ func _show_aftermath(won: bool) -> void:
 				heart.modulate.a = 1.0
 				losing_heart = heart
 			aftermath_hearts.add_child(heart)
+	var streak_copy: VBoxContainer = VBoxContainer.new()
+	streak_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	streak_copy.add_theme_constant_override("separation", 0)
+	streak_box.add_child(streak_copy)
 	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
 	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
 	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
 	var heart_count: int = SaveManager.get_endless_hearts() if is_endless else 0
 	var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count if heart_count > 0 else SaveManager.text("endless_out_of_hearts")
 	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else endless_count_text, 36 if has_daily_streak else 16, UI_YELLOW if has_daily_streak else Color.WHITE, _font_fredoka_bold)
-	streak_number.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	streak_box.add_child(streak_number)
+	streak_number.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	streak_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	streak_copy.add_child(streak_number)
 	var streak_caption_text: String = SaveManager.endless_reset_countdown_text()
 	if has_daily_streak:
 		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
@@ -1336,7 +1341,7 @@ func _show_aftermath(won: bool) -> void:
 	var streak_caption: Label = _aftermath_label(streak_caption_text, 12, Color(1, 1, 1, 0.70), _font_fredoka_semibold)
 	streak_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	streak_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	streak_box.add_child(streak_caption)
+	streak_copy.add_child(streak_caption)
 	var crack_overlay: Control = Control.new()
 	crack_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crack_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
