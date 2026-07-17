@@ -23,10 +23,9 @@ func _ready() -> void:
 			var back: Button = demo.find_child("BackToGame", true, false) as Button
 			assert(back != null and back.visible, "Instructions variant %d has no return button" % variant_index)
 			assert(_has_label_fragment(demo, SaveManager.text("instructions_choose_top")), "Instructions variant %d does not say rows can be solved in any order" % variant_index)
-			if variant_index < 2:
-				assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions variant %d lacks a concrete word example" % variant_index)
-			else:
-				assert(demo.find_child("LabeledPyramid", true, false) != null, "Quick-reference variant lacks the labeled pyramid")
+			assert(demo.find_children("StepCard_*", "", true, false).size() == 3, "Instructions variant %d does not have exactly three clear steps" % variant_index)
+			assert(demo.find_child("WordPoolExample", true, false) != null, "Instructions variant %d lacks a concrete word example" % variant_index)
+			assert(demo.find_child("HintCallout", true, false) != null, "Instructions variant %d does not visibly explain Hint" % variant_index)
 		demo.queue_free()
 		await get_tree().process_frame
 

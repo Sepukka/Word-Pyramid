@@ -100,59 +100,25 @@ func _show_variant(index: int) -> void:
 	tween.tween_property(variant, "position:y", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _build_pyramid_journey() -> Control:
-	var root := _full_root(PURPLE)
-	_add_circle(root, Vector2(304, -60), 148.0, YELLOW, 0.82)
-	_add_tilted_shape(root, Vector2(-48, 555), Vector2(102, 118), Color("a9e8df"), -14.0, 0.28)
-	var page_margin := _full_margin(14, 14, 13, 14)
-	root.add_child(page_margin)
-	var page := _vbox(8)
-	page.name = "VariantPage"
-	page_margin.add_child(page)
-
-	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), WHITE, Color(1, 1, 1, 0.66)))
-	var example_card := _panel(WHITE, Color(1, 1, 1, 0.16), 24, 0, true)
-	example_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_child(example_card)
-	var example_margin := _margin(14, 14, 12, 12)
-	example_card.add_child(example_margin)
-	var example := _vbox(7)
-	example_margin.add_child(example)
-	var example_title := _label(_t("instructions_example"), 13, PURPLE, _dm_sans_semibold)
-	example_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	example.add_child(example_title)
-	example.add_child(_word_pool_example(false, false))
-	var connection := _label(_t("instructions_same_group"), 14, PURPLE, _fredoka_semibold)
-	connection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	connection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	example.add_child(connection)
-	example.add_child(_mini_check_button())
-	var correct_band := _panel(Color("d9f7f2"), TEAL, 16, 1)
-	example.add_child(correct_band)
-	var correct_margin := _margin(10, 10, 8, 8)
-	correct_band.add_child(correct_margin)
-	var correct_label := _label(_t("instructions_correct_row"), 12, PURPLE, _dm_sans_semibold)
-	correct_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	correct_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	correct_margin.add_child(correct_label)
-	example.add_child(_locked_group_example())
-	var next := _label(_t("instructions_top_body"), 12, DARK_MUTED, FONT_DM_SANS)
-	next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	example.add_child(next)
-	example.add_child(_labeled_pyramid())
-	var tools := HBoxContainer.new()
-	tools.add_theme_constant_override("separation", 8)
-	example.add_child(tools)
-	tools.add_child(_tool_card(SaveManager.text("hint").to_upper(), _t("instructions_hint_body"), LAVENDER))
-	tools.add_child(_tool_card("!", _t("instructions_mistake_body"), CORAL))
-	page.add_child(_back_button())
-	page.add_child(_concept_note(_t("instructions_concept_a"), Color(1, 1, 1, 0.58)))
-	return root
+	return _build_three_step_variant(0)
 
 func _build_lesson_cards() -> Control:
+	return _build_three_step_variant(1)
+
+func _build_quick_reference() -> Control:
+	return _build_three_step_variant(2)
+
+func _build_three_step_variant(style_index: int) -> Control:
 	var root := _full_root(PURPLE)
-	_add_circle(root, Vector2(304, -60), 148.0, YELLOW, 0.82)
-	_add_tilted_shape(root, Vector2(-48, 530), Vector2(102, 118), Color("a9e8df"), -14.0, 0.30)
+	if style_index == 0:
+		_add_circle(root, Vector2(304, -60), 148.0, YELLOW, 0.82)
+		_add_tilted_shape(root, Vector2(-48, 548), Vector2(102, 118), Color("a9e8df"), -14.0, 0.28)
+	elif style_index == 1:
+		_add_circle(root, Vector2(-56, 96), 116.0, YELLOW, 0.50)
+		_add_tilted_shape(root, Vector2(330, 72), Vector2(92, 124), Color("efb9dd"), 14.0, 0.54)
+	else:
+		_add_circle(root, Vector2(310, 498), 132.0, YELLOW, 0.34)
+		_add_tilted_shape(root, Vector2(-42, 84), Vector2(90, 116), LAVENDER, -12.0, 0.42)
 	var page_margin := _full_margin(14, 14, 13, 14)
 	root.add_child(page_margin)
 	var page := _vbox(8)
@@ -160,63 +126,34 @@ func _build_lesson_cards() -> Control:
 	page_margin.add_child(page)
 	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), WHITE, Color(1, 1, 1, 0.66)))
 
-	var lesson_stack := _vbox(8)
+	var lesson_stack := _vbox(7)
 	lesson_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(lesson_stack)
-	lesson_stack.add_child(_clear_step_card("1", _t("instructions_find_title"), _t("instructions_find_body"), TEAL, _word_pool_example(true)))
-	lesson_stack.add_child(_clear_step_card("2", _t("instructions_check_title"), _t("instructions_check_body"), YELLOW, _check_and_lock_example()))
-	lesson_stack.add_child(_clear_step_card("3", _t("instructions_top_title"), _t("instructions_top_body"), CORAL, _any_order_example()))
-	var tools := HBoxContainer.new()
-	tools.add_theme_constant_override("separation", 8)
-	lesson_stack.add_child(tools)
-	tools.add_child(_tool_card(SaveManager.text("hint").to_upper(), _t("instructions_hint_body"), LAVENDER))
-	tools.add_child(_tool_card("!", _t("instructions_mistake_body"), CORAL))
+	if style_index == 1:
+		var guide := _panel(WHITE, Color(1, 1, 1, 0.16), 24, 0, true)
+		guide.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		lesson_stack.add_child(guide)
+		var guide_margin := _margin(10, 10, 9, 9)
+		guide.add_child(guide_margin)
+		var guide_steps := _vbox(5)
+		guide_margin.add_child(guide_steps)
+		guide_steps.add_child(_connected_step("1", _t("instructions_find_title"), _t("instructions_find_body"), TEAL, _word_pool_example(true)))
+		guide_steps.add_child(_step_divider())
+		guide_steps.add_child(_connected_step("2", _t("instructions_check_title"), _t("instructions_check_body"), YELLOW, _check_and_lock_example()))
+		guide_steps.add_child(_step_divider())
+		guide_steps.add_child(_connected_step("3", _t("instructions_top_title"), _t("instructions_top_body"), CORAL, _any_order_example()))
+	else:
+		lesson_stack.add_child(_variant_step_card(style_index, "1", _t("instructions_find_title"), _t("instructions_find_body"), TEAL, _word_pool_example(true)))
+		lesson_stack.add_child(_variant_step_card(style_index, "2", _t("instructions_check_title"), _t("instructions_check_body"), YELLOW, _check_and_lock_example()))
+		lesson_stack.add_child(_variant_step_card(style_index, "3", _t("instructions_top_title"), _t("instructions_top_body"), CORAL, _any_order_example()))
+	lesson_stack.add_child(_prominent_hint_card(style_index))
+	var mistake := _label("!  %s" % _t("instructions_mistake_body"), 11, Color("ffb5a9"), _dm_sans_semibold)
+	mistake.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lesson_stack.add_child(mistake)
 	page.add_child(_back_button())
-	page.add_child(_concept_note(_t("instructions_concept_b"), Color(1, 1, 1, 0.58)))
-	return root
-
-func _build_quick_reference() -> Control:
-	var root := _full_root(PURPLE)
-	_add_circle(root, Vector2(-52, 100), 116.0, YELLOW, 0.46)
-	_add_tilted_shape(root, Vector2(330, 70), Vector2(92, 124), Color("efb9dd"), 14.0, 0.54)
-	var page_margin := _full_margin(14, 14, 13, 14)
-	root.add_child(page_margin)
-	var page := _vbox(9)
-	page.name = "VariantPage"
-	page_margin.add_child(page)
-	page.add_child(_screen_heading(_t("instructions_title"), _t("instructions_subtitle"), WHITE, Color(1, 1, 1, 0.66)))
-
-	var reference := _panel(WHITE, Color("e3dcf2"), 27, 1, true)
-	reference.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page.add_child(reference)
-	var reference_margin := _margin(14, 14, 13, 13)
-	reference.add_child(reference_margin)
-	var content := _vbox(8)
-	reference_margin.add_child(content)
-	var goal := _label(_t("instructions_group_sizes"), 12, MUTED, _dm_sans_semibold)
-	goal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(goal)
-	content.add_child(_labeled_pyramid())
-	var divider := HSeparator.new()
-	divider.add_theme_color_override("separator", Color("e9e3f5"))
-	content.add_child(divider)
-	content.add_child(_compact_rule("1", _t("instructions_find_title"), _t("instructions_find_body"), TEAL))
-	content.add_child(_compact_rule("2", _t("instructions_check_title"), _t("instructions_check_body"), YELLOW))
-	var reminders := HBoxContainer.new()
-	reminders.add_theme_constant_override("separation", 8)
-	content.add_child(reminders)
-	reminders.add_child(_tool_card(SaveManager.text("hint").to_upper(), _t("instructions_hint_body"), LAVENDER))
-	reminders.add_child(_tool_card("!", _t("instructions_mistake_body"), CORAL))
-	var tip_band := _panel(Color("fff7cc"), YELLOW, 17, 1)
-	content.add_child(tip_band)
-	var tip_margin := _margin(12, 12, 9, 9)
-	tip_band.add_child(tip_margin)
-	var tip := _label(_t("instructions_quick_tip"), 11, PURPLE, _dm_sans_semibold)
-	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tip_margin.add_child(tip)
-	page.add_child(_back_button())
-	page.add_child(_concept_note(_t("instructions_concept_c"), DARK_MUTED))
+	var concept_keys: Array[String] = ["instructions_concept_a", "instructions_concept_b", "instructions_concept_c"]
+	var concept_key: String = concept_keys[style_index]
+	page.add_child(_concept_note(_t(concept_key), Color(1, 1, 1, 0.58)))
 	return root
 
 func _word_pool_example(compact: bool = false, dark_background: bool = true) -> VBoxContainer:
@@ -283,6 +220,7 @@ func _locked_group_example() -> PanelContainer:
 
 func _clear_step_card(number: String, title: String, body: String, accent: Color, example: Control) -> PanelContainer:
 	var card := _panel(WHITE, Color(1, 1, 1, 0.16), 20, 0, true)
+	card.name = "StepCard_%s" % number
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var margin := _margin(11, 11, 9, 9)
 	card.add_child(margin)
@@ -301,6 +239,88 @@ func _clear_step_card(number: String, title: String, body: String, accent: Color
 	copy.add_child(description)
 	example.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	content.add_child(example)
+	return card
+
+func _variant_step_card(style_index: int, number: String, title: String, body: String, accent: Color, example: Control) -> PanelContainer:
+	if style_index == 0:
+		return _clear_step_card(number, title, body, accent, example)
+	var fill := accent.lightened(0.72)
+	var card := _panel(fill, accent, 20, 2, true)
+	card.name = "StepCard_%s" % number
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var margin := _margin(11, 11, 9, 9)
+	card.add_child(margin)
+	var content := _vbox(5)
+	margin.add_child(content)
+	var heading := HBoxContainer.new()
+	heading.add_theme_constant_override("separation", 9)
+	content.add_child(heading)
+	heading.add_child(_number_badge(number, accent, PURPLE))
+	var copy := _vbox(1)
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(copy)
+	copy.add_child(_label(title, 17, PURPLE, _fredoka_semibold))
+	var description := _label(body, 12, DARK_MUTED, FONT_DM_SANS)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(description)
+	example.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(example)
+	return card
+
+func _connected_step(number: String, title: String, body: String, accent: Color, example: Control) -> VBoxContainer:
+	var section := _vbox(4)
+	section.name = "StepCard_%s" % number
+	var heading := HBoxContainer.new()
+	heading.add_theme_constant_override("separation", 9)
+	section.add_child(heading)
+	heading.add_child(_number_badge(number, accent, PURPLE))
+	var copy := _vbox(0)
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(copy)
+	copy.add_child(_label(title, 16, PURPLE, _fredoka_semibold))
+	var description := _label(body, 11, DARK_MUTED, FONT_DM_SANS)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(description)
+	example.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	section.add_child(example)
+	return section
+
+func _step_divider() -> HSeparator:
+	var divider := HSeparator.new()
+	divider.add_theme_color_override("separator", Color("e7e0f3"))
+	return divider
+
+func _prominent_hint_card(style_index: int) -> PanelContainer:
+	var fill := YELLOW
+	var border := YELLOW
+	var title_color := PURPLE
+	var body_color := PURPLE
+	if style_index == 1:
+		fill = PURPLE_LIGHT
+		border = YELLOW
+		title_color = YELLOW
+		body_color = WHITE
+	elif style_index == 2:
+		fill = Color("efe5ff")
+		border = YELLOW
+	var card := _panel(fill, border, 18, 2, true)
+	card.name = "HintCallout"
+	card.custom_minimum_size.y = 62.0
+	var margin := _margin(12, 12, 9, 9)
+	card.add_child(margin)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 11)
+	margin.add_child(row)
+	var badge := _number_badge("H", YELLOW if style_index == 1 else PURPLE, PURPLE if style_index == 1 else YELLOW)
+	badge.custom_minimum_size = Vector2(42, 42)
+	row.add_child(badge)
+	var copy := _vbox(0)
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(copy)
+	copy.add_child(_label(SaveManager.text("hint").to_upper(), 17, title_color, _fredoka_bold))
+	var description := _label(_t("instructions_hint_note"), 11, body_color, _dm_sans_semibold)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(description)
 	return card
 
 func _check_and_lock_example() -> HBoxContainer:
