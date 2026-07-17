@@ -90,6 +90,7 @@ var _tutorial_spotlight: ColorRect
 var _tutorial_paused: bool = false
 var _tutorial_pause_id: int = 0
 var _tutorial_focus_tweens: Dictionary = {}
+var _tutorial_completion_layer: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1050,6 +1051,17 @@ func _tutorial_guide_style() -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 3)
 	return style
 
+func _tutorial_completion_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color.WHITE
+	style.border_color = UI_BORDER
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(28)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.16)
+	style.shadow_size = 18
+	style.shadow_offset = Vector2(0, 10)
+	return style
+
 func _on_game_finished(won: bool, top_word: String) -> void:
 	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
 		return
@@ -1726,9 +1738,92 @@ func _on_tutorial_completed() -> void:
 	_check.disabled = true
 	_update_tutorial_spotlight()
 	_message.text = SaveManager.text("tutorial_complete")
-	await get_tree().create_timer(1.35).timeout
+	await get_tree().create_timer(0.95).timeout
 	if is_inside_tree():
-		request_tutorial_exit.emit(true)
+		_show_tutorial_completion_screen()
+
+func _show_tutorial_completion_screen() -> void:
+	if is_instance_valid(_tutorial_completion_layer):
+		return
+	_tutorial_completion_layer = Control.new()
+	_tutorial_completion_layer.name = "TutorialCompletion"
+	_tutorial_completion_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_completion_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tutorial_completion_layer.z_index = 40
+	_tutorial_completion_layer.modulate.a = 0.0
+	add_child(_tutorial_completion_layer)
+	var backdrop: ColorRect = ColorRect.new()
+	backdrop.color = Color(1.0, 0.992, 0.961, 0.96)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_completion_layer.add_child(backdrop)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 22)
+	_tutorial_completion_layer.add_child(center)
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(clampf(size.x - 44.0, 300.0, 390.0), 0)
+	card.add_theme_stylebox_override("panel", _tutorial_completion_style())
+	center.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 32)
+	margin.add_theme_constant_override("margin_bottom", 32)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 16)
+	margin.add_child(content)
+	var success_mark: Label = Label.new()
+	success_mark.text = "✓"
+	success_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	success_mark.add_theme_font_override("font", _font_fredoka_bold)
+	success_mark.add_theme_font_size_override("font_size", 48)
+	success_mark.add_theme_color_override("font_color", UI_TEAL)
+	content.add_child(success_mark)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("tutorial_complete_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(title)
+	var subtitle: Label = Label.new()
+	subtitle.text = SaveManager.text("tutorial_complete_subtitle")
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_override("font", FONT_DM_SANS)
+	subtitle.add_theme_font_size_override("font_size", 15)
+	subtitle.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	content.add_child(subtitle)
+	var continue_button: Button = _action_button(SaveManager.text("tutorial_continue_daily"), true)
+	continue_button.custom_minimum_size = Vector2(0, 56)
+	continue_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	continue_button.add_theme_font_size_override("font_size", 17)
+	continue_button.add_theme_color_override("font_color", UI_PRIMARY)
+	continue_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	continue_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	continue_button.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
+	continue_button.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
+	continue_button.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	continue_button.pressed.connect(_on_tutorial_continue_pressed.bind(continue_button))
+	content.add_child(continue_button)
+	await get_tree().process_frame
+	if not is_instance_valid(card):
+		return
+	card.pivot_offset = card.size * 0.5
+	card.scale = Vector2(0.94, 0.94)
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(_tutorial_completion_layer, "modulate:a", 1.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _on_tutorial_continue_pressed(button: Button) -> void:
+	if button.disabled:
+		return
+	button.disabled = true
+	button.pivot_offset = button.size * 0.5
+	var tween: Tween = create_tween()
+	tween.tween_property(button, "scale", Vector2(0.97, 0.97), 0.08)
+	tween.tween_property(button, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func() -> void: request_tutorial_exit.emit(true))
 
 func _on_rewarded_hint_required() -> void:
 	_set_hint_button_text(SaveManager.text("ad_hint"), true)

@@ -450,9 +450,7 @@ func show_game() -> void:
 	_hide_home()
 	_clear_content()
 	var board: GameBoard = GameBoardScene.instantiate()
-	board.request_menu.connect(show_main_menu)
-	board.request_new_game.connect(_start_next_game)
-	board.request_tutorial_exit.connect(_on_tutorial_exit)
+	_connect_game_board(board)
 	board.modulate.a = 0.0
 	add_child(board)
 	_active_view = board
@@ -464,6 +462,11 @@ func show_game() -> void:
 	_play_button.disabled = false
 	_unlimited_button.disabled = false
 	_is_transitioning = false
+
+func _connect_game_board(board: GameBoard) -> void:
+	board.request_menu.connect(show_main_menu)
+	board.request_new_game.connect(_start_next_game)
+	board.request_tutorial_exit.connect(_on_tutorial_exit)
 
 func _start_next_game() -> void:
 	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
@@ -784,10 +787,62 @@ func _start_tutorial() -> void:
 	if GameState.start_tutorial():
 		show_game()
 
-func _on_tutorial_exit(_completed: bool) -> void:
+func _on_tutorial_exit(completed: bool) -> void:
 	SaveManager.complete_onboarding()
+	if completed:
+		_continue_to_daily_from_tutorial()
+		return
 	GameState.reset_debug_state()
 	show_main_menu()
+
+func _continue_to_daily_from_tutorial() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	_play_button.disabled = true
+	_unlimited_button.disabled = true
+	var cover: ColorRect = ColorRect.new()
+	cover.color = UI_BACKGROUND
+	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.modulate.a = 0.0
+	cover.z_index = 100
+	add_child(cover)
+	var cover_in: Tween = create_tween()
+	cover_in.tween_property(cover, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	await cover_in.finished
+	var tutorial_view: Control = _active_view
+	_active_view = null
+	if is_instance_valid(tutorial_view):
+		tutorial_view.queue_free()
+	await get_tree().process_frame
+	GameState.reset_debug_state()
+	var opened_daily: bool = GameState.view_daily_result() if SaveManager.is_daily_challenge_completed() else GameState.start_new_game(GameState.DAILY_MODE)
+	if not opened_daily:
+		cover.queue_free()
+		_is_transitioning = false
+		_play_button.disabled = false
+		_unlimited_button.disabled = false
+		show_main_menu()
+		return
+	var board: GameBoard = GameBoardScene.instantiate()
+	_connect_game_board(board)
+	board.modulate.a = 0.0
+	board.scale = Vector2(1.015, 1.015)
+	add_child(board)
+	_active_view = board
+	await get_tree().process_frame
+	board.pivot_offset = board.size * 0.5
+	board.refresh()
+	var reveal: Tween = create_tween().set_parallel(true)
+	reveal.tween_property(board, "modulate:a", 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	reveal.tween_property(board, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	reveal.tween_property(cover, "modulate:a", 0.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await reveal.finished
+	cover.queue_free()
+	_play_button.disabled = false
+	_unlimited_button.disabled = false
+	_is_transitioning = false
 
 func _add_language_chip(row: HBoxContainer, label_text: String, language_code: String) -> void:
 	var selected: bool = PuzzleLoader.get_language() == language_code
