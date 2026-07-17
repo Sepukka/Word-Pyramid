@@ -40,6 +40,8 @@ const WRONG_SHAKE_PEAK: float = 6.0
 const WRONG_SHAKE_SETTLE: float = 3.0
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
+const XP_REWARD_ANIMATION_DELAY: float = 0.38
+const XP_REWARD_ANIMATION_DURATION: float = 1.20
 const TUTORIAL_HINT_BREAK: float = 1.15
 const TUTORIAL_CHECK_BREAK: float = 1.00
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
@@ -66,6 +68,7 @@ var _aftermath_dragging: bool = false
 var _aftermath_dismissing: bool = false
 var _aftermath_open_tween: Tween
 var _aftermath_snap_tween: Tween
+var _aftermath_xp_tween: Tween
 var _game_was_running: bool = false
 var _aftermath_scheduled: bool = false
 var _word_buttons: Dictionary = {}
@@ -1322,14 +1325,15 @@ func _show_aftermath(won: bool) -> void:
 	var total_xp_after: int = int(progression_reward.get("total_xp_after", SaveManager.get_total_xp()))
 	var level_after: int = int(progression_reward.get("level_after", SaveManager.get_player_level(total_xp_after)))
 	var xp_gained: int = int(progression_reward.get("xp_gained", 0))
+	var total_xp_before: int = int(progression_reward.get("total_xp_before", maxi(total_xp_after - xp_gained, 0)))
 	var level_before: int = int(progression_reward.get("level_before", level_after))
-	var xp_copy: String = SaveManager.text("level_up") % level_after if level_after > level_before else SaveManager.text("level_short") % level_after
+	var final_xp_copy: String = SaveManager.text("level_up") % level_after if level_after > level_before else SaveManager.text("level_short") % level_after
 	if xp_gained > 0:
-		xp_copy = "%s · %s" % [SaveManager.text("xp_earned") % xp_gained, xp_copy]
-	var xp_reward_label: Label = _aftermath_label(xp_copy, 11, Color("67569e"), _font_dm_sans_semibold)
+		final_xp_copy = "%s · %s" % [SaveManager.text("xp_earned") % xp_gained, final_xp_copy]
+	var xp_reward_label: Label = _aftermath_label(final_xp_copy, 11, Color("67569e"), _font_dm_sans_semibold)
 	xp_reward_label.name = "XpRewardLabel"
 	score_stack.add_child(xp_reward_label)
-	var level_progress: Dictionary = SaveManager.get_level_progress(total_xp_after)
+	var level_progress: Dictionary = SaveManager.get_level_progress(total_xp_before if xp_gained > 0 else total_xp_after)
 	var xp_progress: ProgressBar = ProgressBar.new()
 	xp_progress.name = "XpProgress"
 	xp_progress.custom_minimum_size = Vector2(180, 6)
@@ -1346,7 +1350,11 @@ func _show_aftermath(won: bool) -> void:
 	xp_fill.bg_color = UI_MAGENTA
 	xp_progress.add_theme_stylebox_override("background", xp_background)
 	xp_progress.add_theme_stylebox_override("fill", xp_fill)
+	xp_progress.set_meta("animation_from_total_xp", total_xp_before)
+	xp_progress.set_meta("animation_to_total_xp", total_xp_after)
 	score_stack.add_child(xp_progress)
+	if xp_gained > 0:
+		_update_aftermath_xp_display(total_xp_before, xp_reward_label, xp_progress, total_xp_before, xp_gained)
 
 	card.add_child(_build_aftermath_result_pyramid())
 
@@ -1482,6 +1490,7 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.24)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_animate_aftermath_xp(layer, xp_reward_label, xp_progress, total_xp_before, total_xp_after, xp_gained, final_xp_copy)
 	if won and play_streak_animation:
 		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
 	elif not won and play_streak_animation:
@@ -1828,18 +1837,51 @@ func _finish_aftermath_drag(pointer_y: float) -> void:
 		_aftermath_snap_tween = create_tween()
 		_aftermath_snap_tween.tween_property(_aftermath_stack, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-func _stop_aftermath_motion() -> void:
+func _stop_aftermath_motion(stop_xp: bool = false) -> void:
 	if _aftermath_open_tween != null and _aftermath_open_tween.is_running():
 		_aftermath_open_tween.kill()
 	if _aftermath_snap_tween != null and _aftermath_snap_tween.is_running():
 		_aftermath_snap_tween.kill()
+	if stop_xp and _aftermath_xp_tween != null and _aftermath_xp_tween.is_running():
+		_aftermath_xp_tween.kill()
+
+func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String) -> void:
+	if xp_gained <= 0 or total_after <= total_before:
+		return
+	_aftermath_xp_tween = create_tween()
+	_aftermath_xp_tween.tween_interval(XP_REWARD_ANIMATION_DELAY)
+	_aftermath_xp_tween.tween_method(
+		func(animated_total: float) -> void:
+			if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label) and is_instance_valid(progress):
+				_update_aftermath_xp_display(roundi(animated_total), label, progress, total_before, xp_gained),
+		float(total_before),
+		float(total_after),
+		XP_REWARD_ANIMATION_DURATION
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_aftermath_xp_tween.tween_callback(func() -> void:
+		if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label):
+			label.text = final_text
+	)
+
+func _update_aftermath_xp_display(animated_total: int, label: Label, progress: ProgressBar, total_before: int, xp_gained: int) -> void:
+	var current_total: int = clampi(animated_total, total_before, total_before + xp_gained)
+	var gained_so_far: int = current_total - total_before
+	var level_progress: Dictionary = SaveManager.get_level_progress(current_total)
+	var current_level: int = int(level_progress.get("level", 1))
+	progress.max_value = float(level_progress.get("required", 1))
+	progress.value = float(level_progress.get("current", 0))
+	label.text = "%s / %s · %s" % [
+		SaveManager.text("xp_earned") % gained_so_far,
+		SaveManager.text("xp_earned") % xp_gained,
+		SaveManager.text("level_short") % current_level,
+	]
 
 func _dismiss_aftermath() -> void:
 	if _aftermath_dismissing or not is_instance_valid(_aftermath_layer):
 		return
 	_aftermath_dismissing = true
 	_aftermath_dragging = false
-	_stop_aftermath_motion()
+	_stop_aftermath_motion(true)
 	var layer: Control = _aftermath_layer
 	var sheet: PanelContainer = _aftermath_sheet
 	var stack: VBoxContainer = _aftermath_stack
@@ -1857,6 +1899,7 @@ func _dismiss_aftermath() -> void:
 	_aftermath_stack = null
 	_aftermath_open_tween = null
 	_aftermath_snap_tween = null
+	_aftermath_xp_tween = null
 	_aftermath_dismissing = false
 
 func _on_endless_next_puzzle_pressed() -> void:

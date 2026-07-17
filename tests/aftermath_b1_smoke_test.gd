@@ -27,7 +27,8 @@ func _ready() -> void:
 	GameState.result_correct_count = 7
 	GameState.result_progression = {
 		"xp_gained": 42,
-		"total_xp_after": 142,
+		"total_xp_before": 90,
+		"total_xp_after": 132,
 		"level_before": 1,
 		"level_after": 2,
 	}
@@ -45,6 +46,16 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_assert_common_b1_layout(board)
+	var animated_xp: Label = board.find_child("XpRewardLabel", true, false) as Label
+	var animated_progress: ProgressBar = board.find_child("XpProgress", true, false) as ProgressBar
+	var initial_progress: float = animated_progress.value
+	await get_tree().create_timer(0.78).timeout
+	assert(animated_progress.value != initial_progress, "XP progress must move live after the aftermath opens")
+	assert(animated_xp.text.contains(" / +42 XP"), "XP label must count toward the full reward during the animation")
+	await get_tree().create_timer(1.05).timeout
+	assert(animated_xp.text.contains("+42 XP"), "XP animation must finish at the full earned reward")
+	var final_level_progress: Dictionary = SaveManager.get_level_progress(132)
+	assert(is_equal_approx(animated_progress.value, float(final_level_progress.get("current", -1))), "XP animation must finish at the saved level progress")
 	var daily_primary: Button = board.find_child("PrimaryAction", true, false) as Button
 	assert(daily_primary != null and daily_primary.text == SaveManager.text("continue_to_unlimited"), "Daily aftermath has the wrong continuation label")
 	var daily_flame: TextureRect = board.find_child("StreakFlame", true, false) as TextureRect
@@ -95,7 +106,7 @@ func _assert_common_b1_layout(board: GameBoard) -> void:
 	assert(score != null and score.text.begins_with("%d / 5" % expected_rows), "Aftermath row score must include the top-word result")
 	var xp_reward: Label = board.find_child("XpRewardLabel", true, false) as Label
 	var xp_progress: ProgressBar = board.find_child("XpProgress", true, false) as ProgressBar
-	assert(xp_reward != null and xp_reward.text.contains("42 XP"), "Aftermath must show the XP earned from this result")
+	assert(xp_reward != null and xp_reward.text.contains("XP"), "Aftermath must show the live XP reward")
 	assert(xp_progress != null and xp_progress.max_value > 0.0, "Aftermath must show progress toward the next level")
 	var found_mark: Label = board.find_child("LegendFoundIconMark", true, false) as Label
 	var missed_mark: Label = board.find_child("LegendMissedIconMark", true, false) as Label
