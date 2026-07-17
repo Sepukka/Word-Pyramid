@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d5b8ff"/>
+      <stop offset="0.55" stop-color="#a77aef"/>
+      <stop offset="1" stop-color="#6b3fc7"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="155%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#351a78" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g fill="url(#tile)" stroke="#8052d4" stroke-width="2" filter="url(#shadow)">
+    <rect x="176" y="84" width="80" height="80" rx="23"/>
+    <rect x="130" y="174" width="80" height="80" rx="23"/>
+    <rect x="222" y="174" width="80" height="80" rx="23"/>
+    <rect x="84" y="264" width="80" height="80" rx="23"/>
+    <rect x="176" y="264" width="80" height="80" rx="23"/>
+    <rect x="268" y="264" width="80" height="80" rx="23"/>
+  </g>
+</svg>
