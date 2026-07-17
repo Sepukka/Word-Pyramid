@@ -529,8 +529,8 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
-	tile.add_theme_color_override("font_disabled_color", _row_text(row_length))
-	tile.add_theme_stylebox_override("disabled", _tile_style(_row_fill(row_length), _row_border(row_length)))
+	tile.add_theme_color_override("font_disabled_color", UI_TEXT)
+	tile.add_theme_stylebox_override("disabled", _tile_style(UI_SURFACE, UI_BORDER))
 	tile.tooltip_text = SaveManager.text("hint_tooltip")
 	return tile
 
@@ -615,44 +615,45 @@ func _layout_for_width() -> void:
 	var card_width: float = clampf(size.x - 20.0, 304.0, 620.0)
 	_card.custom_minimum_size = Vector2(card_width, 0.0)
 	var usable_width: float = card_width - 16.0
-	var tile_size: float = clampf((usable_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
-	# The five-word row already consumes the available width on phones. Grow the
-	# pyramid vertically instead, while every tier keeps the same block height
-	# and centered 1-2-3-4-5 geometry.
+	var horizontal_tile_size: float = clampf((usable_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
+	# Use whichever axis is tighter so every word block remains a true square on
+	# phones and tablets without overflowing the available pyramid height.
 	var reserved_height: float = 425.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 400.0
 	var pyramid_height: float = clampf(size.y - reserved_height, 280.0, 460.0)
-	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
+	var vertical_tile_size: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
+	var tile_size: float = minf(horizontal_tile_size, vertical_tile_size)
+	var shared_font_size: int = _uniform_tile_font_size(tile_size)
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var tile_wrapper: Control = _word_tile_wrappers.get(word) as Control
 		if tile_wrapper != null:
-			tile_wrapper.custom_minimum_size = Vector2(tile_size, tile_height)
-			tile_wrapper.size = Vector2(tile_size, tile_height)
-		tile.custom_minimum_size = Vector2(tile_size, tile_height)
+			tile_wrapper.custom_minimum_size = Vector2(tile_size, tile_size)
+			tile_wrapper.size = Vector2(tile_size, tile_size)
+		tile.custom_minimum_size = Vector2(tile_size, tile_size)
 		tile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tile.position.y = -SELECTION_LIFT if GameState.selected_words.has(word) else 0.0
 		tile.set_meta("selection_lifted", GameState.selected_words.has(word))
-		tile.add_theme_font_size_override("font_size", _tile_font_size(tile.text, tile_size))
+		tile.add_theme_font_size_override("font_size", shared_font_size)
 	for hinted_tile: Button in _hinted_tiles.values():
-		hinted_tile.custom_minimum_size = Vector2(tile_size, tile_height)
-		hinted_tile.size = Vector2(tile_size, tile_height)
-		hinted_tile.add_theme_font_size_override("font_size", _tile_font_size(hinted_tile.text, tile_size))
+		hinted_tile.custom_minimum_size = Vector2(tile_size, tile_size)
+		hinted_tile.size = Vector2(tile_size, tile_size)
+		hinted_tile.add_theme_font_size_override("font_size", shared_font_size)
 	for row_length: int in _placed_tiles:
 		for placed_tile: Label in _placed_tiles[row_length]:
-			placed_tile.custom_minimum_size = Vector2(tile_size, tile_height)
-			placed_tile.size = Vector2(tile_size, tile_height)
-			placed_tile.add_theme_font_size_override("font_size", _tile_font_size(placed_tile.text, tile_size))
+			placed_tile.custom_minimum_size = Vector2(tile_size, tile_size)
+			placed_tile.size = Vector2(tile_size, tile_size)
+			placed_tile.add_theme_font_size_override("font_size", shared_font_size)
 	for row_length: int in _category_cards:
 		var category_card: PanelContainer = _category_cards[row_length]
 		var row_width: float = tile_size * row_length + TILE_GAP * float(row_length - 1)
-		category_card.custom_minimum_size = Vector2(row_width, tile_height)
-		category_card.size = Vector2(row_width, tile_height)
+		category_card.custom_minimum_size = Vector2(row_width, tile_size)
+		category_card.size = Vector2(row_width, tile_size)
 		_fit_category_card_text(category_card, row_width)
 	for row_length: int in _pyramid_row_wrappers:
 		var row_wrapper: Control = _pyramid_row_wrappers[row_length]
 		var row_width: float = tile_size * row_length + TILE_GAP * float(row_length - 1)
-		row_wrapper.custom_minimum_size = Vector2(row_width, tile_height)
-		row_wrapper.size = Vector2(row_width, tile_height)
+		row_wrapper.custom_minimum_size = Vector2(row_width, tile_size)
+		row_wrapper.size = Vector2(row_width, tile_size)
 	# The dock has 10 px inner margins on both sides and a 10 px button gap.
 	var action_width: float = clampf((usable_width - 34.0) / 2.0, 130.0, 260.0)
 	for action_button: Button in _action_buttons:
@@ -663,16 +664,10 @@ func _layout_for_width() -> void:
 	_check.custom_minimum_size = Vector2(max(usable_width - 116.0, 180.0), 52.0)
 	_check.add_theme_font_size_override("font_size", 17)
 
-func _tile_font_size(word: String, tile_size: float) -> int:
-	# Measure the real rendered width instead of estimating from character count.
-	# This keeps long compounds as large as possible without arbitrary wrapping
-	# or clipping them halfway through a word.
-	var available_width: float = maxf(tile_size - 8.0, 24.0)
-	var font: FontVariation = _tile_font(word)
-	for candidate_size: int in range(15, 7, -1):
-		if font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1.0, candidate_size).x <= available_width:
-			return candidate_size
-	return 7
+func _uniform_tile_font_size(tile_size: float) -> int:
+	# One responsive size is shared by every word tile. Longer compounds still
+	# use the condensed Fredoka variation, but are not arbitrarily made smaller.
+	return clampi(floori(tile_size * 0.17), 9, 13)
 
 func _tile_font(word: String) -> FontVariation:
 	return _font_fredoka_condensed if word.length() >= 10 else _font_fredoka_semibold
@@ -934,7 +929,7 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	ghost.autowrap_mode = TextServer.AUTOWRAP_OFF
 	ghost.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	ghost.add_theme_font_override("font", _tile_font(word))
-	ghost.add_theme_font_size_override("font_size", _tile_font_size(word, block_size.x))
+	ghost.add_theme_font_size_override("font_size", _uniform_tile_font_size(block_size.x))
 	ghost.add_theme_color_override("font_color", UI_TEXT)
 	ghost.add_theme_stylebox_override("normal", _tile_style(fill_color, border_color))
 	ghost.z_index = 10
@@ -2020,7 +2015,7 @@ func _create_game_decor() -> Control:
 	layer.add_child(base)
 	# Half of the circle sits outside the left edge, slightly above the screen's
 	# midpoint. The opposite rectangle is clipped by the right edge.
-	_add_game_decor_shape(layer, Vector2(-76, size.y * 0.34), Vector2(152, 152), UI_YELLOW, 0.92, 76)
+	_add_game_decor_shape(layer, Vector2(-62, size.y * 0.36), Vector2(124, 124), UI_YELLOW, 0.92, 62)
 	_add_game_decor_shape(layer, Vector2(size.x - 58, size.y * 0.52), Vector2(156, 84), Color("c9b8ff"), 0.78, 20, 12.0)
 	return layer
 
@@ -2114,20 +2109,10 @@ func _life_dot_style(used: bool) -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 1)
 	return style
 
-func _row_band_style(row_length: int) -> StyleBoxFlat:
-	var colors: Dictionary = {
-		1: Color("f3efff"),
-		2: Color("fff0f4"),
-		3: Color("fff3e8"),
-		4: Color("ebfaf7"),
-		5: Color("fff8dc"),
-	}
+func _row_band_style(_row_length: int) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = colors.get(row_length, UI_SURFACE_TINT)
-	style.set_corner_radius_all(16)
-	style.shadow_color = Color(0.102, 0.039, 0.369, 0.04)
-	style.shadow_size = 2
-	style.shadow_offset = Vector2(0, 2)
+	style.bg_color = Color.TRANSPARENT
+	style.border_color = Color.TRANSPARENT
 	return style
 
 func _action_dock_style() -> StyleBoxFlat:
