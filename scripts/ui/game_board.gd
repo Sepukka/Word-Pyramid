@@ -1305,7 +1305,9 @@ func _show_aftermath(won: bool) -> void:
 	score_margin.add_theme_constant_override("margin_top", 8)
 	score_margin.add_theme_constant_override("margin_bottom", 8)
 	score_badge.add_child(score_margin)
-	score_margin.add_child(_aftermath_label("%d / 4  %s" % [solved_group_count, SaveManager.text("stat_groups").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold))
+	var solved_group_score: Label = _aftermath_label("%d / 4  %s" % [solved_group_count, SaveManager.text("stat_groups").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold)
+	solved_group_score.name = "SolvedGroupScore"
+	score_margin.add_child(solved_group_score)
 
 	card.add_child(_build_aftermath_result_pyramid())
 
@@ -2286,22 +2288,25 @@ func _build_aftermath_result_pyramid() -> VBoxContainer:
 	pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
 	pyramid.add_theme_constant_override("separation", 3)
 	component.add_child(pyramid)
-	# The compact result view keeps the top four game rows (1–4), with the
-	# one-word apex represented separately from the two-word group beneath it.
+	# The result score is based on the four word groups (sizes 2–5). Keep the
+	# compact 1+2+3+4 silhouette, but map those visual layers to all four groups
+	# so the bottom group is never omitted from the picture.
 	for layer_index: int in 4:
-		var row_length: int = layer_index + 1
+		var visual_row_length: int = layer_index + 1
+		var group_size: int = layer_index + 2
 		var row: HBoxContainer = HBoxContainer.new()
 		row.name = "Layer%d" % (layer_index + 1)
-		row.set_meta("row_length", row_length)
+		row.set_meta("row_length", visual_row_length)
+		row.set_meta("group_size", group_size)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
-		var found: bool = GameState.result_top_solved if row_length == 1 else _aftermath_group_found_for_size(row_length)
-		var fill: Color = _row_fill(row_length) if found else Color("3a267c")
-		var border: Color = _row_border(row_length) if found else Color("ff8066")
+		var found: bool = _aftermath_group_found_for_size(group_size)
+		var fill: Color = _row_fill(group_size) if found else Color("3a267c")
+		var border: Color = _row_border(group_size) if found else Color("ff8066")
 		var mark_text: String = "✓" if found else "×"
-		var mark_color: Color = _row_text(row_length) if found else Color("ff9a86")
-		for _tile_index: int in row_length:
+		var mark_color: Color = _row_text(group_size) if found else Color("ff9a86")
+		for _tile_index: int in visual_row_length:
 			var tile: PanelContainer = PanelContainer.new()
 			tile.custom_minimum_size = Vector2(42, 25)
 			tile.add_theme_stylebox_override("panel", _aftermath_pyramid_tile_style(fill, border, not found))
