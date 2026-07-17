@@ -11,6 +11,9 @@ const TILE_GAP: float = 6.0
 const ROW_BAND_OVERHANG: Vector2 = Vector2(7.0, 3.0)
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
+const ICON_HOME: Texture2D = preload("res://assets/icons/home.svg")
+const ICON_SHARE: Texture2D = preload("res://assets/icons/share.svg")
+const ICON_FLAME: Texture2D = preload("res://assets/icons/flame.svg")
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
 const UI_TEXT: Color = Color("1a0a5e")
@@ -1155,6 +1158,267 @@ func _on_share_pressed() -> void:
 
 func _show_aftermath(won: bool) -> void:
 	if is_instance_valid(_aftermath_layer):
+		if not _aftermath_dismissing:
+			_aftermath_layer.modulate.a = 1.0
+			if is_instance_valid(_aftermath_stack):
+				_aftermath_stack.position.y = 0.0
+		return
+	var correct: int = max(GameState.result_correct_count, 0)
+	var total: int = max(GameState.result_total_count(), correct)
+	var is_endless: bool = GameState.game_mode == GameState.UNLIMITED_MODE
+	var is_endless_loss: bool = is_endless and not won
+	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
+	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
+	var solved_group_count: int = 4 if won else clampi(GameState.result_solved_groups.size(), 0, 4)
+
+	var layer: Control = Control.new()
+	layer.name = "AftermathLayer"
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.modulate.a = 0.0
+	layer.z_index = 200
+	add_child(layer)
+	_aftermath_layer = layer
+
+	var backdrop: ColorRect = ColorRect.new()
+	backdrop.color = UI_BACKGROUND
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(backdrop)
+	_add_aftermath_background_decor(layer)
+
+	var stack: VBoxContainer = VBoxContainer.new()
+	_aftermath_stack = stack
+	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(stack)
+
+	var sheet: PanelContainer = PanelContainer.new()
+	_aftermath_sheet = sheet
+	sheet.add_theme_stylebox_override("panel", _aftermath_fullscreen_style())
+	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sheet.gui_input.connect(_on_aftermath_drag_input)
+	stack.add_child(sheet)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	sheet.add_child(margin)
+	var page: VBoxContainer = VBoxContainer.new()
+	page.name = "AftermathPage"
+	page.alignment = BoxContainer.ALIGNMENT_CENTER
+	page.add_theme_constant_override("separation", 10)
+	margin.add_child(page)
+
+	var eyebrow_row: HBoxContainer = HBoxContainer.new()
+	page.add_child(eyebrow_row)
+	var mode_chip: PanelContainer = PanelContainer.new()
+	mode_chip.add_theme_stylebox_override("panel", _aftermath_mode_chip_style())
+	mode_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	eyebrow_row.add_child(mode_chip)
+	var chip_margin: MarginContainer = MarginContainer.new()
+	chip_margin.add_theme_constant_override("margin_left", 10)
+	chip_margin.add_theme_constant_override("margin_right", 10)
+	chip_margin.add_theme_constant_override("margin_top", 5)
+	chip_margin.add_theme_constant_override("margin_bottom", 5)
+	mode_chip.add_child(chip_margin)
+	var mode_text: String = SaveManager.text("unlimited_mode_label") if is_endless else SaveManager.text("daily_challenge_label")
+	chip_margin.add_child(_aftermath_label(mode_text.to_upper(), 10, UI_PRIMARY, _font_dm_sans_semibold))
+	var eyebrow_spacer: Control = Control.new()
+	eyebrow_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	eyebrow_row.add_child(eyebrow_spacer)
+	var brand: Label = _aftermath_label("WORD PYRAMID", 11, UI_MUTED_TEXT, _font_dm_sans_semibold)
+	brand.size_flags_horizontal = Control.SIZE_SHRINK_END
+	eyebrow_row.add_child(brand)
+
+	var title: Label = _aftermath_label(SaveManager.text("aftermath_win_title") if won else SaveManager.text("aftermath_loss_title"), 31, UI_PRIMARY, _font_fredoka_bold)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	page.add_child(title)
+	var subtitle_text: String
+	if won:
+		subtitle_text = SaveManager.text("aftermath_flawless") if mistakes == 0 else SaveManager.text("aftermath_solved_mistakes") % mistakes
+	elif is_endless_loss:
+		subtitle_text = SaveManager.text("aftermath_endless_better_luck")
+	else:
+		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total]
+	var subtitle: Label = _aftermath_label(subtitle_text, 13, Color("5d5286"), FONT_DM_SANS)
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	page.add_child(subtitle)
+
+	var result_card: PanelContainer = PanelContainer.new()
+	result_card.name = "ResultCard"
+	result_card.add_theme_stylebox_override("panel", _aftermath_result_card_style(won))
+	result_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(result_card)
+	var card_margin: MarginContainer = MarginContainer.new()
+	card_margin.add_theme_constant_override("margin_left", 16)
+	card_margin.add_theme_constant_override("margin_right", 16)
+	card_margin.add_theme_constant_override("margin_top", 16)
+	card_margin.add_theme_constant_override("margin_bottom", 16)
+	result_card.add_child(card_margin)
+	var card: VBoxContainer = VBoxContainer.new()
+	card.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_theme_constant_override("separation", 10)
+	card_margin.add_child(card)
+
+	var score_badge: PanelContainer = PanelContainer.new()
+	score_badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	score_badge.add_theme_stylebox_override("panel", _aftermath_score_badge_style())
+	card.add_child(score_badge)
+	var score_margin: MarginContainer = MarginContainer.new()
+	score_margin.add_theme_constant_override("margin_left", 20)
+	score_margin.add_theme_constant_override("margin_right", 20)
+	score_margin.add_theme_constant_override("margin_top", 8)
+	score_margin.add_theme_constant_override("margin_bottom", 8)
+	score_badge.add_child(score_margin)
+	score_margin.add_child(_aftermath_label("%d / 4  %s" % [solved_group_count, SaveManager.text("stat_groups").to_lower()], 20, UI_PRIMARY, _font_fredoka_bold))
+
+	card.add_child(_build_aftermath_result_pyramid())
+
+	var streak_panel: PanelContainer = PanelContainer.new()
+	streak_panel.add_theme_stylebox_override("panel", _aftermath_streak_style())
+	streak_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(streak_panel)
+	var streak_margin: MarginContainer = MarginContainer.new()
+	streak_margin.add_theme_constant_override("margin_left", 14)
+	streak_margin.add_theme_constant_override("margin_right", 14)
+	streak_margin.add_theme_constant_override("margin_top", 10)
+	streak_margin.add_theme_constant_override("margin_bottom", 10)
+	streak_panel.add_child(streak_margin)
+	var streak_box: HBoxContainer = HBoxContainer.new()
+	streak_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	streak_box.add_theme_constant_override("separation", 10)
+	streak_margin.add_child(streak_box)
+	var has_daily_streak: bool = not is_endless
+	var play_streak_animation: bool = has_daily_streak and SaveManager.consume_daily_streak_animation(GameState.daily_date)
+	var flame: TextureRect = TextureRect.new()
+	flame.name = "StreakFlame"
+	flame.texture = ICON_FLAME
+	flame.custom_minimum_size = Vector2(32, 40)
+	flame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flame.visible = has_daily_streak
+	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	streak_box.add_child(flame)
+	var losing_heart: Label = null
+	if is_endless:
+		var aftermath_hearts: HBoxContainer = HBoxContainer.new()
+		aftermath_hearts.alignment = BoxContainer.ALIGNMENT_CENTER
+		aftermath_hearts.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		aftermath_hearts.add_theme_constant_override("separation", 8)
+		streak_box.add_child(aftermath_hearts)
+		var current_hearts: int = SaveManager.get_endless_hearts()
+		for index: int in range(SaveManager.ENDLESS_DAILY_HEARTS):
+			var heart: Label = _aftermath_label("♥", 30, UI_RED if index < current_hearts else Color("62578f"), _font_fredoka_bold)
+			heart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			heart.add_theme_color_override("font_outline_color", Color("090321"))
+			heart.add_theme_constant_override("outline_size", 2)
+			heart.modulate.a = 1.0 if index < current_hearts else 0.30
+			if is_endless_loss and index == current_hearts:
+				heart.add_theme_color_override("font_color", UI_RED)
+				heart.modulate.a = 1.0
+				losing_heart = heart
+			aftermath_hearts.add_child(heart)
+	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
+	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
+	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
+	var heart_count: int = SaveManager.get_endless_hearts() if is_endless else 0
+	var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count if heart_count > 0 else SaveManager.text("endless_out_of_hearts")
+	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else endless_count_text, 36 if has_daily_streak else 16, UI_YELLOW if has_daily_streak else Color.WHITE, _font_fredoka_bold)
+	streak_number.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	streak_box.add_child(streak_number)
+	var streak_caption_text: String = SaveManager.endless_reset_countdown_text()
+	if has_daily_streak:
+		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
+		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")
+	var streak_caption: Label = _aftermath_label(streak_caption_text, 12, Color(1, 1, 1, 0.70), _font_fredoka_semibold)
+	streak_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	streak_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	streak_box.add_child(streak_caption)
+	var crack_overlay: Control = Control.new()
+	crack_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crack_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	streak_panel.add_child(crack_overlay)
+	var streak_crack: ColorRect = ColorRect.new()
+	streak_crack.color = UI_RED
+	streak_crack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	streak_crack.visible = false
+	crack_overlay.add_child(streak_crack)
+
+	var stats_row: HBoxContainer = HBoxContainer.new()
+	stats_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_row.add_theme_constant_override("separation", 8)
+	card.add_child(stats_row)
+	stats_row.add_child(_stat_pill(SaveManager.text("stat_mistakes"), str(mistakes), UI_YELLOW if mistakes == 0 else Color("ff8066")))
+	stats_row.add_child(_stat_pill(SaveManager.text("stat_groups"), "%d / 4" % solved_group_count, UI_TEAL))
+	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
+
+	var primary_button: Button
+	var can_continue_to_endless: bool = not is_endless and SaveManager.can_start_endless()
+	if is_endless:
+		if heart_count > 0:
+			primary_button = _aftermath_button(SaveManager.text("continue_to_next"), true, true)
+			primary_button.pressed.connect(_on_endless_next_puzzle_pressed)
+		elif SaveManager.can_claim_rewarded_endless_heart():
+			primary_button = _aftermath_button(SaveManager.text("endless_watch_ad"), true, true)
+			primary_button.pressed.connect(AdManager.request_rewarded_heart)
+		else:
+			primary_button = _aftermath_button(SaveManager.text("endless_ad_claimed"), true, true)
+			primary_button.disabled = true
+	elif can_continue_to_endless:
+		primary_button = _aftermath_button(SaveManager.text("continue_to_unlimited"), true, true)
+		primary_button.pressed.connect(_on_daily_continue_to_unlimited_pressed)
+	else:
+		primary_button = _aftermath_button(SaveManager.text("share_result"), true, true)
+		_set_aftermath_button_icon(primary_button, ICON_SHARE)
+		primary_button.pressed.connect(func() -> void:
+			_on_share_pressed()
+			primary_button.text = SaveManager.text("result_copied")
+		)
+	card.add_child(primary_button)
+	primary_button.name = "PrimaryAction"
+
+	var secondary_row: HBoxContainer = HBoxContainer.new()
+	secondary_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	secondary_row.add_theme_constant_override("separation", 8)
+	card.add_child(secondary_row)
+	if is_endless or can_continue_to_endless:
+		var share_button: Button = _aftermath_button(SaveManager.text("share_result"), false)
+		share_button.name = "ShareButton"
+		_set_aftermath_button_icon(share_button, ICON_SHARE)
+		share_button.pressed.connect(func() -> void:
+			_on_share_pressed()
+			share_button.text = SaveManager.text("result_copied")
+		)
+		secondary_row.add_child(share_button)
+	var menu_button: Button = _aftermath_button(SaveManager.text("menu"), false)
+	menu_button.name = "MenuButton"
+	_set_aftermath_button_icon(menu_button, ICON_HOME)
+	menu_button.pressed.connect(func() -> void: request_menu.emit())
+	secondary_row.add_child(menu_button)
+
+	await get_tree().process_frame
+	if not is_instance_valid(sheet) or not is_instance_valid(layer):
+		return
+	flame.pivot_offset = flame.size * 0.5
+	streak_number.pivot_offset = streak_number.size * 0.5
+	stack.position.y = size.y * 0.06
+	_aftermath_open_tween = create_tween().set_parallel(true)
+	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.24)
+	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if won and play_streak_animation:
+		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
+	elif not won and play_streak_animation:
+		_animate_streak_loss(layer, flame, streak_number, streak_caption, crack_overlay, streak_crack)
+	elif not won and has_daily_streak:
+		_apply_streak_loss_final(flame, streak_number, crack_overlay, streak_crack)
+	elif is_endless_loss and is_instance_valid(losing_heart):
+		_animate_endless_heart_loss(layer, losing_heart)
+
+func _show_aftermath_legacy(won: bool) -> void:
+	if is_instance_valid(_aftermath_layer):
 		# Recover an existing overlay if an interrupted gesture or animation left
 		# its full-screen input layer active while the sheet itself was offscreen.
 		if not _aftermath_dismissing:
@@ -1378,7 +1642,7 @@ func _animate_endless_heart_loss(layer: Control, heart: Label) -> void:
 	collapse.tween_property(heart, "modulate:a", 0.30, 0.24)
 	heart.add_theme_color_override("font_color", Color("62578f"))
 
-func _animate_streak_win(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
+func _animate_streak_win(layer: Control, flame: Control, streak_number: Label, streak_caption: Label, streak_from: int, streak_to: int) -> void:
 	await get_tree().create_timer(STREAK_POP_DELAY).timeout
 	if not is_instance_valid(layer) or layer != _aftermath_layer:
 		return
@@ -1393,7 +1657,7 @@ func _animate_streak_win(layer: Control, flame: Label, streak_number: Label, str
 	number_pop.tween_property(streak_number, "scale", Vector2.ONE * 0.97, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	number_pop.tween_property(streak_number, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-func _animate_streak_loss(layer: Control, flame: Label, streak_number: Label, streak_caption: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
+func _animate_streak_loss(layer: Control, flame: Control, streak_number: Label, streak_caption: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
 	streak_caption.modulate.a = 0.0
 	await get_tree().create_timer(0.34).timeout
 	if not is_instance_valid(layer) or layer != _aftermath_layer:
@@ -1417,7 +1681,7 @@ func _animate_streak_loss(layer: Control, flame: Label, streak_number: Label, st
 	shatter.tween_property(streak_caption, "modulate:a", 1.0, 0.22).set_delay(0.24)
 	shatter.tween_property(streak_crack, "size:x", crack_width, 0.30).set_delay(0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-func _apply_streak_loss_final(flame: Label, streak_number: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
+func _apply_streak_loss_final(flame: Control, streak_number: Label, crack_overlay: Control, streak_crack: ColorRect) -> void:
 	flame.modulate = Color(0.55, 0.55, 0.55, 1.0)
 	streak_number.modulate.a = 0.48
 	var number_center: Vector2 = streak_number.get_global_rect().get_center() - crack_overlay.get_global_rect().position
@@ -1946,6 +2210,82 @@ func _thicken_button(button: Button, color: Color, outline_size: int) -> void:
 	button.add_theme_color_override("font_outline_color", color)
 	button.add_theme_constant_override("outline_size", outline_size)
 
+func _add_aftermath_background_decor(parent: Control) -> void:
+	var decor: Control = Control.new()
+	decor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	decor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(decor)
+	_add_game_decor_shape(decor, Vector2(-50, 78), Vector2(118, 118), UI_YELLOW, 0.30, 59)
+	_add_game_decor_shape(decor, Vector2(size.x - 70, 122), Vector2(112, 150), Color("c9b8ff"), 0.34, 26, 12.0)
+	_add_game_decor_shape(decor, Vector2(-24, size.y - 110), Vector2(74, 62), UI_TEAL, 0.16, 20, -10.0)
+
+func _build_aftermath_result_pyramid() -> VBoxContainer:
+	var component: VBoxContainer = VBoxContainer.new()
+	component.name = "ResultPyramid"
+	component.alignment = BoxContainer.ALIGNMENT_CENTER
+	component.add_theme_constant_override("separation", 7)
+	var pyramid: VBoxContainer = VBoxContainer.new()
+	pyramid.alignment = BoxContainer.ALIGNMENT_CENTER
+	pyramid.add_theme_constant_override("separation", 3)
+	component.add_child(pyramid)
+	var row_colors: Array[Color] = [UI_MAGENTA, UI_RED, UI_TEAL, UI_YELLOW]
+	for layer_index: int in 4:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.name = "Layer%d" % (layer_index + 1)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 4)
+		pyramid.add_child(row)
+		var found: bool = _aftermath_group_found_for_size(layer_index + 2)
+		var fill: Color = row_colors[layer_index] if found else Color("3a267c")
+		var border: Color = fill if found else Color("ff8066")
+		var mark_text: String = "✓" if found else "×"
+		var mark_color: Color = UI_PRIMARY if found and layer_index == 3 else Color.WHITE if found else Color("ff9a86")
+		for _tile_index: int in layer_index + 1:
+			var tile: PanelContainer = PanelContainer.new()
+			tile.custom_minimum_size = Vector2(42, 25)
+			tile.add_theme_stylebox_override("panel", _aftermath_pyramid_tile_style(fill, border, not found))
+			row.add_child(tile)
+			var mark: Label = _aftermath_label(mark_text, 13, mark_color, _font_fredoka_bold)
+			mark.add_theme_constant_override("outline_size", 0)
+			tile.add_child(mark)
+	var legend: HBoxContainer = HBoxContainer.new()
+	legend.alignment = BoxContainer.ALIGNMENT_CENTER
+	legend.add_theme_constant_override("separation", 14)
+	component.add_child(legend)
+	legend.add_child(_aftermath_legend_item(UI_TEAL, SaveManager.text("aftermath_group_found")))
+	legend.add_child(_aftermath_legend_item(Color("ff8066"), SaveManager.text("aftermath_group_missed")))
+	return component
+
+func _aftermath_group_found_for_size(group_size: int) -> bool:
+	var groups: Array = GameState.puzzle.get("groups", [])
+	for index: int in groups.size():
+		var group_value: Variant = groups[index]
+		if group_value is Dictionary and int((group_value as Dictionary).get("size", 0)) == group_size:
+			return GameState.result_solved_groups.has(index)
+	return false
+
+func _aftermath_legend_item(color: Color, text_value: String) -> HBoxContainer:
+	var item: HBoxContainer = HBoxContainer.new()
+	item.add_theme_constant_override("separation", 5)
+	var dot: Panel = Panel.new()
+	dot.custom_minimum_size = Vector2(8, 8)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var dot_style: StyleBoxFlat = StyleBoxFlat.new()
+	dot_style.bg_color = color
+	dot_style.set_corner_radius_all(4)
+	dot.add_theme_stylebox_override("panel", dot_style)
+	item.add_child(dot)
+	var label: Label = _aftermath_label(text_value, 10, Color(1, 1, 1, 0.62), _font_dm_sans_semibold)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	item.add_child(label)
+	return item
+
+func _set_aftermath_button_icon(button: Button, icon_texture: Texture2D) -> void:
+	button.icon = icon_texture
+	button.expand_icon = true
+	button.add_theme_constant_override("icon_max_width", 19)
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+
 func _aftermath_label(text_value: String, font_size: int, color: Color, font: Font = null) -> Label:
 	var label: Label = Label.new()
 	label.text = text_value
@@ -1967,21 +2307,21 @@ func _aftermath_button(label_text: String, filled: bool, won: bool = true) -> Bu
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_override("font", _font_fredoka_semibold)
 	button.add_theme_font_size_override("font_size", 17)
-	var fill: Color = UI_YELLOW if won else UI_RED
+	var fill: Color = UI_YELLOW
 	if filled:
 		button.add_theme_stylebox_override("normal", _aftermath_button_style(fill, fill))
 		button.add_theme_stylebox_override("hover", _aftermath_button_style(fill.lightened(0.08), fill.lightened(0.08)))
 		button.add_theme_stylebox_override("pressed", _aftermath_button_style(fill.darkened(0.08), fill.darkened(0.08)))
-		button.add_theme_color_override("font_color", UI_PRIMARY if won else Color.WHITE)
-		button.add_theme_color_override("font_hover_color", UI_PRIMARY if won else Color.WHITE)
-		button.add_theme_color_override("font_pressed_color", UI_PRIMARY if won else Color.WHITE)
+		button.add_theme_color_override("font_color", UI_PRIMARY)
+		button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+		button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	else:
-		button.add_theme_stylebox_override("normal", _aftermath_button_style(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.16)))
-		button.add_theme_stylebox_override("hover", _aftermath_button_style(Color(1, 1, 1, 0.13), Color(1, 1, 1, 0.22)))
-		button.add_theme_stylebox_override("pressed", _aftermath_button_style(Color(1, 1, 1, 0.18), Color(1, 1, 1, 0.28)))
-		button.add_theme_color_override("font_color", Color.WHITE)
-		button.add_theme_color_override("font_hover_color", Color.WHITE)
-		button.add_theme_color_override("font_pressed_color", Color.WHITE)
+		button.add_theme_stylebox_override("normal", _aftermath_button_style(UI_BACKGROUND, UI_BORDER))
+		button.add_theme_stylebox_override("hover", _aftermath_button_style(UI_SURFACE_TINT, UI_BORDER))
+		button.add_theme_stylebox_override("pressed", _aftermath_button_style(Color("e3dcf3"), UI_BORDER))
+		button.add_theme_color_override("font_color", UI_PRIMARY)
+		button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+		button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	return button
 
 func _stat_pill(label_text: String, value_text: String, accent: Color) -> PanelContainer:
@@ -2199,6 +2539,56 @@ func _button_style(color: Color, border_color: Color = UI_BORDER) -> StyleBoxFla
 	style.set_border_width_all(2)
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.10)
 	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+func _aftermath_fullscreen_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color.TRANSPARENT
+	style.content_margin_left = 0.0
+	style.content_margin_right = 0.0
+	style.content_margin_top = 0.0
+	style.content_margin_bottom = 0.0
+	return style
+
+func _aftermath_result_card_style(won: bool) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_PRIMARY
+	style.border_color = UI_PRIMARY
+	style.set_corner_radius_all(28)
+	style.shadow_color = UI_MAGENTA if won else UI_RED
+	style.shadow_size = 2
+	style.shadow_offset = Vector2(7, 7)
+	return style
+
+func _aftermath_mode_chip_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_YELLOW
+	style.set_corner_radius_all(14)
+	return style
+
+func _aftermath_score_badge_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_YELLOW
+	style.set_corner_radius_all(22)
+	return style
+
+func _aftermath_streak_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color("382181")
+	style.border_color = Color("523a9c")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(20)
+	return style
+
+func _aftermath_pyramid_tile_style(fill: Color, border: Color, outlined: bool) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(2 if outlined else 0)
+	style.set_corner_radius_all(8)
+	style.shadow_color = Color(0.02, 0.01, 0.10, 0.24)
+	style.shadow_size = 2
 	style.shadow_offset = Vector2(0, 2)
 	return style
 

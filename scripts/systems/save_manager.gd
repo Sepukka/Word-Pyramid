@@ -56,7 +56,8 @@ const TEXT: Dictionary = {
 		"tutorial_complete_title": "Tutorial complete!",
 		"tutorial_complete_subtitle": "You’re ready to build today’s Word Pyramid.",
 		"tutorial_continue_daily": "Continue to Daily Challenge",
-		"continue_to_unlimited": "Continue to Infinity Mode",
+		"continue_to_unlimited": "Continue to unlimited",
+		"continue_to_next": "Continue to next puzzle",
 		"debug_reset_progress": "Debug: Reset all progress",
 		"debug_reset_confirm": "Tap again to reset everything",
 		"back": "Back",
@@ -85,6 +86,8 @@ const TEXT: Dictionary = {
 		"aftermath_streak": "%d → %d day streak",
 		"aftermath_streak_lost": "Streak lost",
 		"aftermath_endless_hearts": "Endless hearts left",
+		"aftermath_group_found": "Found",
+		"aftermath_group_missed": "Missed",
 		"stat_mistakes": "Mistakes",
 		"stat_groups": "Groups",
 		"stat_hints_used": "Hints used",
@@ -173,6 +176,7 @@ const TEXT: Dictionary = {
 		"tutorial_complete_subtitle": "Olet valmis rakentamaan päivän sanapyramidin.",
 		"tutorial_continue_daily": "Jatka päivän haasteeseen",
 		"continue_to_unlimited": "Jatka äärettömään peliin",
+		"continue_to_next": "Jatka seuraavaan pulmaan",
 		"debug_reset_progress": "Debug: Nollaa kaikki edistyminen",
 		"debug_reset_confirm": "Nollaa kaikki napauttamalla uudelleen",
 		"back": "Takaisin",
@@ -201,6 +205,8 @@ const TEXT: Dictionary = {
 		"aftermath_streak": "%d → %d päivän putki",
 		"aftermath_streak_lost": "Putki katkesi",
 		"aftermath_endless_hearts": "Äärettömän pelin sydämet",
+		"aftermath_group_found": "Löydetty",
+		"aftermath_group_missed": "Puuttui",
 		"stat_mistakes": "Virheet",
 		"stat_groups": "Ryhmät",
 		"stat_hints_used": "Vihjeet",
@@ -319,7 +325,7 @@ func complete_onboarding() -> void:
 	onboarding["version"] = ONBOARDING_VERSION
 	save_data()
 
-func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0) -> void:
+func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = []) -> void:
 	if won:
 		statistics["wins"] = int(statistics.get("wins", 0)) + 1
 		statistics["streak"] = int(statistics.get("streak", 0)) + 1
@@ -332,7 +338,8 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 			"completed": true,
 			"won": won,
 			"correct_count": correct_count,
-			"total_count": total_count
+			"total_count": total_count,
+			"solved_groups": solved_groups.duplicate()
 		}
 	save_data()
 

@@ -341,13 +341,13 @@ func _mini_result_pyramid() -> VBoxContainer:
 	var pyramid: VBoxContainer = _vbox(4)
 	pyramid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	component.add_child(pyramid)
-	var row_colors: Array[Color] = [Color("a642df"), CORAL, TEAL, YELLOW, Color("8f79c9")]
-	for row_size: int in [1, 2, 3, 4, 5]:
+	var row_colors: Array[Color] = [Color("a642df"), CORAL, TEAL, YELLOW]
+	for row_size: int in [1, 2, 3, 4]:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 4)
 		pyramid.add_child(row)
-		var group_found: bool = row_size >= 2 and row_size <= 4
+		var group_found: bool = row_size <= 3
 		var fill: Color = row_colors[row_size - 1] if group_found else Color("e5dff2")
 		var border: Color = fill if group_found else CORAL
 		var mark_text: String = "✓" if group_found else "×"
