@@ -14,6 +14,7 @@ const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const ICON_HOME: Texture2D = preload("res://assets/icons/home.svg")
 const ICON_SHARE: Texture2D = preload("res://assets/icons/share.svg")
 const ICON_FLAME: Texture2D = preload("res://assets/icons/flame.svg")
+const INSTRUCTIONS_STYLE_DEMO_SCENE: PackedScene = preload("res://scenes/instructions_style_demo.tscn")
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
 const UI_TEXT: Color = Color("1a0a5e")
@@ -95,6 +96,7 @@ var _tutorial_paused: bool = false
 var _tutorial_pause_id: int = 0
 var _tutorial_focus_tweens: Dictionary = {}
 var _tutorial_completion_layer: Control
+var _instructions_layer: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2181,7 +2183,18 @@ func _on_check_pressed() -> void:
 	GameState.check_selection()
 
 func _show_instructions() -> void:
-	_message.text = SaveManager.text("instructions_text")
+	if is_instance_valid(_instructions_layer):
+		return
+	_instructions_layer = INSTRUCTIONS_STYLE_DEMO_SCENE.instantiate() as Control
+	_instructions_layer.z_index = 60
+	_instructions_layer.connect("dismiss_requested", _on_instructions_dismissed)
+	add_child(_instructions_layer)
+
+func _on_instructions_dismissed() -> void:
+	if not is_instance_valid(_instructions_layer):
+		return
+	_instructions_layer.queue_free()
+	_instructions_layer = null
 
 func _action_button(label_text: String, filled: bool = false) -> Button:
 	var button: Button = Button.new()
