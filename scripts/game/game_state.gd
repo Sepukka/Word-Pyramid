@@ -546,8 +546,13 @@ func check_selection() -> void:
 		result_solved_groups.assign(solved_groups)
 		result_top_solved = is_top_solved
 		selected_words.clear()
-		is_auto_solving = true
-		_auto_solve_remaining()
+		if game_mode == TUTORIAL_MODE:
+			# A practice failure restarts the lesson instead of revealing every
+			# answer. The board owns the short acknowledgement transition.
+			_finish(false)
+		else:
+			is_auto_solving = true
+			_auto_solve_remaining()
 	else:
 		_save_active_game()
 	selection_changed.emit(selected_words)

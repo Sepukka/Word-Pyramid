@@ -115,6 +115,7 @@ var _tutorial_intro_layer: Control
 var _tutorial_feature_layer: Control
 var _tutorial_feature_card: Control
 var _tutorial_feature_tween: Tween
+var _tutorial_restart_layer: ColorRect
 var _tutorial_completion_layer: Control
 var _instructions_layer: Control
 
@@ -770,13 +771,11 @@ func _single_line_font_size(text: String, available_width: float, maximum_size: 
 
 func _update_mistakes() -> void:
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		var explaining_mistakes: bool = _tutorial_stage == 1 and not _tutorial_finishing
-		_mistakes.visible = explaining_mistakes
-		_lives_row.visible = explaining_mistakes
-		if explaining_mistakes:
-			var maximum: int = int(SaveManager.settings.get("attempts", 4))
-			_mistakes.text = SaveManager.text("tutorial_mistakes_counter") % maximum
-			_update_lives(0, maximum)
+		_mistakes.visible = true
+		_lives_row.visible = true
+		var maximum: int = int(SaveManager.settings.get("attempts", 4))
+		_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
+		_update_lives(maximum - GameState.attempts_left, maximum)
 		return
 	_mistakes.visible = true
 	_lives_row.visible = true
@@ -2900,6 +2899,9 @@ func _advance_tutorial_after_hint() -> void:
 func _on_tutorial_completed() -> void:
 	if _tutorial_finishing or GameState.game_mode != GameState.TUTORIAL_MODE:
 		return
+	if not GameState.completed_won:
+		_restart_tutorial_after_failure()
+		return
 	_tutorial_finishing = true
 	_tutorial_paused = true
 	GameState.set_tutorial_allowed_words([])
@@ -2910,6 +2912,54 @@ func _on_tutorial_completed() -> void:
 	await get_tree().create_timer(TUTORIAL_FINISH_BREAK).timeout
 	if is_inside_tree():
 		_show_tutorial_completion_screen()
+
+func _restart_tutorial_after_failure() -> void:
+	_tutorial_finishing = true
+	_tutorial_paused = true
+	_tutorial_help_id += 1
+	GameState.set_tutorial_allowed_words([])
+	_hint.disabled = true
+	_check.disabled = true
+	_lives_row.modulate.a = 1.0
+	_hint.modulate.a = 1.0
+	_clear_tutorial_feature_layer()
+	_update_tutorial_spotlight()
+	_update_mistakes()
+	_message.text = SaveManager.text("tutorial_restart_message")
+	# Let the fourth error, its used attempt marker and the shake finish before
+	# covering the old board. The new practice then appears beneath one short
+	# full-screen fade, so no half-reset layout is ever visible.
+	await get_tree().create_timer(0.85).timeout
+	if not is_inside_tree() or GameState.game_mode != GameState.TUTORIAL_MODE:
+		return
+	_tutorial_restart_layer = ColorRect.new()
+	_tutorial_restart_layer.name = "TutorialRestartTransition"
+	_tutorial_restart_layer.color = UI_PRIMARY
+	_tutorial_restart_layer.modulate.a = 0.0
+	_tutorial_restart_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tutorial_restart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_restart_layer.z_index = 55
+	add_child(_tutorial_restart_layer)
+	var cover_in: Tween = create_tween()
+	cover_in.tween_property(_tutorial_restart_layer, "modulate:a", 1.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	await cover_in.finished
+	if not is_inside_tree() or not is_instance_valid(_tutorial_restart_layer):
+		return
+	_tutorial_finishing = false
+	_tutorial_paused = false
+	_tutorial_stage = 0
+	GameState.start_tutorial()
+	await get_tree().process_frame
+	if not is_instance_valid(_tutorial_restart_layer):
+		return
+	var layer: ColorRect = _tutorial_restart_layer
+	var cover_out: Tween = create_tween()
+	cover_out.tween_property(layer, "modulate:a", 0.0, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await cover_out.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if _tutorial_restart_layer == layer:
+		_tutorial_restart_layer = null
 
 func _show_tutorial_completion_screen() -> void:
 	if is_instance_valid(_tutorial_completion_layer):
