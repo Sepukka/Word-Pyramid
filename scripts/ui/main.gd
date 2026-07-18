@@ -619,6 +619,18 @@ func show_settings() -> void:
 	tutorial_button.add_theme_stylebox_override("pressed", _mode_button_style(Color("ddd3f1"), UI_PRIMARY))
 	tutorial_button.pressed.connect(_start_tutorial)
 	panel.add_child(tutorial_button)
+	var wrong_sound_demo_button: Button = Button.new()
+	wrong_sound_demo_button.text = "Debug: Testaa väärinäänet" if str(SaveManager.settings.get("language", "en")) == "fi" else "Debug: Test wrong sounds"
+	wrong_sound_demo_button.custom_minimum_size = Vector2(0, 44)
+	wrong_sound_demo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrong_sound_demo_button.add_theme_font_override("font", _font_fredoka_semibold)
+	wrong_sound_demo_button.add_theme_font_size_override("font_size", 14)
+	wrong_sound_demo_button.add_theme_color_override("font_color", UI_TEXT)
+	wrong_sound_demo_button.add_theme_stylebox_override("normal", _mode_button_style(Color("fff3bd"), UI_YELLOW))
+	wrong_sound_demo_button.add_theme_stylebox_override("hover", _mode_button_style(UI_YELLOW, UI_PRIMARY))
+	wrong_sound_demo_button.add_theme_stylebox_override("pressed", _mode_button_style(Color("e9c400"), UI_PRIMARY))
+	wrong_sound_demo_button.pressed.connect(func() -> void: get_tree().change_scene_to_file("res://scenes/wrong_sound_demo.tscn"))
+	panel.add_child(wrong_sound_demo_button)
 	var reset_button: Button = Button.new()
 	reset_button.text = SaveManager.text("debug_reset_progress")
 	reset_button.custom_minimum_size = Vector2(0, 44)

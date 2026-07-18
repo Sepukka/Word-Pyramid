@@ -12,6 +12,12 @@ Godot through the Godot Asset Library.
 - `assets/audio/sfx/kenney_interface/wrong_answer.wav`
   - Original file: `error_003.wav`
   - Purpose: an incorrect guess
+- `assets/audio/sfx/kenney_interface/wrong_answer_b.wav`
+  - Original file: `error_005.wav`
+  - Purpose: temporary wrong-answer sound test, option 2
+- `assets/audio/sfx/kenney_interface/wrong_answer_c.wav`
+  - Original file: `error_006.wav`
+  - Purpose: temporary wrong-answer sound test, option 3
 - License copy: `assets/audio/sfx/kenney_interface/LICENSE.txt`
 
 Sources:
