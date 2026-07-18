@@ -623,11 +623,17 @@ func _apply_home_card_style() -> void:
 		_date_pill.add_theme_stylebox_override("normal", _date_pill_style())
 		_date_pill.add_theme_constant_override("outline_size", 0)
 	if _card_title != null:
+		_card_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_card_title.custom_minimum_size.x = 0
 		_card_title.add_theme_font_override("font", _font_fredoka_semibold)
 		_card_title.add_theme_font_size_override("font_size", 24)
 		_card_title.add_theme_color_override("font_color", Color.WHITE)
 		_card_title.add_theme_constant_override("outline_size", 0)
 	if _card_meta != null:
+		_card_meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_card_meta.custom_minimum_size.x = 0
+		_card_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_card_meta.max_lines_visible = 2
 		_card_meta.add_theme_font_override("font", FONT_DM_SANS)
 		_card_meta.add_theme_font_size_override("font_size", 13)
 		_card_meta.add_theme_color_override("font_color", Color("8b7dc8"))

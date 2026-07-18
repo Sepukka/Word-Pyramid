@@ -24,10 +24,22 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var play_button: Button = main.get("_play_button") as Button
 	var daily_card: PanelContainer = main.get("_daily_card") as PanelContainer
+	var card_meta: Label = main.get("_card_meta") as Label
+	var home_content: VBoxContainer = main.get_node("HomeLayer/Content") as VBoxContainer
 	_assert(play_button.disabled, "Daily home action is disabled before level three")
 	_assert(play_button.icon != null, "Daily home action displays a real lock icon")
 	var locked_style: StyleBoxFlat = daily_card.get_theme_stylebox("panel") as StyleBoxFlat
 	_assert(locked_style != null and locked_style.bg_color.is_equal_approx(Color("eeebf1")), "Daily card uses its muted locked surface")
+	_assert(card_meta.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART, "locked Daily explanation wraps on narrow phones")
+	_assert(home_content.get_global_rect().end.x <= 390.5, "locked home content stays inside a 390-pixel phone viewport")
+	_assert(daily_card.get_global_rect().end.x <= 390.5, "locked Daily card stays inside the phone viewport")
+	PuzzleLoader.set_language("fi")
+	main.call("_apply_home_texts")
+	await get_tree().process_frame
+	_assert(home_content.get_global_rect().end.x <= 390.5, "Finnish locked home content stays inside a 390-pixel phone viewport")
+	_assert(daily_card.get_global_rect().end.x <= 390.5, "Finnish locked Daily card stays inside the phone viewport")
+	PuzzleLoader.set_language("en")
+	main.call("_apply_home_texts")
 
 	# Completing the tutorial must route into the starter Infinity journey.
 	main.call("_start_tutorial")
