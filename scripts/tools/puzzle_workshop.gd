@@ -97,7 +97,9 @@ func _build_interface() -> void:
 	_tabs.set_tab_title(2, "Esikatselu")
 
 	_status = _label("Valmis", 12, MUTED, _font_body)
-	_status.custom_minimum_size.y = 22
+	_status.custom_minimum_size = Vector2(0, 34)
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	page.add_child(_status)
 
 	_delete_dialog = ConfirmationDialog.new()
@@ -109,18 +111,27 @@ func _build_interface() -> void:
 func _build_header() -> Control:
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", _panel_style(PURPLE, PURPLE, 22, 0, 12))
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 2)
+	card.add_child(stack)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	card.add_child(row)
+	row.add_theme_constant_override("separation", 8)
+	stack.add_child(row)
 	var title := _label("Puzzle Workshop", 22, Color.WHITE, _font_heading)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(title)
-	_dirty_label = _label("Ei muutoksia", 10, Color("d9d1f3"), _font_body)
-	row.add_child(_dirty_label)
 	var close := _button("Sulje", false)
 	close.custom_minimum_size = Vector2(64, 38)
 	close.pressed.connect(func() -> void: get_tree().quit())
 	row.add_child(close)
+	_dirty_label = _label("Ei muutoksia", 10, Color("d9d1f3"), _font_body)
+	_dirty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dirty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_dirty_label.clip_text = true
+	_dirty_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	stack.add_child(_dirty_label)
 	return card
 
 func _build_library_panel() -> Control:
@@ -175,13 +186,15 @@ func _build_library_panel() -> Control:
 	actions.add_child(duplicate)
 	var remove := _button("Poista", false)
 	remove.pressed.connect(_request_delete)
-	stack.add_child(remove)
+	remove.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_child(remove)
 	return card
 
 func _build_editor_panel() -> Control:
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", _panel_style(SURFACE, BORDER, 20, 1, 0))
 	var scroll := ScrollContainer.new()
+	scroll.name = "EditorScroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	card.add_child(scroll)
 	var margin := MarginContainer.new()
@@ -192,15 +205,16 @@ func _build_editor_panel() -> Control:
 	margin.add_theme_constant_override("margin_bottom", 18)
 	scroll.add_child(margin)
 	var stack := VBoxContainer.new()
+	stack.name = "EditorStack"
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 10)
 	margin.add_child(stack)
 	stack.add_child(_label("Kentän sisältö", 20, PURPLE, _font_heading))
 
 	var identity := GridContainer.new()
-	identity.columns = 2
+	identity.columns = 1
 	identity.add_theme_constant_override("h_separation", 10)
-	identity.add_theme_constant_override("v_separation", 7)
+	identity.add_theme_constant_override("v_separation", 4)
 	stack.add_child(identity)
 	_id_input = _add_labeled_input(identity, "Kentän ID", "unlimited_001")
 	_title_input = _add_labeled_input(identity, "Nimi", "Kitchen Logic")
@@ -209,8 +223,8 @@ func _build_editor_panel() -> Control:
 	_date_input.editable = _mode == "daily"
 
 	var difficulty := GridContainer.new()
-	difficulty.columns = 2
-	difficulty.add_theme_constant_override("separation", 10)
+	difficulty.columns = 1
+	difficulty.add_theme_constant_override("separation", 4)
 	stack.add_child(difficulty)
 	difficulty.add_child(_field_label("Vaikeustaso"))
 	_tier_option = OptionButton.new()
@@ -267,10 +281,11 @@ func _build_group_editor(size_value: int) -> Control:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 6)
 	card.add_child(stack)
-	var heading := HBoxContainer.new()
+	var heading := VBoxContainer.new()
+	heading.add_theme_constant_override("separation", 4)
 	stack.add_child(heading)
 	var title := _label("%d sanan ryhmä" % size_value, 14, PURPLE, _font_heading)
-	title.custom_minimum_size.x = 92
+	title.custom_minimum_size.x = 0
 	heading.add_child(title)
 	var label_input := LineEdit.new()
 	label_input.placeholder_text = "Ryhmän yhdistävä tekijä"
@@ -278,8 +293,10 @@ func _build_group_editor(size_value: int) -> Control:
 	_style_line_edit(label_input)
 	label_input.text_changed.connect(_on_line_changed)
 	heading.add_child(label_input)
-	var words_row := HBoxContainer.new()
-	words_row.add_theme_constant_override("separation", 5)
+	var words_row := GridContainer.new()
+	words_row.columns = 2
+	words_row.add_theme_constant_override("h_separation", 5)
+	words_row.add_theme_constant_override("v_separation", 5)
 	stack.add_child(words_row)
 	var word_inputs: Array[LineEdit] = []
 	for word_index: int in size_value:
