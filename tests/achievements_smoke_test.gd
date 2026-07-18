@@ -30,6 +30,7 @@ func _ready() -> void:
 	assert(SaveManager.get_total_achievement_stars() == stars_before_reload, "Achievement progress must survive save/load")
 	SaveManager.mark_achievements_seen()
 	assert(SaveManager.get_unseen_achievement_stars() == 0, "Opening the panel must clear the new-star marker")
+	SaveManager.settings["language"] = "fi"
 
 	var main_scene: PackedScene = load("res://scenes/main.tscn")
 	var main: Control = main_scene.instantiate()
@@ -39,9 +40,16 @@ func _ready() -> void:
 	assert(trophy_button.icon != null, "Main menu achievement entry must use a real trophy icon")
 	main.call("show_achievements")
 	await get_tree().process_frame
+	await get_tree().process_frame
 	var overlay: Control = main.get_node("AchievementsOverlay") as Control
 	var list: VBoxContainer = overlay.find_child("AchievementList", true, false) as VBoxContainer
 	assert(list != null and list.get_child_count() == 10, "Achievement Hall must show every catalog entry")
+	var right_edge: float = overlay.get_global_rect().end.x
+	for section_name: String in ["AchievementHeader", "AchievementSummary", "AchievementScroll"]:
+		var section: Control = overlay.find_child(section_name, true, false) as Control
+		assert(section != null and section.get_global_rect().end.x <= right_edge + 0.5, "%s overflowed the phone viewport" % section_name)
+	for card: Control in list.get_children():
+		assert(card.get_global_rect().end.x <= right_edge + 0.5, "Achievement card overflowed the phone viewport: %s" % card.name)
 
 	main.queue_free()
 	if FileAccess.file_exists(TEST_SAVE):

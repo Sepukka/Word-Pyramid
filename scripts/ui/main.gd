@@ -550,6 +550,7 @@ func show_achievements() -> void:
 	page.add_child(_achievement_summary())
 	var scroll := ScrollContainer.new()
 	scroll.name = "AchievementScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	page.add_child(scroll)
@@ -606,12 +607,15 @@ func _achievement_header() -> Control:
 	row.add_child(title_stack)
 	var title := Label.new()
 	title.text = SaveManager.text("achievements_title")
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.add_theme_font_override("font", _font_fredoka_bold)
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", UI_TEXT)
 	title_stack.add_child(title)
 	var subtitle := Label.new()
 	subtitle.text = SaveManager.text("achievements_subtitle")
+	subtitle.clip_text = true
 	subtitle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	subtitle.add_theme_font_override("font", FONT_DM_SANS)
 	subtitle.add_theme_font_size_override("font_size", 10)
@@ -643,12 +647,14 @@ func _achievement_summary() -> Control:
 	var label := Label.new()
 	label.text = SaveManager.text("achievement_collection")
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.clip_text = true
 	label.add_theme_font_override("font", _font_dm_sans_spaced)
 	label.add_theme_font_size_override("font_size", 10)
 	label.add_theme_color_override("font_color", UI_YELLOW)
 	top.add_child(label)
 	var count := Label.new()
 	count.text = SaveManager.text("achievement_stars") % [total, maximum]
+	count.clip_text = true
 	count.add_theme_font_override("font", _font_fredoka_bold)
 	count.add_theme_font_size_override("font_size", 15)
 	count.add_theme_color_override("font_color", Color.WHITE)
@@ -670,6 +676,7 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 	var completed := bool(snapshot.get("completed", false))
 	var card := PanelContainer.new()
 	card.name = "AchievementCard_%s" % str(snapshot.get("id", "unknown"))
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _achievement_card_style(accent, completed))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 13)
@@ -696,10 +703,13 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 	emblem.add_child(icon)
 	var title_stack := VBoxContainer.new()
 	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_stack.custom_minimum_size.x = 0
 	title_stack.add_theme_constant_override("separation", 1)
 	top.add_child(title_stack)
 	var title := Label.new()
 	title.text = str(snapshot.get("title", "Achievement"))
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.custom_minimum_size.x = 0
 	title.add_theme_font_override("font", _font_fredoka_bold)
 	title.add_theme_font_size_override("font_size", 17)
 	title.add_theme_color_override("font_color", UI_TEXT)
@@ -707,6 +717,7 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 	var description := Label.new()
 	description.text = str(snapshot.get("description", ""))
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.custom_minimum_size.x = 0
 	description.add_theme_font_override("font", FONT_DM_SANS)
 	description.add_theme_font_size_override("font_size", 11)
 	description.add_theme_color_override("font_color", UI_MUTED_TEXT)
@@ -718,7 +729,8 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 		special.add_theme_font_size_override("font_size", 8)
 		special.add_theme_color_override("font_color", UI_PRIMARY)
 		special.add_theme_stylebox_override("normal", _achievement_badge_style(Color("fff3a8"), UI_YELLOW, 9))
-		top.add_child(special)
+		special.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		title_stack.add_child(special)
 
 	var stars_and_progress := HBoxContainer.new()
 	stars_and_progress.add_theme_constant_override("separation", 7)
@@ -738,6 +750,9 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 		star_row.add_child(star)
 	var progress_label := Label.new()
 	progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress_label.custom_minimum_size.x = 0
+	progress_label.clip_text = true
+	progress_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	progress_label.add_theme_font_override("font", _font_dm_sans_semibold)
 	progress_label.add_theme_font_size_override("font_size", 11)
