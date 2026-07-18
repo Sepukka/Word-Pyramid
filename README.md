@@ -1,5 +1,7 @@
 # Word Pyramid
 
+Developer content editing is available through the [Puzzle Workshop](PUZZLE_WORKSHOP.md).
+
 Word Pyramid is a complete Godot 4.4 word-connection game. Select words that belong together, check your guess, and build the pyramid from groups of 2, 3, 4, and 5 words. The fifteenth word is a one-word, guessable top solution. The responsive game board uses a centered 1–5 tile pyramid in a minimal light card layout.
 
 ## Run
