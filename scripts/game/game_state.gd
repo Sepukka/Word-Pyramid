@@ -637,7 +637,16 @@ func _finish_debug_completion() -> void:
 	result_correct_count = _total_word_count()
 	result_solved_groups.assign(solved_groups)
 	result_top_solved = is_top_solved
-	result_progression.clear()
+	var max_attempts: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var mistakes_used: int = clampi(max_attempts - attempts_left, 0, max_attempts)
+	result_progression = SaveManager.preview_progression_result(
+		puzzle,
+		game_mode,
+		true,
+		5,
+		mistakes_used,
+		hints_used
+	)
 	game_finished.emit(true, str(puzzle.get("top_word", "")))
 
 func _finish(won: bool) -> void:

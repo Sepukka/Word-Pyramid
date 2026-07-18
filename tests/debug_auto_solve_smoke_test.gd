@@ -48,15 +48,17 @@ func _ready() -> void:
 	assert(GameState.is_debug_completion, "Debug solve must identify its result as non-persistent")
 	assert(GameState.result_correct_count == GameState.result_total_count(), "Debug result must show the complete pyramid")
 	assert(GameState.result_solved_groups.size() == 4 and GameState.result_top_solved, "Debug result rows must match the solved board")
-	assert(GameState.result_progression.is_empty(), "Debug solve must not create an XP reward")
+	assert(int(GameState.result_progression.get("xp_gained", 0)) > 0, "Debug solve must preview an XP reward")
+	assert(int(GameState.result_progression.get("total_xp_before", -1)) == SaveManager.get_total_xp(), "Debug XP preview must start from the real XP amount")
 	assert(SaveManager.statistics == statistics_before, "Debug solve changed statistics")
 	assert(SaveManager.daily_results == daily_results_before, "Debug solve changed the daily result")
 	assert(SaveManager.played_puzzle_ids == played_before, "Debug solve marked the puzzle as played")
 	assert(SaveManager.endless_state == endless_before, "Debug solve changed endless hearts")
 	assert(SaveManager.progression == progression_before, "Debug solve changed XP or player level")
 	assert(SaveManager.active_game == active_game_before, "Debug solve overwrote the resumable game")
-	await get_tree().create_timer(2.2).timeout
+	await get_tree().create_timer(3.8).timeout
 	assert(SaveManager.daily_results == daily_results_before, "Debug aftermath consumed or changed a daily result")
+	assert(SaveManager.progression == progression_before, "Debug XP animation persisted its preview reward")
 	print("DEBUG_AUTO_SOLVE_SMOKE_TEST_PASS")
 	board.queue_free()
 	await get_tree().process_frame

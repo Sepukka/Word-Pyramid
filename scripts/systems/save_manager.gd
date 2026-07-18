@@ -495,6 +495,12 @@ func consume_daily_streak_animation(day_key: String) -> bool:
 	return true
 
 func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
+	return _calculate_progression_result(puzzle, mode, won, solved_rows, mistakes_used, hints_used, true)
+
+func preview_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
+	return _calculate_progression_result(puzzle, mode, won, solved_rows, mistakes_used, hints_used, false)
+
+func _calculate_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int, persist: bool) -> Dictionary:
 	var old_total_xp: int = get_total_xp()
 	var old_level: int = get_player_level(old_total_xp)
 	var old_skill: float = get_player_skill_rating()
@@ -506,7 +512,7 @@ func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solv
 	var performance: float = clampf(0.55 * (1.0 if won else 0.0) + 0.45 * rows_ratio - 0.08 * mistake_ratio - 0.10 * hint_ratio, 0.0, 1.0)
 	var puzzle_key: String = "%s:%s" % [PuzzleLoader.get_language(), str(puzzle.get("id", ""))]
 	var attempt_counts_value: Variant = progression.get("puzzle_attempt_counts", {})
-	var attempt_counts: Dictionary = attempt_counts_value if attempt_counts_value is Dictionary else {}
+	var attempt_counts: Dictionary = attempt_counts_value.duplicate(true) if attempt_counts_value is Dictionary else {}
 	var previous_attempts: int = maxi(int(attempt_counts.get(puzzle_key, 0)), 0)
 	var repeat_xp_multiplier: float = 1.0 if previous_attempts == 0 else 0.65
 	var raw_xp: float = 30.0 + 10.0 * float(tier) + 25.0 * performance if won else 5.0 + 10.0 * rows_ratio
@@ -522,11 +528,8 @@ func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solv
 		var repeat_rating_multiplier: float = 1.0 if previous_attempts == 0 else 0.35
 		skill_delta = clampf(k_factor * repeat_rating_multiplier * (performance - expected), -32.0, 32.0)
 		new_skill = clampf(old_skill + skill_delta, SKILL_RATING_MIN, SKILL_RATING_MAX)
-		progression["rated_games"] = rated_games + 1
-	progression["total_xp"] = new_total_xp
-	progression["skill_rating"] = new_skill
-	attempt_counts[puzzle_key] = previous_attempts + 1
-	progression["puzzle_attempt_counts"] = attempt_counts
+		if persist:
+			progression["rated_games"] = rated_games + 1
 	var reward: Dictionary = {
 		"xp_gained": xp_gained,
 		"total_xp_before": old_total_xp,
@@ -541,7 +544,12 @@ func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solv
 		"difficulty_rating": puzzle_rating,
 		"repeat_attempt": previous_attempts > 0
 	}
-	save_data()
+	if persist:
+		progression["total_xp"] = new_total_xp
+		progression["skill_rating"] = new_skill
+		attempt_counts[puzzle_key] = previous_attempts + 1
+		progression["puzzle_attempt_counts"] = attempt_counts
+		save_data()
 	return reward
 
 func get_total_xp() -> int:
