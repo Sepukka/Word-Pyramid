@@ -70,6 +70,7 @@ var _aftermath_dismissing: bool = false
 var _aftermath_open_tween: Tween
 var _aftermath_snap_tween: Tween
 var _aftermath_xp_tween: Tween
+var _level_up_overlay: Control
 var _game_was_running: bool = false
 var _aftermath_scheduled: bool = false
 var _fresh_result_reveal: bool = false
@@ -1533,6 +1534,7 @@ func _show_aftermath(won: bool) -> void:
 		total_xp_after,
 		xp_gained,
 		final_xp_copy,
+		level_after,
 		play_xp_sound,
 		play_level_up_sound
 	)
@@ -1890,7 +1892,7 @@ func _stop_aftermath_motion(stop_xp: bool = false) -> void:
 	if stop_xp and _aftermath_xp_tween != null and _aftermath_xp_tween.is_running():
 		_aftermath_xp_tween.kill()
 
-func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, play_xp_sound: bool, play_level_up_sound: bool) -> void:
+func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, level_after: int, play_xp_sound: bool, play_level_up_sound: bool) -> void:
 	if xp_gained <= 0 or total_after <= total_before:
 		return
 	_aftermath_xp_tween = create_tween()
@@ -1911,8 +1913,193 @@ func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, 
 		if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label):
 			label.text = final_text
 			if play_level_up_sound:
-				SoundManager.level_up()
+				_play_level_up_celebration(layer, progress, level_after)
 	)
+
+func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: int) -> void:
+	if not is_instance_valid(layer) or layer != _aftermath_layer:
+		return
+	if is_instance_valid(_level_up_overlay):
+		_level_up_overlay.queue_free()
+	SoundManager.level_up()
+	Input.vibrate_handheld(38)
+
+	var overlay: Control = Control.new()
+	overlay.name = "LevelUpCelebration"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 360
+	layer.add_child(overlay)
+	_level_up_overlay = overlay
+
+	var focus_dim: ColorRect = ColorRect.new()
+	focus_dim.color = Color(UI_PRIMARY, 0.0)
+	focus_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	focus_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(focus_dim)
+	var focus_tween: Tween = overlay.create_tween()
+	focus_tween.tween_property(focus_dim, "color:a", 0.13, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	focus_tween.tween_interval(0.86)
+	focus_tween.tween_property(focus_dim, "color:a", 0.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	var flash: ColorRect = ColorRect.new()
+	flash.color = Color(UI_YELLOW, 0.0)
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(flash)
+	var flash_tween: Tween = overlay.create_tween()
+	flash_tween.tween_property(flash, "color:a", 0.20, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	flash_tween.tween_property(flash, "color:a", 0.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	var center: Vector2 = layer.size * 0.5
+	var halo: Panel = _level_up_circle("LevelUpHalo", center, 190.0, Color(UI_YELLOW, 0.24), Color.TRANSPARENT, 0)
+	halo.scale = Vector2(0.52, 0.52)
+	halo.modulate.a = 0.0
+	overlay.add_child(halo)
+	var halo_tween: Tween = overlay.create_tween().set_parallel(true)
+	halo_tween.tween_property(halo, "modulate:a", 1.0, 0.12)
+	halo_tween.tween_property(halo, "scale", Vector2(1.52, 1.52), 0.72).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	halo_tween.tween_property(halo, "modulate:a", 0.0, 0.46).set_delay(0.26)
+
+	var ring: Panel = _level_up_circle("LevelUpRing", center, 164.0, Color.TRANSPARENT, UI_YELLOW, 4)
+	ring.scale = Vector2(0.72, 0.72)
+	ring.modulate.a = 0.85
+	overlay.add_child(ring)
+	var ring_tween: Tween = overlay.create_tween().set_parallel(true)
+	ring_tween.tween_property(ring, "scale", Vector2(1.42, 1.42), 0.62).set_delay(0.06).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	ring_tween.tween_property(ring, "modulate:a", 0.0, 0.44).set_delay(0.24)
+
+	_spawn_level_up_confetti(overlay, center)
+	var badge: PanelContainer = _build_level_up_badge(level)
+	badge.set_anchors_preset(Control.PRESET_CENTER)
+	badge.offset_left = -116.0
+	badge.offset_top = -82.0
+	badge.offset_right = 116.0
+	badge.offset_bottom = 82.0
+	badge.pivot_offset = Vector2(116.0, 82.0)
+	badge.scale = Vector2(0.62, 0.62)
+	badge.rotation = deg_to_rad(-4.0)
+	badge.modulate.a = 0.0
+	overlay.add_child(badge)
+	var level_number: Label = badge.find_child("LevelNumber", true, false) as Label
+
+	var badge_scale_tween: Tween = overlay.create_tween()
+	badge_scale_tween.tween_property(badge, "scale", Vector2(1.13, 1.13), 0.31).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	badge_scale_tween.tween_property(badge, "scale", Vector2(0.985, 0.985), 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	badge_scale_tween.tween_property(badge, "scale", Vector2.ONE, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	badge_scale_tween.tween_interval(0.48)
+	badge_scale_tween.tween_property(badge, "scale", Vector2(1.035, 1.035), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	var badge_visual_tween: Tween = overlay.create_tween().set_parallel(true)
+	badge_visual_tween.tween_property(badge, "modulate:a", 1.0, 0.12)
+	badge_visual_tween.tween_property(badge, "rotation", deg_to_rad(1.4), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	badge_visual_tween.tween_property(badge, "rotation", 0.0, 0.18).set_delay(0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	badge_visual_tween.tween_property(badge, "modulate:a", 0.0, 0.25).set_delay(1.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_animate_level_up_number.call_deferred(overlay, level_number)
+
+	if is_instance_valid(progress):
+		progress.pivot_offset = progress.size * 0.5
+		var progress_tween: Tween = layer.create_tween()
+		progress_tween.tween_property(progress, "scale", Vector2(1.035, 1.75), 0.13).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		progress_tween.tween_property(progress, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	var cleanup_tween: Tween = overlay.create_tween()
+	cleanup_tween.tween_interval(1.38)
+	cleanup_tween.tween_callback(_finish_level_up_celebration.bind(overlay))
+
+func _build_level_up_badge(level: int) -> PanelContainer:
+	var badge: PanelContainer = PanelContainer.new()
+	badge.name = "LevelUpBadge"
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_PRIMARY
+	style.border_color = UI_YELLOW
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(30)
+	style.shadow_color = Color(0.05, 0.015, 0.20, 0.34)
+	style.shadow_size = 20
+	style.shadow_offset = Vector2(0, 10)
+	badge.add_theme_stylebox_override("panel", style)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 15)
+	margin.add_theme_constant_override("margin_bottom", 15)
+	badge.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 0)
+	margin.add_child(content)
+	var title: Label = _aftermath_label(SaveManager.text("level_up_title"), 22, UI_YELLOW, _font_fredoka_bold)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(title)
+	var level_number: Label = _aftermath_label(str(level), 64, Color.WHITE, _font_fredoka_bold)
+	level_number.name = "LevelNumber"
+	level_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_number.modulate.a = 0.0
+	level_number.add_theme_constant_override("outline_size", 5)
+	level_number.add_theme_color_override("font_outline_color", Color(0.06, 0.02, 0.24, 0.72))
+	content.add_child(level_number)
+	var caption: Label = _aftermath_label(SaveManager.text("level_up_new_level"), 11, Color(1, 1, 1, 0.70), _font_dm_sans_semibold)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(caption)
+	return badge
+
+func _animate_level_up_number(overlay: Control, level_number: Label) -> void:
+	if not is_instance_valid(overlay) or not is_instance_valid(level_number):
+		return
+	level_number.pivot_offset = level_number.size * 0.5
+	level_number.scale = Vector2(0.48, 0.48)
+	var number_tween: Tween = overlay.create_tween().set_parallel(true)
+	number_tween.tween_property(level_number, "modulate:a", 1.0, 0.10).set_delay(0.10)
+	number_tween.tween_property(level_number, "scale", Vector2(1.16, 1.16), 0.27).set_delay(0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	number_tween.tween_property(level_number, "scale", Vector2.ONE, 0.14).set_delay(0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func _level_up_circle(node_name: String, center: Vector2, diameter: float, fill: Color, border: Color, border_width: int) -> Panel:
+	var circle: Panel = Panel.new()
+	circle.name = node_name
+	circle.position = center - Vector2.ONE * diameter * 0.5
+	circle.size = Vector2.ONE * diameter
+	circle.pivot_offset = Vector2.ONE * diameter * 0.5
+	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(roundi(diameter * 0.5))
+	circle.add_theme_stylebox_override("panel", style)
+	return circle
+
+func _spawn_level_up_confetti(parent: Control, origin: Vector2) -> void:
+	var colors: Array[Color] = [UI_YELLOW, UI_RED, UI_TEAL, UI_MAGENTA, Color("cbbdf5"), Color.WHITE]
+	for index: int in 22:
+		var angle: float = TAU * float(index) / 22.0 + (0.10 if index % 2 == 0 else -0.06)
+		var distance: float = 116.0 + float((index * 17) % 54)
+		var piece_size: Vector2 = Vector2(6.0 + float(index % 3) * 2.0, 10.0 + float((index + 1) % 3) * 2.0)
+		var piece: ColorRect = ColorRect.new()
+		piece.name = "Confetti%02d" % index
+		piece.color = colors[index % colors.size()]
+		piece.size = piece_size
+		piece.position = origin - piece_size * 0.5
+		piece.pivot_offset = piece_size * 0.5
+		piece.scale = Vector2(0.25, 0.25)
+		piece.rotation = angle * 0.35
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		parent.add_child(piece)
+		var destination: Vector2 = origin + Vector2(cos(angle), sin(angle)) * distance + Vector2(0, 32.0)
+		var delay: float = 0.03 + float(index % 5) * 0.012
+		var move_tween: Tween = parent.create_tween().set_parallel(true)
+		move_tween.tween_property(piece, "position", destination - piece_size * 0.5, 0.82 + float(index % 4) * 0.04).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		move_tween.tween_property(piece, "scale", Vector2.ONE, 0.16).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		move_tween.tween_property(piece, "rotation", piece.rotation + deg_to_rad(210.0 + float(index % 4) * 55.0), 0.92).set_delay(delay)
+		move_tween.tween_property(piece, "modulate:a", 0.0, 0.36).set_delay(0.62 + delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+func _finish_level_up_celebration(overlay: Control) -> void:
+	if _level_up_overlay == overlay:
+		_level_up_overlay = null
+	if is_instance_valid(overlay):
+		overlay.queue_free()
 
 func _update_aftermath_xp_display(animated_total: int, label: Label, progress: ProgressBar, total_before: int, xp_gained: int) -> void:
 	var current_total: int = clampi(animated_total, total_before, total_before + xp_gained)

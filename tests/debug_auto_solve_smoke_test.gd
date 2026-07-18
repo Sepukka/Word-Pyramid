@@ -5,6 +5,7 @@ const GAME_BOARD_SCENE: PackedScene = preload("res://scenes/game_board.tscn")
 func _ready() -> void:
 	SaveManager.save_path = "res://.godot-test-data/debug_auto_solve_save.json"
 	SaveManager.reset_to_defaults()
+	SaveManager.progression["total_xp"] = 95
 	var puzzles: Array[Dictionary] = PuzzleLoader.get_puzzles(GameState.DAILY_MODE)
 	assert(not puzzles.is_empty(), "Debug auto-solve test needs a puzzle")
 	GameState.puzzle = puzzles[0].duplicate(true)
@@ -62,6 +63,11 @@ func _ready() -> void:
 	await get_tree().create_timer(3.8).timeout
 	assert(SaveManager.daily_results == daily_results_before, "Debug aftermath consumed or changed a daily result")
 	assert(SaveManager.progression == expected_progression, "Debug XP animation changed progression after awarding XP")
+	var level_up_overlay: Control = board.get("_level_up_overlay") as Control
+	assert(is_instance_valid(level_up_overlay), "Crossing a level threshold must show the level-up celebration")
+	assert(level_up_overlay.find_child("LevelNumber", true, false) != null, "Level-up celebration must show the new level")
+	await get_tree().create_timer(1.5).timeout
+	assert(not is_instance_valid(board.get("_level_up_overlay")), "Level-up celebration must clean itself up")
 	print("DEBUG_AUTO_SOLVE_SMOKE_TEST_PASS")
 	board.queue_free()
 	await get_tree().process_frame
