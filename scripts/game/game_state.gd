@@ -97,14 +97,9 @@ func start_new_game(mode: String = "daily") -> bool:
 	if game_mode == UNLIMITED_MODE and not SaveManager.can_start_endless(daily_date):
 		return false
 	var played_ids: Array[String] = SaveManager.get_played_puzzle_ids(_progress_key())
-	if played_ids.size() >= PuzzleLoader.get_puzzles(game_mode).size():
-		if game_mode == UNLIMITED_MODE:
-			var previous_puzzle_id: String = str(puzzle.get("id", ""))
-			played_ids = [previous_puzzle_id] if not previous_puzzle_id.is_empty() else []
-			SaveManager.replace_played_puzzle_ids(_progress_key(), played_ids)
-		else:
-			puzzle_pool_completed.emit(game_mode)
-			return false
+	if not has_unplayed_puzzles(game_mode):
+		puzzle_pool_completed.emit(game_mode)
+		return false
 	if game_mode == DAILY_MODE:
 		puzzle = PuzzleLoader.get_daily_puzzle(daily_date)
 	else:
@@ -678,11 +673,28 @@ func _finish(won: bool) -> void:
 	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved, result_progression, mistakes_used, hints_used)
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
-	if game_mode == DAILY_MODE and SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
+	if is_puzzle_pool_completed(game_mode):
 		puzzle_pool_completed.emit(game_mode)
 
 func _progress_key() -> String:
 	return "%s:%s" % [PuzzleLoader.get_language(), game_mode]
+
+func has_unplayed_puzzles(mode: String) -> bool:
+	if not _is_valid_mode(mode):
+		return false
+	var puzzles: Array[Dictionary] = PuzzleLoader.get_puzzles(mode)
+	if puzzles.is_empty():
+		return false
+	var progress_key: String = "%s:%s" % [PuzzleLoader.get_language(), mode]
+	var played_ids: Array[String] = SaveManager.get_played_puzzle_ids(progress_key)
+	for candidate: Dictionary in puzzles:
+		var candidate_id: String = str(candidate.get("id", ""))
+		if not candidate_id.is_empty() and not played_ids.has(candidate_id):
+			return true
+	return false
+
+func is_puzzle_pool_completed(mode: String) -> bool:
+	return not PuzzleLoader.get_puzzles(mode).is_empty() and not has_unplayed_puzzles(mode)
 
 func _is_valid_mode(mode: String) -> bool:
 	return mode == DAILY_MODE or mode == UNLIMITED_MODE

@@ -6,7 +6,7 @@ func _ready() -> void:
 	SaveManager.save_path = "res://.godot-test-data/aftermath_save.json"
 	get_tree().root.size = Vector2i(390, 844)
 	var original_language: String = str(SaveManager.settings.get("language", "en"))
-	SaveManager.settings["language"] = "en"
+	assert(PuzzleLoader.set_language("en"), "Aftermath smoke test could not load English puzzles")
 	var puzzles: Array[Dictionary] = PuzzleLoader.get_puzzles(GameState.DAILY_MODE)
 	assert(not puzzles.is_empty(), "Aftermath smoke test needs a daily puzzle")
 	GameState.puzzle = puzzles[0].duplicate(true)
@@ -78,6 +78,23 @@ func _ready() -> void:
 
 	await board.call("_dismiss_aftermath")
 	await get_tree().process_frame
+	var all_unlimited_ids: Array[String] = []
+	for unlimited_puzzle: Dictionary in PuzzleLoader.get_puzzles(GameState.UNLIMITED_MODE):
+		all_unlimited_ids.append(str(unlimited_puzzle.get("id", "")))
+	SaveManager.replace_played_puzzle_ids("%s:%s" % [PuzzleLoader.get_language(), GameState.UNLIMITED_MODE], all_unlimited_ids)
+	board.call("_show_aftermath", true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var completion_panel: PanelContainer = board.find_child("UnlimitedPoolCompletePanel", true, false) as PanelContainer
+	assert(completion_panel != null, "The last Infinity puzzle must show a clear pool-completed panel")
+	var completion_primary: Button = board.find_child("PrimaryAction", true, false) as Button
+	assert(completion_primary != null and completion_primary.text == SaveManager.text("back_to_home"), "The completed Infinity pool must return the player home")
+	var completion_page: VBoxContainer = board.find_child("AftermathPage", true, false) as VBoxContainer
+	assert(completion_page.get_combined_minimum_size().y <= 810.0, "Infinity completion must still fit the phone viewport")
+
+	await board.call("_dismiss_aftermath")
+	await get_tree().process_frame
+	SaveManager.replace_played_puzzle_ids("%s:%s" % [PuzzleLoader.get_language(), GameState.UNLIMITED_MODE], [])
 	SaveManager.settings["language"] = "fi"
 	board.call("_show_aftermath", true)
 	await get_tree().process_frame

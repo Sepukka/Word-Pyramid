@@ -1240,6 +1240,7 @@ func _show_aftermath(won: bool) -> void:
 	var correct: int = max(GameState.result_correct_count, 0)
 	var total: int = max(GameState.result_total_count(), correct)
 	var is_endless: bool = GameState.game_mode == GameState.UNLIMITED_MODE
+	var unlimited_pool_complete: bool = is_endless and GameState.is_puzzle_pool_completed(GameState.UNLIMITED_MODE)
 	var is_endless_loss: bool = is_endless and not won
 	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
 	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
@@ -1469,11 +1470,38 @@ func _show_aftermath(won: bool) -> void:
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_mistakes"), str(mistakes), UI_YELLOW if mistakes == 0 else Color("ff8066")))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_rows"), "%d / 5" % solved_row_count, UI_TEAL))
 	stats_row.add_child(_stat_pill(SaveManager.text("stat_hints_used"), str(GameState.hints_used), UI_MAGENTA))
+	if unlimited_pool_complete:
+		var complete_panel: PanelContainer = PanelContainer.new()
+		complete_panel.name = "UnlimitedPoolCompletePanel"
+		complete_panel.add_theme_stylebox_override("panel", _aftermath_streak_style())
+		complete_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_child(complete_panel)
+		var complete_margin: MarginContainer = MarginContainer.new()
+		complete_margin.add_theme_constant_override("margin_left", 12)
+		complete_margin.add_theme_constant_override("margin_right", 12)
+		complete_margin.add_theme_constant_override("margin_top", 7)
+		complete_margin.add_theme_constant_override("margin_bottom", 7)
+		complete_panel.add_child(complete_margin)
+		var complete_copy: VBoxContainer = VBoxContainer.new()
+		complete_copy.add_theme_constant_override("separation", 0)
+		complete_margin.add_child(complete_copy)
+		var complete_title: Label = _aftermath_label(SaveManager.text("unlimited_pool_complete_title"), 14, UI_YELLOW, _font_fredoka_bold)
+		complete_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		complete_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		complete_copy.add_child(complete_title)
+		var complete_body: Label = _aftermath_label(SaveManager.text("unlimited_pool_complete_body"), 10, Color(1, 1, 1, 0.72), FONT_DM_SANS)
+		complete_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		complete_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		complete_copy.add_child(complete_body)
 
 	var primary_button: Button
 	var can_continue_to_endless: bool = not is_endless and SaveManager.can_start_endless()
 	if is_endless:
-		if heart_count > 0:
+		if unlimited_pool_complete:
+			primary_button = _aftermath_button(SaveManager.text("back_to_home"), true, true)
+			_set_aftermath_button_icon(primary_button, ICON_HOME)
+			primary_button.pressed.connect(func() -> void: request_menu.emit())
+		elif heart_count > 0:
 			primary_button = _aftermath_button(SaveManager.text("continue_to_next"), true, true)
 			primary_button.pressed.connect(_on_endless_next_puzzle_pressed)
 		elif SaveManager.can_claim_rewarded_endless_heart():
@@ -1508,11 +1536,12 @@ func _show_aftermath(won: bool) -> void:
 			share_button.text = SaveManager.text("result_copied")
 		)
 		secondary_row.add_child(share_button)
-	var menu_button: Button = _aftermath_button(SaveManager.text("menu"), false)
-	menu_button.name = "MenuButton"
-	_set_aftermath_button_icon(menu_button, ICON_HOME)
-	menu_button.pressed.connect(func() -> void: request_menu.emit())
-	secondary_row.add_child(menu_button)
+	if not unlimited_pool_complete:
+		var menu_button: Button = _aftermath_button(SaveManager.text("menu"), false)
+		menu_button.name = "MenuButton"
+		_set_aftermath_button_icon(menu_button, ICON_HOME)
+		menu_button.pressed.connect(func() -> void: request_menu.emit())
+		secondary_row.add_child(menu_button)
 
 	await get_tree().process_frame
 	if not is_instance_valid(sheet) or not is_instance_valid(layer):

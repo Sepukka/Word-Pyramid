@@ -163,6 +163,9 @@ func _on_play_pressed() -> void:
 func _on_unlimited_pressed() -> void:
 	if _is_transitioning:
 		return
+	if GameState.is_puzzle_pool_completed(GameState.UNLIMITED_MODE):
+		_apply_home_texts()
+		return
 	if not SaveManager.can_start_endless():
 		if SaveManager.can_claim_rewarded_endless_heart():
 			_on_rewarded_heart_pressed()
@@ -196,6 +199,12 @@ func _on_home_rewarded_ad_unavailable(message: String) -> void:
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	if is_instance_valid(_active_view):
+		return
+	_apply_home_texts()
+	var old_notice: Node = _home_layer.find_child("PoolCompleteNotice", true, false)
+	if is_instance_valid(old_notice):
+		old_notice.queue_free()
+	if mode == GameState.UNLIMITED_MODE:
 		return
 	var label: String = SaveManager.text("daily_pool") if mode == "daily" else SaveManager.text("unlimited_pool")
 	_play_button.disabled = mode == "daily"
@@ -454,17 +463,25 @@ func _apply_home_texts() -> void:
 	]
 	var hearts: int = SaveManager.get_endless_hearts()
 	var can_claim_heart: bool = SaveManager.can_claim_rewarded_endless_heart()
-	if hearts > 0:
+	var unlimited_pool_complete: bool = GameState.is_puzzle_pool_completed(GameState.UNLIMITED_MODE)
+	if unlimited_pool_complete:
+		_unlimited_button.disabled = true
+		_unlimited_button.text = SaveManager.text("all_played")
+		_unlimited_subtitle.text = "%s · %s" % [
+			SaveManager.text("unlimited_pool_complete_short"),
+			SaveManager.text("level_short") % SaveManager.get_player_level()
+		]
+	elif hearts > 0:
 		_unlimited_button.disabled = false
 		_unlimited_button.text = SaveManager.text("endless_play_button")
 	else:
 		_unlimited_button.disabled = not can_claim_heart
 		_unlimited_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_play_locked")
 	_update_home_heart_icons(hearts)
-	_endless_heart_label.text = SaveManager.endless_reset_countdown_text()
+	_endless_heart_label.text = SaveManager.text("unlimited_pool_complete_body") if unlimited_pool_complete else SaveManager.endless_reset_countdown_text()
 	var heart_is_full: bool = hearts >= SaveManager.ENDLESS_DAILY_HEARTS
-	_endless_status.visible = not heart_is_full
-	_reward_heart_button.visible = hearts > 0 and not heart_is_full
+	_endless_status.visible = unlimited_pool_complete or not heart_is_full
+	_reward_heart_button.visible = not unlimited_pool_complete and hearts > 0 and not heart_is_full
 	_reward_heart_button.disabled = not can_claim_heart
 	_reward_heart_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_ad_claimed")
 	if _brand_title != null:
@@ -900,7 +917,8 @@ func _start_next_game() -> void:
 	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
 		show_main_menu()
 		return
-	GameState.start_new_game(GameState.game_mode)
+	if not GameState.start_new_game(GameState.game_mode):
+		show_main_menu()
 
 func show_statistics() -> void:
 	_hide_home()
