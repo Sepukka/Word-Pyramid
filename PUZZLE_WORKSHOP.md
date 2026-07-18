@@ -10,8 +10,9 @@ Android builds.
 2. Run the current scene with **F6**.
 3. Pick a language and game mode from the left-hand panel.
 
-The workshop opens a desktop-sized window even though the game itself uses the
-390 x 844 mobile viewport.
+The workshop uses three readable tabs (puzzle library, editor, and preview) so
+it works at the project's 390 x 844 viewport size and inside Godot's embedded
+Game view without scaling the interface down.
 
 ## Editing workflow
 

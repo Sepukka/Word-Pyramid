@@ -52,15 +52,12 @@ var _validation_label: RichTextLabel
 var _save_button: Button
 var _revert_button: Button
 var _delete_dialog: ConfirmationDialog
+var _tabs: TabContainer
 
 func _ready() -> void:
 	_font_heading = _font_variation(FONT_FREDOKA, 650, 0.08)
 	_font_body = _font_variation(FONT_DM_SANS, 500, 0.02)
 	_font_tile = _font_variation(FONT_FREDOKA, 600, 0.05, 88)
-	if OS.has_feature("editor"):
-		get_window().content_scale_size = Vector2i(1280, 820)
-		DisplayServer.window_set_size(Vector2i(1280, 820))
-		DisplayServer.window_set_min_size(Vector2i(1040, 680))
 	_build_interface()
 	if not OS.has_feature("editor"):
 		_status.text = "Puzzle Workshop on käytettävissä vain Godot-editorista käynnistettynä."
@@ -76,22 +73,28 @@ func _build_interface() -> void:
 	add_child(background)
 
 	var page := VBoxContainer.new()
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 14)
-	page.add_theme_constant_override("separation", 10)
+	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	page.add_theme_constant_override("separation", 7)
 	add_child(page)
 	page.add_child(_build_header())
 
-	var columns := HSplitContainer.new()
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.split_offset = 244
-	page.add_child(columns)
-	columns.add_child(_build_library_panel())
-
-	var editor_preview := HSplitContainer.new()
-	editor_preview.split_offset = 510
-	columns.add_child(editor_preview)
-	editor_preview.add_child(_build_editor_panel())
-	editor_preview.add_child(_build_preview_panel())
+	_tabs = TabContainer.new()
+	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_theme_font_override("font", _font_heading)
+	_tabs.add_theme_font_size_override("font_size", 14)
+	page.add_child(_tabs)
+	var library_panel := _build_library_panel()
+	library_panel.name = "Kentat"
+	_tabs.add_child(library_panel)
+	var editor_panel := _build_editor_panel()
+	editor_panel.name = "Muokkaa"
+	_tabs.add_child(editor_panel)
+	var preview_panel := _build_preview_panel()
+	preview_panel.name = "Esikatselu"
+	_tabs.add_child(preview_panel)
+	_tabs.set_tab_title(0, "Kentät")
+	_tabs.set_tab_title(1, "Muokkaa")
+	_tabs.set_tab_title(2, "Esikatselu")
 
 	_status = _label("Valmis", 12, MUTED, _font_body)
 	_status.custom_minimum_size.y = 22
@@ -109,20 +112,19 @@ func _build_header() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	card.add_child(row)
-	var title := _label("Puzzle Workshop", 27, Color.WHITE, _font_heading)
+	var title := _label("Puzzle Workshop", 22, Color.WHITE, _font_heading)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(title)
-	_dirty_label = _label("Ei muutoksia", 12, Color("d9d1f3"), _font_body)
+	_dirty_label = _label("Ei muutoksia", 10, Color("d9d1f3"), _font_body)
 	row.add_child(_dirty_label)
 	var close := _button("Sulje", false)
-	close.custom_minimum_size = Vector2(90, 40)
+	close.custom_minimum_size = Vector2(64, 38)
 	close.pressed.connect(func() -> void: get_tree().quit())
 	row.add_child(close)
 	return card
 
 func _build_library_panel() -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size.x = 230
 	card.add_theme_stylebox_override("panel", _panel_style(SURFACE, BORDER, 20, 1, 12))
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 8)
@@ -178,7 +180,6 @@ func _build_library_panel() -> Control:
 
 func _build_editor_panel() -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size.x = 500
 	card.add_theme_stylebox_override("panel", _panel_style(SURFACE, BORDER, 20, 1, 0))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -207,7 +208,8 @@ func _build_editor_panel() -> Control:
 	_date_input = _add_labeled_input(identity, "Päivä (Daily)", "2026-07-18")
 	_date_input.editable = _mode == "daily"
 
-	var difficulty := HBoxContainer.new()
+	var difficulty := GridContainer.new()
+	difficulty.columns = 2
 	difficulty.add_theme_constant_override("separation", 10)
 	stack.add_child(difficulty)
 	difficulty.add_child(_field_label("Vaikeustaso"))
@@ -224,7 +226,7 @@ func _build_editor_panel() -> Control:
 	_rating_input.max_value = 1600
 	_rating_input.step = 10
 	_rating_input.value = 900
-	_rating_input.custom_minimum_size.x = 120
+	_rating_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rating_input.value_changed.connect(_on_number_changed)
 	difficulty.add_child(_rating_input)
 
@@ -268,7 +270,7 @@ func _build_group_editor(size_value: int) -> Control:
 	var heading := HBoxContainer.new()
 	stack.add_child(heading)
 	var title := _label("%d sanan ryhmä" % size_value, 14, PURPLE, _font_heading)
-	title.custom_minimum_size.x = 118
+	title.custom_minimum_size.x = 92
 	heading.add_child(title)
 	var label_input := LineEdit.new()
 	label_input.placeholder_text = "Ryhmän yhdistävä tekijä"
@@ -295,7 +297,6 @@ func _build_group_editor(size_value: int) -> Control:
 
 func _build_preview_panel() -> Control:
 	var outer := PanelContainer.new()
-	outer.custom_minimum_size.x = 410
 	outer.add_theme_stylebox_override("panel", _panel_style(PURPLE, PURPLE, 24, 0, 12))
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 8)
@@ -425,6 +426,7 @@ func _on_list_selected(list_index: int) -> void:
 		_select_current_in_list()
 		return
 	_load_puzzle(source_index)
+	_tabs.current_tab = 1
 
 func _can_leave_current() -> bool:
 	if not _dirty:
@@ -488,6 +490,7 @@ func _new_puzzle() -> void:
 	_is_draft = true
 	_set_dirty(true)
 	_puzzle_list.deselect_all()
+	_tabs.current_tab = 1
 	_status_message("Uusi kenttäluonnos. Täytä tiedot ja tallenna.")
 
 func _duplicate_puzzle() -> void:
@@ -502,6 +505,7 @@ func _duplicate_puzzle() -> void:
 	_is_draft = true
 	_set_dirty(true)
 	_puzzle_list.deselect_all()
+	_tabs.current_tab = 1
 	_status_message("Kentästä luotiin kopio. Muuta ID:tä tai sisältöä ennen tallennusta.")
 
 func _blank_puzzle(puzzle_id: String) -> Dictionary:
@@ -769,7 +773,7 @@ func _update_preview_and_validation() -> void:
 
 func _preview_tile(display_text: String, warning: bool) -> Button:
 	var tile := Button.new()
-	tile.custom_minimum_size = Vector2(69, 62)
+	tile.custom_minimum_size = Vector2(60, 62)
 	tile.text = display_text if not display_text.is_empty() else "—"
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
@@ -869,7 +873,7 @@ func _add_labeled_input(grid: GridContainer, label_text: String, placeholder: St
 
 func _field_label(value: String) -> Label:
 	var label := _label(value, 12, MUTED, _font_body)
-	label.custom_minimum_size.x = 110
+	label.custom_minimum_size.x = 92
 	return label
 
 func _label(value: String, font_size: int, color: Color, font: Font) -> Label:
