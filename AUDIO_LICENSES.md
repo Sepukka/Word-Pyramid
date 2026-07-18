@@ -1,8 +1,29 @@
 # Audio asset records
 
+## Kenney Interface Sounds
+
+The active correct-row and wrong-answer sounds come from Kenney's Interface
+Sounds pack. The pack is released under CC0 1.0 Universal and is packaged for
+Godot through the Godot Asset Library.
+
+- `assets/audio/sfx/kenney_interface/row_correct.wav`
+  - Original file: `confirmation_002.wav`
+  - Purpose: a correctly completed word row
+- `assets/audio/sfx/kenney_interface/wrong_answer.wav`
+  - Original file: `error_003.wav`
+  - Purpose: an incorrect guess
+- License copy: `assets/audio/sfx/kenney_interface/LICENSE.txt`
+
+Sources:
+
+- https://godotengine.org/asset-library/asset/794
+- https://www.kenney.nl/assets/interface-sounds
+
 ## Adobe Firefly generated sound effects
 
-Generated on 2026-07-18 with Adobe Firefly Generate Sound Effects and exported
+These previous alternatives are retained in the project but are not currently
+used by `SoundManager`. They were generated on 2026-07-18 with Adobe Firefly
+Generate Sound Effects and exported
 as 48 kHz stereo WAV files. Adobe describes outputs from the commercially
 released Firefly sound-effect generator as royalty-free and commercially safe
 subject to its applicable terms.

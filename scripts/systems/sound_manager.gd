@@ -2,8 +2,8 @@ extends Node
 
 const SELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click1.wav")
 const DESELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click2.wav")
-const ROW_CORRECT: AudioStream = preload("res://assets/audio/sfx/row_correct.wav")
-const WRONG_ANSWER: AudioStream = preload("res://assets/audio/sfx/wrong_answer.wav")
+const ROW_CORRECT: AudioStream = preload("res://assets/audio/sfx/kenney_interface/row_correct.wav")
+const WRONG_ANSWER: AudioStream = preload("res://assets/audio/sfx/kenney_interface/wrong_answer.wav")
 const BACKGROUND_MUSIC: AudioStreamOggVorbis = preload("res://assets/audio/music/word_pyramid_background_loop.ogg")
 const SAMPLE_PLAYER_COUNT: int = 4
 const SKIP_UI_CLICK_SOUND_META: StringName = &"skip_ui_click_sound"
@@ -56,10 +56,10 @@ func _on_ui_button_pressed() -> void:
 	click()
 
 func success() -> void:
-	_play_sample(ROW_CORRECT, -8.0)
+	_play_sample(ROW_CORRECT, -9.0)
 
 func failure() -> void:
-	_play_sample(WRONG_ANSWER, -10.0)
+	_play_sample(WRONG_ANSWER, -8.5)
 
 func set_music_enabled(value: bool) -> void:
 	music_enabled = value
