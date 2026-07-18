@@ -153,7 +153,7 @@ Huippusana: **PHOTOGRAPHY** / **VALOKUVAUS**
 
 | Koko | English | English words | Suomi | Suomen sanat |
 |---:|---|---|---|---|
-| 2 | Camera Types | DSLR, MIRRORLESS | Kameratyyppejä | JÄRJESTELMÄKAMERA, PEILITÖN KAMERA |
+| 2 | Camera Types | DSLR, MIRRORLESS | Kameratyyppejä | JÄRJESTELMÄ, PEILITÖN |
 | 3 | Exposure Controls | APERTURE, SHUTTER, ISO | Valotuksen säätimiä | AUKKO, SULJIN, ISO |
 | 4 | Composition Tools | RULE OF THIRDS, LEADING LINES, SYMMETRY, FRAME | Sommittelukeinoja | KOLMANNUSTEN SÄÄNTÖ, JOHTAVAT LINJAT, SYMMETRIA, KEHYS |
 | 5 | Camera Gear | LENS, FLASH, FILTER, TRIPOD, MEMORY CARD | Kameravarusteita | OBJEKTIIVI, SALAMA, SUODIN, JALUSTA, MUISTIKORTTI |
@@ -189,7 +189,7 @@ Huippusana: **CHEMISTRY** / **KEMIA**
 
 | Koko | English | English words | Suomi | Suomen sanat |
 |---:|---|---|---|---|
-| 2 | Acids | HYDROCHLORIC, SULFURIC | Happoja | SUOLAHAPPO, RIKKIHAPPO |
+| 2 | Acids | HYDROCHLORIC, SULFURIC | Happoja | SUOLA, RIKKI |
 | 3 | Particles | PROTON, NEUTRON, ELECTRON | Hiukkasia | PROTONI, NEUTRONI, ELEKTRONI |
 | 4 | Lab Actions | MEASURE, MIX, HEAT, FILTER | Laboratoriotoimintoja | MITTAA, SEKOITA, KUUMENNA, SUODATA |
 | 5 | Safety Equipment | GOGGLES, GLOVES, LAB COAT, SAFETY SHOWER, EXTINGUISHER | Turvavarusteita | SUOJALASIT, KÄSINEET, LABORATORIOTAKKI, HÄTÄSUIHKU, SAMMUTIN |
@@ -214,7 +214,7 @@ Huippusana: **ARCHITECTURE** / **ARKKITEHTUURI**
 | Koko | English | English words | Suomi | Suomen sanat |
 |---:|---|---|---|---|
 | 2 | Classical Orders | DORIC, IONIC | Klassisia pylvästyylejä | DOORILAINEN, JOONIALAINEN |
-| 3 | Arch Shapes | ROUND, POINTED, HORSESHOE | Kaarimuotoja | PYÖRÖKAARI, SUIPPOKAARI, HEVOSENKENKÄKAARI |
+| 3 | Arch Shapes | ROUND, POINTED, HORSESHOE | Kaarimuotoja | PYÖRÖ, SUIPPO, HEVOSENKENKÄ |
 | 4 | Building Parts | FOUNDATION, FACADE, BALCONY, DOME | Rakennuksen osia | PERUSTUS, JULKISIVU, PARVEKE, KUPOLI |
 | 5 | Building Materials | BRICK, CONCRETE, STEEL, GLASS, TIMBER | Rakennusmateriaaleja | TIILI, BETONI, TERÄS, LASI, PUU |
 
