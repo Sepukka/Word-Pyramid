@@ -497,8 +497,14 @@ func consume_daily_streak_animation(day_key: String) -> bool:
 func record_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
 	return _calculate_progression_result(puzzle, mode, won, solved_rows, mistakes_used, hints_used, true)
 
-func preview_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
-	return _calculate_progression_result(puzzle, mode, won, solved_rows, mistakes_used, hints_used, false)
+func record_debug_xp_reward(puzzle: Dictionary, mode: String, solved_rows: int, mistakes_used: int, hints_used: int) -> Dictionary:
+	var reward: Dictionary = _calculate_progression_result(puzzle, mode, true, solved_rows, mistakes_used, hints_used, false)
+	var unchanged_skill: float = get_player_skill_rating()
+	reward["skill_after"] = unchanged_skill
+	reward["skill_delta"] = 0.0
+	progression["total_xp"] = int(reward.get("total_xp_after", get_total_xp()))
+	save_data()
+	return reward
 
 func _calculate_progression_result(puzzle: Dictionary, mode: String, won: bool, solved_rows: int, mistakes_used: int, hints_used: int, persist: bool) -> Dictionary:
 	var old_total_xp: int = get_total_xp()

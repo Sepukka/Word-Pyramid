@@ -639,10 +639,9 @@ func _finish_debug_completion() -> void:
 	result_top_solved = is_top_solved
 	var max_attempts: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
 	var mistakes_used: int = clampi(max_attempts - attempts_left, 0, max_attempts)
-	result_progression = SaveManager.preview_progression_result(
+	result_progression = SaveManager.record_debug_xp_reward(
 		puzzle,
 		game_mode,
-		true,
 		5,
 		mistakes_used,
 		hints_used
