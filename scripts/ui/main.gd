@@ -8,6 +8,7 @@ const SETTINGS_TOGGLE_OFF: Texture2D = preload("res://assets/toggle_off.svg")
 const TROPHY_ICON: Texture2D = preload("res://assets/icons/trophy.svg")
 const ACHIEVEMENT_STAR: Texture2D = preload("res://assets/icons/achievement_star.svg")
 const ACHIEVEMENT_STAR_LOCKED: Texture2D = preload("res://assets/icons/achievement_star_locked.svg")
+const LOCK_ICON: Texture2D = preload("res://assets/icons/lock.svg")
 
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
@@ -153,6 +154,9 @@ func _hide_home() -> void:
 func _on_play_pressed() -> void:
 	if _is_transitioning:
 		return
+	if not SaveManager.is_daily_unlocked():
+		_apply_home_texts()
+		return
 	if SaveManager.is_daily_challenge_completed():
 		if GameState.view_daily_result():
 			show_game()
@@ -239,6 +243,43 @@ func _apply_play_button_style() -> void:
 	_play_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	_play_button.add_theme_font_size_override("font_size", 18)
 	_play_button.add_theme_constant_override("outline_size", 0)
+	_apply_daily_unlock_visuals(SaveManager.is_daily_unlocked())
+
+func _apply_daily_unlock_visuals(unlocked: bool) -> void:
+	if _daily_card == null or _play_button == null:
+		return
+	if unlocked:
+		_daily_card.add_theme_stylebox_override("panel", _daily_card_style())
+		_play_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 1))
+		_play_button.add_theme_stylebox_override("hover", _play_style(Color("ffe23d"), 1))
+		_play_button.add_theme_stylebox_override("pressed", _play_style(Color("e9c400"), 0))
+		_play_button.add_theme_stylebox_override("disabled", _play_style(Color("d9d3ea"), 0))
+		_play_button.add_theme_color_override("font_color", UI_PRIMARY)
+		_play_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+		_play_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+		_play_button.add_theme_color_override("font_disabled_color", Color("81759f"))
+		if _date_pill != null:
+			_date_pill.add_theme_stylebox_override("normal", _date_pill_style())
+			_date_pill.add_theme_color_override("font_color", UI_PRIMARY)
+		if _card_title != null:
+			_card_title.add_theme_color_override("font_color", Color.WHITE)
+		if _card_meta != null:
+			_card_meta.add_theme_color_override("font_color", Color(1, 1, 1, 0.72))
+		if _card_streak != null:
+			_card_streak.add_theme_color_override("font_color", UI_YELLOW)
+		return
+	_daily_card.add_theme_stylebox_override("panel", _daily_locked_card_style())
+	_play_button.add_theme_stylebox_override("disabled", _play_style(Color("c9c3d3"), 0))
+	_play_button.add_theme_color_override("font_disabled_color", Color("625779"))
+	if _date_pill != null:
+		_date_pill.add_theme_stylebox_override("normal", _round_style(Color("e5e1ea"), Color("c9c3d3"), 20))
+		_date_pill.add_theme_color_override("font_color", Color("625779"))
+	if _card_title != null:
+		_card_title.add_theme_color_override("font_color", Color("372e49"))
+	if _card_meta != null:
+		_card_meta.add_theme_color_override("font_color", Color("71677f"))
+	if _card_streak != null:
+		_card_streak.add_theme_color_override("font_color", Color("625779"))
 
 func _apply_unlimited_button_style() -> void:
 	_unlimited_card.add_theme_stylebox_override("panel", _infinity_card_style())
@@ -452,10 +493,22 @@ func _show_next_achievement_banner() -> void:
 func _apply_home_texts() -> void:
 	var is_finnish: bool = PuzzleLoader.get_language() == "fi"
 	var daily_puzzle: Dictionary = PuzzleLoader.get_daily_puzzle(Time.get_date_string_from_system())
-	if SaveManager.is_daily_challenge_completed():
+	var daily_unlocked: bool = SaveManager.is_daily_unlocked()
+	if not daily_unlocked:
+		_play_button.disabled = true
+		_play_button.text = SaveManager.text("daily_unlock_button") % SaveManager.DAILY_UNLOCK_LEVEL
+		_play_button.icon = LOCK_ICON
+		_play_button.expand_icon = true
+		_play_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_play_button.add_theme_constant_override("icon_max_width", 23)
+	elif SaveManager.is_daily_challenge_completed():
+		_play_button.disabled = false
 		_play_button.text = SaveManager.text("view_result")
 	else:
+		_play_button.disabled = false
 		_play_button.text = "Pelaa päivän haaste ->" if is_finnish else "Play Today's Challenge ->"
+	if daily_unlocked:
+		_play_button.icon = null
 	_unlimited_title.text = "∞ %s" % SaveManager.text("unlimited_button")
 	_unlimited_subtitle.text = "%s · %s" % [
 		SaveManager.text("endless_subtitle"),
@@ -489,17 +542,18 @@ func _apply_home_texts() -> void:
 	if _brand_subtitle != null:
 		_brand_subtitle.text = SaveManager.text("home_subtitle")
 	if _date_pill != null:
-		_date_pill.text = "📅  %s" % _home_date_text(is_finnish)
+		_date_pill.text = SaveManager.text("daily_unlock_button") % SaveManager.DAILY_UNLOCK_LEVEL if not daily_unlocked else "📅  %s" % _home_date_text(is_finnish)
 	if _card_title != null:
-		_card_title.text = str(daily_puzzle.get("title", SaveManager.text("home_daily_title")))
+		_card_title.text = SaveManager.text("daily_locked_title") if not daily_unlocked else str(daily_puzzle.get("title", SaveManager.text("home_daily_title")))
 	if _card_meta != null:
-		_card_meta.text = _daily_card_meta(daily_puzzle, is_finnish)
+		_card_meta.text = SaveManager.text("daily_locked_body") % SaveManager.DAILY_UNLOCK_LEVEL if not daily_unlocked else _daily_card_meta(daily_puzzle, is_finnish)
 	if _card_streak != null:
-		_card_streak.text = SaveManager.daily_streak_text()
+		_card_streak.text = SaveManager.text("daily_locked_progress") % [SaveManager.get_player_level(), SaveManager.DAILY_UNLOCK_LEVEL] if not daily_unlocked else SaveManager.daily_streak_text()
 	if _home_hint != null:
 		_home_hint.text = "[center]%s[/center]" % SaveManager.text("home_hint_markup")
 	if _achievements_button != null:
 		_achievements_button.tooltip_text = SaveManager.text("achievements")
+	_apply_daily_unlock_visuals(daily_unlocked)
 
 func _update_home_heart_icons(hearts: int) -> void:
 	var index: int = 0
@@ -1250,7 +1304,7 @@ func _start_tutorial() -> void:
 func _on_tutorial_exit(completed: bool) -> void:
 	SaveManager.complete_onboarding()
 	if completed:
-		_transition_from_board_to_mode(GameState.DAILY_MODE)
+		_transition_from_board_to_mode(GameState.UNLIMITED_MODE)
 		return
 	GameState.reset_debug_state()
 	show_main_menu()
@@ -1259,6 +1313,9 @@ func _transition_from_board_to_mode(mode: String) -> void:
 	if _is_transitioning:
 		return
 	if mode != GameState.DAILY_MODE and mode != GameState.UNLIMITED_MODE:
+		return
+	if mode == GameState.DAILY_MODE and not SaveManager.is_daily_unlocked():
+		show_main_menu()
 		return
 	if mode == GameState.UNLIMITED_MODE and not SaveManager.can_start_endless():
 		show_main_menu()
@@ -1560,6 +1617,14 @@ func _daily_card_style() -> StyleBoxFlat:
 	style.shadow_color = UI_MAGENTA
 	style.shadow_size = 1
 	style.shadow_offset = Vector2(7, 7)
+	return style
+
+func _daily_locked_card_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = _round_style(Color("eeebf1"), Color("c9c3d3"), 22)
+	style.set_border_width_all(2)
+	style.shadow_color = Color(0.06, 0.03, 0.12, 0.10)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(4, 5)
 	return style
 
 func _infinity_card_style() -> StyleBoxFlat:

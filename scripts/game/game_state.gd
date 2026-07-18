@@ -92,6 +92,8 @@ func start_new_game(mode: String = "daily") -> bool:
 	if not _is_valid_mode(mode):
 		push_error("Unsupported game mode: %s" % mode)
 		return false
+	if mode == DAILY_MODE and not SaveManager.is_daily_unlocked():
+		return false
 	game_mode = mode
 	daily_date = Time.get_date_string_from_system()
 	if game_mode == UNLIMITED_MODE and not SaveManager.can_start_endless(daily_date):
@@ -107,7 +109,8 @@ func start_new_game(mode: String = "daily") -> bool:
 			game_mode,
 			played_ids,
 			SaveManager.get_player_skill_rating(),
-			SaveManager.get_rated_games()
+			SaveManager.get_rated_games(),
+			SaveManager.get_player_level()
 		)
 	if puzzle.is_empty():
 		puzzle_pool_completed.emit(game_mode)

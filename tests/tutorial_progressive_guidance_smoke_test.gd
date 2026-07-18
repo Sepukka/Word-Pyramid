@@ -49,22 +49,33 @@ func _ready() -> void:
 	_solve_allowed_row(board, 1)
 	await get_tree().create_timer(1.55).timeout
 
-	_assert(int(board.get("_tutorial_stage")) == 5, "reduced guidance follows the top word")
+	_assert(int(board.get("_tutorial_stage")) == 5, "independent practice follows the top word")
+	var independent_continue: Button = board.get("_tutorial_guide_button") as Button
+	_assert(bool(board.get("_tutorial_independent_intro_pending")), "independent task waits for acknowledgement")
+	_assert(independent_continue.visible, "independent task has a Continue action")
+	_assert(GameState.tutorial_allowed_words.is_empty(), "words stay locked until the player continues")
+	independent_continue.pressed.emit()
+	await get_tree().process_frame
 	_assert(GameState.tutorial_allowed_words.size() == 7, "all remaining words are interactive")
-	_assert((board.get("_tutorial_focus_words") as Array).size() == 1, "only one example word is highlighted initially")
-	board.call("_apply_tutorial_idle_help", 1)
-	_assert((board.get("_tutorial_focus_words") as Array).size() == 2, "soft help reveals one more word")
-	board.call("_apply_tutorial_idle_help", 2)
-	_assert((board.get("_tutorial_focus_words") as Array).size() == 3, "strong help reveals the whole three-word group")
+	_assert((board.get("_tutorial_focus_words") as Array).is_empty(), "independent task starts without answer highlights")
+	_assert(not (board.get("_tutorial_spotlight") as ColorRect).visible, "independent task has no screen shading")
+	for wrong_word: String in ["COW", "EAGLE", "OWL"]:
+		GameState.toggle_word(wrong_word)
+	_assert(GameState.can_check_selection(), "an independent wrong group can be checked")
+	GameState.check_selection()
+	await get_tree().create_timer(0.75).timeout
+	_assert((board.get("_tutorial_focus_words") as Array).size() == 1, "help appears only after a wrong answer")
+	_assert(not (board.get("_tutorial_spotlight") as ColorRect).visible, "wrong-answer help still leaves the full board undimmed")
+	GameState.clear_selection()
 	_solve_row(board, 3)
 	await get_tree().create_timer(1.55).timeout
 
-	_assert(int(board.get("_tutorial_stage")) == 6, "final group begins without answer highlights")
+	_assert(int(board.get("_tutorial_stage")) == 6, "final group begins with an acknowledgement")
+	_assert(bool(board.get("_tutorial_independent_intro_pending")), "final task waits for Continue")
+	independent_continue.pressed.emit()
+	await get_tree().process_frame
 	_assert((board.get("_tutorial_focus_words") as Array).is_empty(), "final task starts independently")
-	board.call("_apply_tutorial_idle_help", 1)
-	_assert((board.get("_tutorial_focus_words") as Array).size() == 1, "soft help appears if the player is stuck")
-	board.call("_apply_tutorial_idle_help", 2)
-	_assert((board.get("_tutorial_focus_words") as Array).size() == 4, "strong help eventually reveals the final group")
+	_assert(not (board.get("_tutorial_spotlight") as ColorRect).visible, "final task keeps every word fully visible")
 	_solve_row(board, 4)
 	await get_tree().process_frame
 	_assert(GameState.is_finished, "tutorial completes after every row")

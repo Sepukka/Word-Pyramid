@@ -116,16 +116,29 @@ func get_next_unplayed_puzzle(mode: String, played_ids: Array[String]) -> Dictio
 		return {}
 	return choices[_rng.randi_range(0, choices.size() - 1)].duplicate(true)
 
-func get_next_unplayed_puzzle_for_skill(mode: String, played_ids: Array[String], player_rating: float, rated_games: int) -> Dictionary:
+func get_next_unplayed_puzzle_for_skill(mode: String, played_ids: Array[String], player_rating: float, rated_games: int, player_level: int = 99) -> Dictionary:
 	var choices: Array[Dictionary] = []
 	for puzzle: Dictionary in get_puzzles(mode):
 		if not played_ids.has(str(puzzle.get("id", ""))):
 			choices.append(puzzle)
 	if choices.is_empty():
 		return {}
+	if mode == UNLIMITED_MODE and player_level < SaveManager.DAILY_UNLOCK_LEVEL:
+		var starter_choices: Array[Dictionary] = []
+		for candidate: Dictionary in choices:
+			if get_difficulty_tier(candidate) == 1:
+				starter_choices.append(candidate)
+		# Six tier-one puzzles exist in each language. The tier-two fallback keeps
+		# old or unusual save files playable if those starter IDs were already used.
+		if starter_choices.is_empty():
+			for candidate: Dictionary in choices:
+				if get_difficulty_tier(candidate) <= 2:
+					starter_choices.append(candidate)
+		if not starter_choices.is_empty():
+			choices = starter_choices
 	# The first five rated games deliberately climb through the easier part of
 	# the pool. Afterwards, target roughly a 72% expected win rate.
-	var target_rating: float = 780.0 + float(rated_games) * 35.0 if rated_games < 5 else player_rating - TARGET_WIN_OFFSET
+	var target_rating: float = 780.0 if player_level < SaveManager.DAILY_UNLOCK_LEVEL else (780.0 + float(rated_games) * 35.0 if rated_games < 5 else player_rating - TARGET_WIN_OFFSET)
 	var weights: Array[float] = []
 	var total_weight: float = 0.0
 	for candidate: Dictionary in choices:

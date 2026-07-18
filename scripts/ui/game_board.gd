@@ -45,8 +45,6 @@ const XP_REWARD_ANIMATION_DURATION: float = 1.20
 const TUTORIAL_HINT_BREAK: float = 1.65
 const TUTORIAL_CHECK_BREAK: float = 1.30
 const TUTORIAL_FINISH_BREAK: float = 2.00
-const TUTORIAL_SOFT_HELP_DELAY: float = 5.5
-const TUTORIAL_STRONG_HELP_DELAY: float = 10.0
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
 
 var _card: PanelContainer
@@ -105,10 +103,10 @@ var _tutorial_finishing: bool = false
 var _tutorial_spotlight: ColorRect
 var _tutorial_paused: bool = false
 var _tutorial_pause_id: int = 0
-var _tutorial_help_id: int = 0
 var _tutorial_help_level: int = 0
 var _tutorial_target_words: Array[String] = []
 var _tutorial_focus_words: Array[String] = []
+var _tutorial_independent_intro_pending: bool = false
 var _tutorial_focus_tweens: Dictionary = {}
 var _tutorial_guide_button: Button
 var _tutorial_intro_layer: Control
@@ -457,6 +455,7 @@ func refresh() -> void:
 		_show_play_actions()
 		if is_tutorial:
 			_tutorial_stage = 0
+			_tutorial_independent_intro_pending = false
 			_show_tutorial_intro()
 
 func _build_pyramid() -> void:
@@ -836,7 +835,6 @@ func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
-	var tutorial_selection_changed: bool = GameState.game_mode == GameState.TUTORIAL_MODE and selection != _displayed_selection
 	var is_at_limit: bool = selection.size() >= GameState.get_selection_limit()
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
@@ -863,8 +861,6 @@ func _on_selection_changed(selection: Array[String]) -> void:
 	_update_selection(selection)
 	if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused:
 		_update_tutorial_selection_message()
-		if tutorial_selection_changed and _tutorial_stage >= 5:
-			_reset_tutorial_reduced_help()
 
 func _on_group_solved(group: Dictionary) -> void:
 	var row_length: int = int(group.get("size", 0))
@@ -1057,10 +1053,18 @@ func _finish_fly_ghost(ghost: Control) -> void:
 func _to_board_point(global_point: Vector2) -> Vector2:
 	return get_global_transform_with_canvas().affine_inverse() * global_point
 
-func _on_guess_failed(_left: int) -> void:
+func _on_guess_failed(left: int) -> void:
 	_update_mistakes()
 	_message.text = SaveManager.text("guess_failed")
 	_highlight_incorrect_selection()
+	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage >= 5 and left > 0:
+		_show_tutorial_wrong_answer_help.call_deferred(_tutorial_stage)
+
+func _show_tutorial_wrong_answer_help(stage: int) -> void:
+	await get_tree().create_timer(WRONG_SHAKE_DURATION + 0.12).timeout
+	if not is_inside_tree() or GameState.game_mode != GameState.TUTORIAL_MODE or _tutorial_stage != stage or GameState.is_finished:
+		return
+	_apply_tutorial_wrong_answer_help()
 
 func _on_repeated_guess_attempted() -> void:
 	_message.text = SaveManager.text("repeated_guess")
@@ -2108,7 +2112,9 @@ func _build_level_up_badge(level: int) -> PanelContainer:
 	level_number.add_theme_constant_override("outline_size", 5)
 	level_number.add_theme_color_override("font_outline_color", Color(0.06, 0.02, 0.24, 0.72))
 	content.add_child(level_number)
-	var caption: Label = _aftermath_label(SaveManager.text("level_up_new_level"), 11, Color(1, 1, 1, 0.70), _font_dm_sans_semibold)
+	var caption_text: String = SaveManager.text("daily_unlocked_reward") if level == SaveManager.DAILY_UNLOCK_LEVEL else SaveManager.text("level_up_new_level")
+	var caption: Label = _aftermath_label(caption_text, 11, UI_YELLOW if level == SaveManager.DAILY_UNLOCK_LEVEL else Color(1, 1, 1, 0.70), _font_dm_sans_semibold)
+	caption.name = "LevelReward"
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(caption)
 	return badge
@@ -2332,7 +2338,6 @@ func _on_hint_count_changed(used: int, limit: int) -> void:
 func _apply_tutorial_stage() -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or GameState.is_finished:
 		return
-	_tutorial_help_id += 1
 	_tutorial_help_level = 0
 	_tutorial_target_words.clear()
 	_tutorial_focus_words.clear()
@@ -2361,15 +2366,22 @@ func _apply_tutorial_stage() -> void:
 			guide_text = SaveManager.text("tutorial_top_any_order")
 		5:
 			_tutorial_target_words = _tutorial_selectable_words(3)
-			allowed = _tutorial_all_selectable_words()
-			if not _tutorial_target_words.is_empty():
-				_tutorial_focus_words = [_tutorial_target_words[0]]
-				_tutorial_help_level = 1
-			guide_text = SaveManager.text("tutorial_find_three")
+			if _tutorial_independent_intro_pending:
+				guide_text = SaveManager.text("tutorial_independent_three_intro")
+				if is_instance_valid(_tutorial_guide_button):
+					_tutorial_guide_button.visible = true
+			else:
+				allowed = _tutorial_all_selectable_words()
+				guide_text = SaveManager.text("tutorial_find_three")
 		6:
 			_tutorial_target_words = _tutorial_selectable_words(4)
-			allowed = _tutorial_all_selectable_words()
-			guide_text = SaveManager.text("tutorial_find_last")
+			if _tutorial_independent_intro_pending:
+				guide_text = SaveManager.text("tutorial_independent_last_intro")
+				if is_instance_valid(_tutorial_guide_button):
+					_tutorial_guide_button.visible = true
+			else:
+				allowed = _tutorial_all_selectable_words()
+				guide_text = SaveManager.text("tutorial_find_last")
 	GameState.set_tutorial_allowed_words(allowed)
 	_hint.disabled = _tutorial_paused or _tutorial_stage != 2
 	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
@@ -2381,8 +2393,6 @@ func _apply_tutorial_stage() -> void:
 		call_deferred("_show_tutorial_mistakes_feature")
 	elif not _tutorial_paused and _tutorial_stage == 2:
 		call_deferred("_show_tutorial_hint_feature")
-	if _tutorial_stage >= 5:
-		_arm_tutorial_idle_help()
 
 func _tutorial_selectable_words(row_length: int) -> Array[String]:
 	var result: Array[String] = []
@@ -2398,64 +2408,26 @@ func _tutorial_all_selectable_words() -> Array[String]:
 			result.append(word)
 	return result
 
-func _reset_tutorial_reduced_help() -> void:
-	if _tutorial_stage < 5:
-		return
-	_tutorial_help_id += 1
-	_tutorial_help_level = 0
-	_tutorial_focus_words.clear()
-	# The first independent task keeps one gentle example. The final task begins
-	# completely unassisted and only reveals help if the player becomes idle.
-	if _tutorial_stage == 5 and not _tutorial_target_words.is_empty():
-		_tutorial_focus_words = [_tutorial_target_words[0]]
-		_tutorial_help_level = 1
-	_update_tutorial_spotlight()
-	_arm_tutorial_idle_help()
-
-func _arm_tutorial_idle_help() -> void:
-	if GameState.game_mode != GameState.TUTORIAL_MODE or _tutorial_stage < 5 or _tutorial_paused or _tutorial_finishing or GameState.can_check_selection():
-		return
-	_tutorial_help_id += 1
-	var help_id: int = _tutorial_help_id
-	await get_tree().create_timer(TUTORIAL_SOFT_HELP_DELAY).timeout
-	if not _tutorial_help_is_current(help_id):
-		return
-	_apply_tutorial_idle_help(1)
-	await get_tree().create_timer(TUTORIAL_STRONG_HELP_DELAY - TUTORIAL_SOFT_HELP_DELAY).timeout
-	if not _tutorial_help_is_current(help_id):
-		return
-	_apply_tutorial_idle_help(2)
-
-func _apply_tutorial_idle_help(level: int) -> void:
+func _apply_tutorial_wrong_answer_help() -> void:
 	if _tutorial_stage < 5 or _tutorial_target_words.is_empty():
 		return
-	_tutorial_help_level = clampi(level, 0, 2)
+	_tutorial_help_level = mini(_tutorial_help_level + 1, 3)
 	_tutorial_focus_words.clear()
-	if _tutorial_help_level >= 2:
+	if _tutorial_help_level >= 3:
 		_tutorial_focus_words.assign(_tutorial_target_words)
-		_message.text = SaveManager.text("tutorial_strong_help")
-	elif _tutorial_stage == 5 and _tutorial_target_words.size() > 1:
+		_message.text = SaveManager.text("tutorial_wrong_help_group")
+	elif _tutorial_help_level == 2 and _tutorial_target_words.size() > 1:
 		_tutorial_focus_words = _tutorial_target_words.slice(0, 2)
-		_message.text = SaveManager.text("tutorial_soft_help")
+		_message.text = SaveManager.text("tutorial_wrong_help_more")
 	else:
 		_tutorial_focus_words = [_tutorial_target_words[0]]
-		_message.text = SaveManager.text("tutorial_soft_help")
+		_message.text = SaveManager.text("tutorial_wrong_help_one")
 	_update_tutorial_spotlight()
 
-func _tutorial_help_is_current(help_id: int) -> bool:
-	return (
-		is_inside_tree()
-		and help_id == _tutorial_help_id
-		and GameState.game_mode == GameState.TUTORIAL_MODE
-		and _tutorial_stage >= 5
-		and not _tutorial_paused
-		and not _tutorial_finishing
-	)
-
 func _on_tutorial_guide_continue() -> void:
-	if _tutorial_stage != 1 or _tutorial_paused:
+	if _tutorial_stage < 5 or not _tutorial_independent_intro_pending or _tutorial_paused:
 		return
-	_tutorial_stage = 2
+	_tutorial_independent_intro_pending = false
 	_apply_tutorial_stage()
 
 func _show_tutorial_mistakes_feature() -> void:
@@ -2740,6 +2712,7 @@ func _on_tutorial_intro_start(button: Button) -> void:
 		_tutorial_intro_layer = null
 	_tutorial_paused = false
 	_tutorial_stage = 0
+	_tutorial_independent_intro_pending = false
 	_apply_tutorial_stage()
 
 func _update_tutorial_selection_message() -> void:
@@ -2751,6 +2724,11 @@ func _update_tutorial_selection_message() -> void:
 	if _tutorial_stage == 2:
 		_message.text = SaveManager.text("tutorial_use_hint")
 		_hint.disabled = false
+		_check.disabled = true
+		_update_tutorial_spotlight()
+		return
+	if _tutorial_stage >= 5 and _tutorial_independent_intro_pending:
+		_message.text = SaveManager.text("tutorial_independent_three_intro") if _tutorial_stage == 5 else SaveManager.text("tutorial_independent_last_intro")
 		_check.disabled = true
 		_update_tutorial_spotlight()
 		return
@@ -2777,14 +2755,9 @@ func _update_tutorial_spotlight() -> void:
 		_clear_tutorial_focus()
 		return
 	var full_guidance: bool = _tutorial_stage <= 4
-	var reduced_guidance: bool = _tutorial_stage >= 5 and not _tutorial_focus_words.is_empty()
-	_tutorial_spotlight.visible = full_guidance or reduced_guidance
+	_tutorial_spotlight.visible = full_guidance
 	if full_guidance:
 		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.35)
-	elif _tutorial_help_level >= 2:
-		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.28)
-	else:
-		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.10)
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
 		var focused: bool = _tutorial_focus_words.has(word)
@@ -2796,8 +2769,9 @@ func _update_tutorial_spotlight() -> void:
 	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
 	_set_tutorial_focus(_check, selection_ready and GameState.can_check_selection())
 	if is_instance_valid(_tutorial_guide_button):
-		_tutorial_guide_button.z_index = 0
-		_set_tutorial_focus(_tutorial_guide_button, false)
+		var guide_focused: bool = _tutorial_stage >= 5 and _tutorial_independent_intro_pending
+		_tutorial_guide_button.z_index = 21 if guide_focused else 0
+		_set_tutorial_focus(_tutorial_guide_button, guide_focused)
 	_lives_row.z_index = 21 if _tutorial_stage == 1 else 0
 	_set_tutorial_focus(_lives_row, _tutorial_stage == 1)
 	_message.z_index = 22
@@ -2887,8 +2861,10 @@ func _advance_tutorial_after_group(row_length: int) -> void:
 		_tutorial_stage = 4
 	elif _tutorial_stage == 4 and row_length == 1:
 		_tutorial_stage = 5
+		_tutorial_independent_intro_pending = true
 	elif _tutorial_stage == 5 and row_length == 3:
 		_tutorial_stage = 6
+		_tutorial_independent_intro_pending = true
 	_apply_tutorial_stage()
 
 func _advance_tutorial_after_hint() -> void:
@@ -2916,7 +2892,6 @@ func _on_tutorial_completed() -> void:
 func _restart_tutorial_after_failure() -> void:
 	_tutorial_finishing = true
 	_tutorial_paused = true
-	_tutorial_help_id += 1
 	GameState.set_tutorial_allowed_words([])
 	_hint.disabled = true
 	_check.disabled = true
@@ -2948,6 +2923,7 @@ func _restart_tutorial_after_failure() -> void:
 	_tutorial_finishing = false
 	_tutorial_paused = false
 	_tutorial_stage = 0
+	_tutorial_independent_intro_pending = false
 	GameState.start_tutorial()
 	await get_tree().process_frame
 	if not is_instance_valid(_tutorial_restart_layer):

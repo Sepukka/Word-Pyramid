@@ -6,6 +6,8 @@ const AchievementCatalogData = preload("res://scripts/systems/achievement_catalo
 const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "music_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
 const ENDLESS_DAILY_HEARTS: int = 3
+const DAILY_UNLOCK_LEVEL: int = 3
+const ONBOARDING_UNLIMITED_MIN_WIN_XP: int = 80
 const ONBOARDING_VERSION: int = 1
 const DEFAULT_ONBOARDING: Dictionary = {"version": 0, "language_selected": false}
 const DEFAULT_PROGRESSION: Dictionary = {
@@ -102,17 +104,25 @@ const TEXT: Dictionary = {
 		"tutorial_use_hint": "A hint locks one word into its correct row. Press Hint.",
 		"tutorial_finish_hint_row": "The hint started this row. Select the highlighted words that complete it.",
 		"tutorial_top_any_order": "The one-word top row can be solved at any time. Select the highlighted word.",
-		"tutorial_find_three": "Less help now: use the highlighted word to find its three-word group.",
-		"tutorial_find_last": "Your turn: finish the last group without highlighted answers.",
-		"tutorial_soft_help": "Need a nudge? One more useful word is now highlighted.",
-		"tutorial_strong_help": "Still stuck? The complete group is highlighted for you.",
+		"tutorial_independent_three_intro": "Next, find a three-word group yourself. Every remaining word will be available.",
+		"tutorial_independent_last_intro": "One final group remains. Continue when you are ready to solve it yourself.",
+		"tutorial_find_three": "Find and check the three-word group.",
+		"tutorial_find_last": "Find and check the final group.",
+		"tutorial_wrong_help_one": "Not quite. One word from the correct group is now highlighted.",
+		"tutorial_wrong_help_more": "Try again. A second word from the group is highlighted.",
+		"tutorial_wrong_help_group": "The complete group is now highlighted. Select it and press Check.",
 		"tutorial_restart_message": "No attempts left. Let’s try the practice once more.",
+		"daily_locked_title": "Daily Challenge",
+		"daily_locked_body": "Reach Level %d in Infinity to unlock the daily puzzle.",
+		"daily_locked_progress": "Level %d / %d",
+		"daily_unlock_button": "Unlocks at Level %d",
+		"daily_unlocked_reward": "DAILY CHALLENGE UNLOCKED",
 		"tutorial_finish_row": "Select the remaining highlighted words, then press Check.",
 		"tutorial_top_word": "Finish the pyramid: select the highlighted top word and press Check.",
 		"tutorial_complete": "You're ready!",
 		"tutorial_complete_title": "Tutorial complete!",
-		"tutorial_complete_subtitle": "You’re ready to build today’s Word Pyramid.",
-		"tutorial_continue_daily": "Continue to Daily Challenge",
+		"tutorial_complete_subtitle": "You’re ready to continue with your first Infinity puzzles.",
+		"tutorial_continue_daily": "Continue to Infinity",
 		"continue_to_unlimited": "Continue to unlimited",
 		"continue_to_next": "Continue to next puzzle",
 		"debug_reset_progress": "Debug: Reset all progress",
@@ -296,17 +306,25 @@ const TEXT: Dictionary = {
 		"tutorial_use_hint": "Vihje lukitsee yhden sanan oikealle riville. Paina Vihje.",
 		"tutorial_finish_hint_row": "Vihje aloitti tämän rivin. Valitse korostetut sanat, jotka täydentävät sen.",
 		"tutorial_top_any_order": "Yhden sanan huippurivin voi ratkaista milloin tahansa. Valitse korostettu sana.",
-		"tutorial_find_three": "Nyt saat vähemmän apua: etsi korostetun sanan avulla kolmen sanan ryhmä.",
-		"tutorial_find_last": "Sinun vuorosi: viimeistele viimeinen ryhmä ilman korostettuja vastauksia.",
-		"tutorial_soft_help": "Tarvitsetko pienen vihjeen? Yksi hyödyllinen sana korostettiin.",
-		"tutorial_strong_help": "Vielä jumissa? Koko oikea ryhmä korostettiin avuksesi.",
+		"tutorial_independent_three_intro": "Seuraavaksi etsit kolmen sanan ryhmän itse. Kaikki jäljellä olevat sanat ovat valittavissa.",
+		"tutorial_independent_last_intro": "Jäljellä on vielä yksi ryhmä. Jatka, kun olet valmis ratkaisemaan sen itse.",
+		"tutorial_find_three": "Etsi ja tarkista kolmen sanan ryhmä.",
+		"tutorial_find_last": "Etsi ja tarkista viimeinen ryhmä.",
+		"tutorial_wrong_help_one": "Ei aivan. Yksi oikean ryhmän sana korostettiin avuksi.",
+		"tutorial_wrong_help_more": "Yritä uudelleen. Ryhmästä korostettiin toinenkin sana.",
+		"tutorial_wrong_help_group": "Koko oikea ryhmä on nyt korostettu. Valitse se ja paina Tarkista.",
 		"tutorial_restart_message": "Yritykset loppuivat. Kokeillaan harjoitusta uudelleen.",
+		"daily_locked_title": "Päivän haaste",
+		"daily_locked_body": "Saavuta Infinite-pelissä taso %d avataksesi päivän haasteen.",
+		"daily_locked_progress": "Taso %d / %d",
+		"daily_unlock_button": "Avautuu tasolla %d",
+		"daily_unlocked_reward": "PÄIVÄN HAASTE AVATTU",
 		"tutorial_finish_row": "Valitse loput korostetut sanat ja paina Tarkista.",
 		"tutorial_top_word": "Viimeistele pyramidi: valitse korostettu huippusana ja paina Tarkista.",
 		"tutorial_complete": "Olet valmis pelaamaan!",
 		"tutorial_complete_title": "Opastus suoritettu!",
-		"tutorial_complete_subtitle": "Olet valmis rakentamaan päivän sanapyramidin.",
-		"tutorial_continue_daily": "Jatka päivän haasteeseen",
+		"tutorial_complete_subtitle": "Olet valmis jatkamaan ensimmäisiin Infinite-kenttiin.",
+		"tutorial_continue_daily": "Jatka Infiniteen",
 		"continue_to_unlimited": "Jatka äärettömään peliin",
 		"continue_to_next": "Jatka seuraavaan pulmaan",
 		"debug_reset_progress": "Debug: Nollaa kaikki edistyminen",
@@ -627,6 +645,8 @@ func _calculate_progression_result(puzzle: Dictionary, mode: String, won: bool, 
 	var repeat_xp_multiplier: float = 1.0 if previous_attempts == 0 else 0.65
 	var raw_xp: float = 30.0 + 10.0 * float(tier) + 25.0 * performance if won else 5.0 + 10.0 * rows_ratio
 	var xp_gained: int = maxi(roundi(raw_xp * repeat_xp_multiplier), 1)
+	if mode == "unlimited" and won and old_level < DAILY_UNLOCK_LEVEL:
+		xp_gained = maxi(xp_gained, ONBOARDING_UNLIMITED_MIN_WIN_XP)
 	var new_total_xp: int = old_total_xp + xp_gained
 	var new_level: int = get_player_level(new_total_xp)
 	var skill_delta: float = 0.0
@@ -682,6 +702,9 @@ func get_player_level(total_xp: int = -1) -> int:
 	while level > 1 and xp < xp_threshold_for_level(level):
 		level -= 1
 	return level
+
+func is_daily_unlocked(total_xp: int = -1) -> bool:
+	return get_player_level(total_xp) >= DAILY_UNLOCK_LEVEL
 
 func get_level_progress(total_xp: int = -1) -> Dictionary:
 	var xp: int = get_total_xp() if total_xp < 0 else maxi(total_xp, 0)
@@ -849,11 +872,15 @@ func endless_reset_countdown_text() -> String:
 	return text("endless_reset_in") % [hours, minutes]
 
 func can_start_endless(day_key: String = "") -> bool:
+	if not is_daily_unlocked():
+		return true
 	return get_endless_hearts(day_key) > 0
 
 func consume_endless_heart(day_key: String = "") -> int:
 	_refresh_endless_day(day_key)
 	var hearts: int = get_endless_hearts(day_key)
+	if not is_daily_unlocked():
+		return hearts
 	if hearts > 0:
 		hearts -= 1
 		endless_state["hearts"] = hearts
@@ -862,6 +889,8 @@ func consume_endless_heart(day_key: String = "") -> int:
 
 func can_claim_rewarded_endless_heart(day_key: String = "") -> bool:
 	_refresh_endless_day(day_key)
+	if not is_daily_unlocked():
+		return false
 	return not bool(endless_state.get("rewarded_heart_claimed", false)) and get_endless_hearts(day_key) < ENDLESS_DAILY_HEARTS
 
 func grant_rewarded_endless_heart(day_key: String = "") -> bool:
