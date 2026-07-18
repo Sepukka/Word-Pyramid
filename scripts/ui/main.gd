@@ -62,6 +62,8 @@ var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
 var _font_dm_sans_bold: FontVariation
 var _font_dm_sans_spaced: FontVariation
+var _achievement_unlock_queue: Array[Dictionary] = []
+var _achievement_banner_showing: bool = false
 
 func _ready() -> void:
 	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _achievements_button == null or _daily_card == null:
@@ -89,6 +91,8 @@ func _ready() -> void:
 	_reward_heart_button.pressed.connect(_on_rewarded_heart_pressed)
 	_settings_button.pressed.connect(show_settings)
 	_achievements_button.pressed.connect(show_achievements)
+	if not SaveManager.achievement_unlocked.is_connected(_on_achievement_unlocked):
+		SaveManager.achievement_unlocked.connect(_on_achievement_unlocked)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
 	if not AdManager.rewarded_heart_earned.is_connected(_on_rewarded_heart_earned):
 		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
@@ -321,6 +325,120 @@ func _refresh_achievement_badge() -> void:
 	badge.add_theme_color_override("font_color", UI_PRIMARY)
 	badge.add_theme_stylebox_override("normal", _achievement_badge_style(UI_YELLOW, UI_PRIMARY, 10))
 	_achievements_button.add_child(badge)
+
+func _on_achievement_unlocked(unlock: Dictionary) -> void:
+	_achievement_unlock_queue.append(unlock.duplicate(true))
+	if not _achievement_banner_showing:
+		call_deferred("_show_next_achievement_banner")
+
+func _show_next_achievement_banner() -> void:
+	if _achievement_banner_showing or _achievement_unlock_queue.is_empty():
+		return
+	_achievement_banner_showing = true
+	var unlock: Dictionary = _achievement_unlock_queue.pop_front()
+	var host := Control.new()
+	host.name = "AchievementUnlockHost"
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	host.z_index = 180
+	add_child(host)
+	var banner_width: float = clampf(size.x - 56.0, 280.0, 330.0)
+	var banner_height: float = 68.0
+	var target_y: float = 62.0
+	var banner := PanelContainer.new()
+	banner.name = "AchievementUnlockBanner"
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.position = Vector2((size.x - banner_width) * 0.5, -banner_height - 12.0)
+	banner.size = Vector2(banner_width, banner_height)
+	banner.custom_minimum_size = Vector2(banner_width, banner_height)
+	banner.add_theme_stylebox_override("panel", _achievement_unlock_style())
+	host.add_child(banner)
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	banner.add_child(margin)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 8)
+	margin.add_child(row)
+	var icon_plate := PanelContainer.new()
+	icon_plate.custom_minimum_size = Vector2(42, 42)
+	icon_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_plate.add_theme_stylebox_override("panel", _achievement_badge_style(UI_YELLOW, UI_YELLOW, 13))
+	row.add_child(icon_plate)
+	var trophy := TextureRect.new()
+	trophy.texture = TROPHY_ICON
+	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_plate.add_child(trophy)
+	var text_stack := VBoxContainer.new()
+	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_stack.custom_minimum_size.x = 0
+	text_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_stack.add_theme_constant_override("separation", -2)
+	row.add_child(text_stack)
+	var kicker := Label.new()
+	kicker.text = SaveManager.text("achievement_unlocked")
+	kicker.clip_text = true
+	kicker.add_theme_font_override("font", _font_dm_sans_spaced)
+	kicker.add_theme_font_size_override("font_size", 8)
+	kicker.add_theme_color_override("font_color", UI_YELLOW)
+	text_stack.add_child(kicker)
+	var title := Label.new()
+	title.text = str(unlock.get("title", "Achievement"))
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_color_override("font_color", Color.WHITE)
+	text_stack.add_child(title)
+	var description := Label.new()
+	description.text = str(unlock.get("description", ""))
+	description.clip_text = true
+	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	description.add_theme_font_override("font", FONT_DM_SANS)
+	description.add_theme_font_size_override("font_size", 9)
+	description.add_theme_color_override("font_color", Color("d9d1f3"))
+	text_stack.add_child(description)
+	var tier_stack := VBoxContainer.new()
+	tier_stack.custom_minimum_size.x = 34
+	tier_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tier_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(tier_stack)
+	var star := TextureRect.new()
+	star.custom_minimum_size = Vector2(26, 26)
+	star.texture = ACHIEVEMENT_STAR
+	star.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	star.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	star.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tier_stack.add_child(star)
+	var tier := Label.new()
+	tier.text = SaveManager.text("achievement_star_tier") % [int(unlock.get("unlocked_star", 1)), int(unlock.get("max_stars", 1))]
+	tier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tier.clip_text = true
+	tier.add_theme_font_override("font", _font_dm_sans_bold)
+	tier.add_theme_font_size_override("font_size", 7)
+	tier.add_theme_color_override("font_color", Color.WHITE)
+	tier_stack.add_child(tier)
+
+	var enter_tween := create_tween()
+	enter_tween.tween_property(banner, "position:y", target_y, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await enter_tween.finished
+	await get_tree().create_timer(3.0).timeout
+	if is_instance_valid(banner):
+		var exit_tween := create_tween()
+		exit_tween.tween_property(banner, "position:y", -banner_height - 12.0, 0.30).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		await exit_tween.finished
+	if is_instance_valid(host):
+		host.queue_free()
+	_achievement_banner_showing = false
+	if not _achievement_unlock_queue.is_empty():
+		await get_tree().create_timer(0.16).timeout
+		_show_next_achievement_banner()
 
 func _apply_home_texts() -> void:
 	var is_finnish: bool = PuzzleLoader.get_language() == "fi"
@@ -1501,6 +1619,14 @@ func _achievement_card_style(accent: Color, completed: bool) -> StyleBoxFlat:
 	style.shadow_color = Color(0.10, 0.04, 0.37, 0.11)
 	style.shadow_size = 6
 	style.shadow_offset = Vector2(0, 4)
+	return style
+
+func _achievement_unlock_style() -> StyleBoxFlat:
+	var style := _round_style(UI_PRIMARY, UI_YELLOW, 18)
+	style.set_border_width_all(2)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.28)
+	style.shadow_size = 10
+	style.shadow_offset = Vector2(0, 5)
 	return style
 
 func _achievement_badge_style(fill: Color, border: Color, radius: int) -> StyleBoxFlat:

@@ -1,5 +1,7 @@
 extends Node
 
+signal achievement_unlocked(unlock: Dictionary)
+
 const AchievementCatalogData = preload("res://scripts/systems/achievement_catalog.gd")
 const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "music_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
@@ -67,6 +69,8 @@ const TEXT: Dictionary = {
 		"achievement_next": "Next star",
 		"achievement_special": "SPECIAL ACHIEVEMENT",
 		"achievement_all_complete": "All stars collected",
+		"achievement_unlocked": "ACHIEVEMENT UNLOCKED",
+		"achievement_star_tier": "Star %d of %d",
 		"settings_title": "Settings",
 		"settings_subtitle": "Personalize the challenge",
 		"language": "Language",
@@ -239,6 +243,8 @@ const TEXT: Dictionary = {
 		"achievement_next": "Seuraava tähti",
 		"achievement_special": "ERIKOISSAAVUTUS",
 		"achievement_all_complete": "Kaikki tähdet kerätty",
+		"achievement_unlocked": "SAAVUTUS AVATTU",
+		"achievement_star_tier": "Tähti %d / %d",
 		"settings_title": "Asetukset",
 		"settings_subtitle": "Muokkaa haastetta",
 		"language": "Kieli",
@@ -468,7 +474,8 @@ func complete_onboarding() -> void:
 	save_data()
 
 func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false, progression_reward: Dictionary = {}, mistakes_used: int = 0, hints_used: int = 0) -> void:
-	var stars_before: int = get_total_achievement_stars()
+	var stars_before: Dictionary = _achievement_stars_by_id()
+	var total_stars_before: int = get_total_achievement_stars()
 	if won:
 		statistics["wins"] = int(statistics.get("wins", 0)) + 1
 		statistics["streak"] = int(statistics.get("streak", 0)) + 1
@@ -487,10 +494,21 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 			"progression_reward": progression_reward.duplicate(true)
 		}
 	_record_achievement_result(won, mode, day_key, mistakes_used, hints_used)
-	var newly_earned: int = maxi(get_total_achievement_stars() - stars_before, 0)
+	var unlocks: Array[Dictionary] = []
+	for snapshot: Dictionary in get_achievement_snapshots():
+		var achievement_id: String = str(snapshot.get("id", ""))
+		var previous_stars: int = int(stars_before.get(achievement_id, 0))
+		var current_stars: int = int(snapshot.get("stars", 0))
+		for unlocked_star: int in range(previous_stars + 1, current_stars + 1):
+			var unlock: Dictionary = snapshot.duplicate(true)
+			unlock["unlocked_star"] = unlocked_star
+			unlocks.append(unlock)
+	var newly_earned: int = maxi(get_total_achievement_stars() - total_stars_before, 0)
 	if newly_earned > 0:
 		achievements["unseen_stars"] = int(achievements.get("unseen_stars", 0)) + newly_earned
 	save_data()
+	for unlock: Dictionary in unlocks:
+		achievement_unlocked.emit(unlock)
 
 func get_daily_streak(today_key: String = "") -> int:
 	var current_day: String = today_key if not today_key.is_empty() else Time.get_date_string_from_system()
@@ -729,6 +747,12 @@ func get_total_achievement_stars() -> int:
 			if progress >= int(threshold_value):
 				total += 1
 	return total
+
+func _achievement_stars_by_id() -> Dictionary:
+	var result: Dictionary = {}
+	for snapshot: Dictionary in get_achievement_snapshots():
+		result[str(snapshot.get("id", ""))] = int(snapshot.get("stars", 0))
+	return result
 
 func get_max_achievement_stars() -> int:
 	return AchievementCatalogData.max_stars()
