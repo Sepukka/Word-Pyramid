@@ -71,6 +71,7 @@ var _aftermath_snap_tween: Tween
 var _aftermath_xp_tween: Tween
 var _game_was_running: bool = false
 var _aftermath_scheduled: bool = false
+var _fresh_result_reveal: bool = false
 var _word_buttons: Dictionary = {}
 var _word_tile_wrappers: Dictionary = {}
 var _word_order: Array[String] = []
@@ -1139,6 +1140,7 @@ func _on_game_finished(won: bool, top_word: String) -> void:
 		return
 	var should_wait_for_board: bool = _game_was_running
 	_game_was_running = false
+	_fresh_result_reveal = should_wait_for_board
 	_aftermath_scheduled = true
 	for tile: Button in _word_buttons.values():
 		tile.disabled = true
@@ -1492,7 +1494,9 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.24)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_animate_aftermath_xp(layer, xp_reward_label, xp_progress, total_xp_before, total_xp_after, xp_gained, final_xp_copy)
+	var play_level_up_sound: bool = _fresh_result_reveal and level_after > level_before
+	_fresh_result_reveal = false
+	_animate_aftermath_xp(layer, xp_reward_label, xp_progress, total_xp_before, total_xp_after, xp_gained, final_xp_copy, play_level_up_sound)
 	if won and play_streak_animation:
 		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
 	elif not won and play_streak_animation:
@@ -1847,7 +1851,7 @@ func _stop_aftermath_motion(stop_xp: bool = false) -> void:
 	if stop_xp and _aftermath_xp_tween != null and _aftermath_xp_tween.is_running():
 		_aftermath_xp_tween.kill()
 
-func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String) -> void:
+func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, play_level_up_sound: bool) -> void:
 	if xp_gained <= 0 or total_after <= total_before:
 		return
 	_aftermath_xp_tween = create_tween()
@@ -1863,6 +1867,8 @@ func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, 
 	_aftermath_xp_tween.tween_callback(func() -> void:
 		if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label):
 			label.text = final_text
+			if play_level_up_sound:
+				SoundManager.level_up()
 	)
 
 func _update_aftermath_xp_display(animated_total: int, label: Label, progress: ProgressBar, total_before: int, xp_gained: int) -> void:

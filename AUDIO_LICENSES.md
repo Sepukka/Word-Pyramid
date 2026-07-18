@@ -10,6 +10,14 @@
   - License shown on source page: Pixabay Content License
   - Downloaded: 2026-07-18
   - SHA-256: `0C765F662886E27537915B52AA735914EFE43F4D52A9983E861C0E094AA0C5FD`
+- `assets/audio/sfx/pixabay/level_up.mp3`
+  - Purpose: reaching a new player level after the XP animation
+  - Title: `Level Up 05`
+  - Creator: Universfield
+  - Source: https://pixabay.com/sound-effects/film-special-effects-level-up-05-326133/
+  - License shown on source page: Pixabay Content License
+  - Downloaded: 2026-07-18
+  - SHA-256: `C71F3C675681F26687C0790DF307DDF034C3B0410431EAAC01EFAD849496BC47`
 
 License terms at the time of integration:
 https://pixabay.com/service/license-summary/
@@ -37,27 +45,19 @@ Godot through the Godot Asset Library.
 ### Temporary sound laboratory candidates
 
 The sound laboratory contains three candidates for every remaining gameplay
-sound. Level-up candidates come from Kenney's CC0 Music Jingles pack; XP and
-word-movement candidates come from Kenney Interface Sounds.
+sound. XP and word-movement candidates come from Kenney Interface Sounds.
 
-- `assets/audio/sfx/sound_lab/level_up_1.ogg` — `jingles_PIZZI12.ogg`
-- `assets/audio/sfx/sound_lab/level_up_2.ogg` — `jingles_PIZZI14.ogg`
-- `assets/audio/sfx/sound_lab/level_up_3.ogg` — `jingles_PIZZI15.ogg`
 - `assets/audio/sfx/sound_lab/xp_1.wav` — `pluck_001.wav`
 - `assets/audio/sfx/sound_lab/xp_2.wav` — `tick_002.wav`
 - `assets/audio/sfx/sound_lab/xp_3.wav` — `select_003.wav`
 - `assets/audio/sfx/sound_lab/move_1.wav` — `drop_001.wav`
 - `assets/audio/sfx/sound_lab/move_2.wav` — `scroll_003.wav`
 - `assets/audio/sfx/sound_lab/move_3.wav` — `switch_004.wav`
-- Music Jingles license copy:
-  `assets/audio/sfx/sound_lab/LICENSE_MUSIC_JINGLES.txt`
 
 Sources:
 
 - https://godotengine.org/asset-library/asset/794
 - https://www.kenney.nl/assets/interface-sounds
-- https://godotengine.org/asset-library/asset/1839
-- https://kenney.nl/assets/music-jingles
 
 ## Adobe Firefly generated sound effects
 
