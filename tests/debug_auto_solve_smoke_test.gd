@@ -49,6 +49,8 @@ func _ready() -> void:
 	assert(GameState.is_debug_completion, "Debug solve must identify its result as non-persistent")
 	assert(GameState.result_correct_count == GameState.result_total_count(), "Debug result must show the complete pyramid")
 	assert(GameState.result_solved_groups.size() == 4 and GameState.result_top_solved, "Debug result rows must match the solved board")
+	var board_message: Label = board.get("_message") as Label
+	assert(board_message.text.is_empty() and not board_message.visible, "A completed pyramid does not repeat its top word in a redundant board message")
 	assert(int(GameState.result_progression.get("xp_gained", 0)) > 0, "Debug solve must preview an XP reward")
 	assert(int(GameState.result_progression.get("total_xp_before", -1)) == int(progression_before.get("total_xp", 0)), "Debug XP must start from the previous real XP amount")
 	assert(SaveManager.get_total_xp() == int(GameState.result_progression.get("total_xp_after", -1)), "Debug XP must persist to the real progression")

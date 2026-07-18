@@ -35,6 +35,8 @@ func _ready() -> void:
 	var sample: Button = initial_buttons.values()[0] as Button
 	_tile_size = sample.size
 	_font_size = sample.get_theme_font_size("font_size")
+	var board_message: Label = _board.get("_message") as Label
+	assert(board_message.text.is_empty() and not board_message.visible, "Normal gameplay starts without a redundant permanent message")
 
 	var three_group: Dictionary = _group_of_size(3)
 	var three_words: Array[String] = GameState._to_string_array(three_group.get("words", []))
@@ -44,6 +46,7 @@ func _ready() -> void:
 	await get_tree().create_timer(0.24).timeout
 	GameState.check_selection()
 	_verify_moving_tiles(three_words, fonts_before)
+	assert(board_message.text.is_empty() and not board_message.visible, "A correct row relies on its category reveal instead of redundant text")
 	await get_tree().create_timer(0.64).timeout
 	_verify_placed_row(3, three_words, fonts_before, three_row_centers)
 	await get_tree().create_timer(0.28).timeout

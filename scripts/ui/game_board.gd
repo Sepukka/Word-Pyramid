@@ -94,6 +94,7 @@ var _pyramid_shake_tween: Tween
 var _pyramid_shake_origin_x: float = 0.0
 var _wrong_guess_active: bool = false
 var _wrong_guess_words: Array[String] = []
+var _message_selection_snapshot: Array[String] = []
 var _font_fredoka_semibold: FontVariation
 var _font_fredoka_condensed: FontVariation
 var _font_fredoka_bold: FontVariation
@@ -442,7 +443,11 @@ func refresh() -> void:
 	_debug_auto_solve.visible = not is_tutorial and not GameState.is_finished
 	_debug_auto_solve.disabled = GameState.is_auto_solving
 	_selection.visible = not is_tutorial
-	_message.text = SaveManager.text("tutorial_select_group") if is_tutorial else (SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message"))
+	if is_tutorial:
+		_message.visible = true
+		_message.text = SaveManager.text("tutorial_select_group")
+	else:
+		_clear_board_message()
 	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s · %s" % [SaveManager.text("unlimited_mode_label").to_upper(), (SaveManager.text("difficulty_short") % PuzzleLoader.get_difficulty_tier(GameState.puzzle)).to_upper()])
 	_puzzle_title.text = str(GameState.puzzle.get("title", SaveManager.text("board_title")))
 	_build_pyramid()
@@ -838,6 +843,7 @@ func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
+	var selection_actually_changed: bool = selection != _displayed_selection
 	var is_at_limit: bool = selection.size() >= GameState.get_selection_limit()
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
@@ -862,10 +868,14 @@ func _on_selection_changed(selection: Array[String]) -> void:
 	_clear.disabled = selection.is_empty() or GameState.is_finished
 	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
 	_update_selection(selection)
+	if GameState.game_mode != GameState.TUTORIAL_MODE and selection_actually_changed and not _wrong_guess_active and not _is_placing and selection != _message_selection_snapshot:
+		_clear_board_message()
 	if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused:
 		_update_tutorial_selection_message()
 
 func _on_group_solved(group: Dictionary) -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE:
+		_clear_board_message()
 	var row_length: int = int(group.get("size", 0))
 	var swap: Dictionary = _capture_row_swap(row_length)
 	_cancel_row_reveal_animation()
@@ -1086,9 +1096,19 @@ func _finish_fly_ghost(ghost: Control) -> void:
 func _to_board_point(global_point: Vector2) -> Vector2:
 	return get_global_transform_with_canvas().affine_inverse() * global_point
 
+func _show_board_message(text: String) -> void:
+	_message.text = text
+	_message.visible = not text.is_empty()
+	_message_selection_snapshot.assign(GameState.selected_words)
+
+func _clear_board_message() -> void:
+	_message.text = ""
+	_message.visible = GameState.game_mode == GameState.TUTORIAL_MODE
+	_message_selection_snapshot.assign(GameState.selected_words)
+
 func _on_guess_failed(left: int) -> void:
 	_update_mistakes()
-	_message.text = SaveManager.text("guess_failed")
+	_show_board_message(SaveManager.text("guess_failed"))
 	_highlight_incorrect_selection()
 	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage >= 5 and left > 0:
 		_show_tutorial_wrong_answer_help.call_deferred(_tutorial_stage)
@@ -1100,10 +1120,10 @@ func _show_tutorial_wrong_answer_help(stage: int) -> void:
 	_apply_tutorial_wrong_answer_help()
 
 func _on_repeated_guess_attempted() -> void:
-	_message.text = SaveManager.text("repeated_guess")
+	_show_board_message(SaveManager.text("repeated_guess"))
 
 func _on_guess_feedback(text: String) -> void:
-	_message.text = text
+	_show_board_message(text)
 
 func _highlight_incorrect_selection() -> void:
 	_wrong_guess_words.assign(GameState.selected_words)
@@ -1231,7 +1251,7 @@ func _tutorial_completion_style() -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, 10)
 	return style
 
-func _on_game_finished(won: bool, top_word: String) -> void:
+func _on_game_finished(won: bool, _top_word: String) -> void:
 	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
 		return
 	var should_wait_for_board: bool = _game_was_running
@@ -1245,7 +1265,10 @@ func _on_game_finished(won: bool, top_word: String) -> void:
 	_check.visible = false
 	_result.visible = false
 	_share.visible = false
-	_message.text = SaveManager.text("game_complete") % top_word if won else SaveManager.text("game_failed")
+	if won:
+		_clear_board_message()
+	else:
+		_show_board_message(SaveManager.text("game_failed"))
 	_update_mistakes()
 	if won and should_wait_for_board:
 		SoundManager.game_complete()
@@ -1307,7 +1330,7 @@ func _on_share_pressed() -> void:
 		SaveManager.get_daily_streak(GameState.daily_date)
 	]
 	DisplayServer.clipboard_set(text)
-	_message.text = SaveManager.text("result_copied")
+	_show_board_message(SaveManager.text("result_copied"))
 
 func _show_aftermath(won: bool) -> void:
 	if is_instance_valid(_aftermath_layer):
@@ -2268,10 +2291,10 @@ func _on_rewarded_heart_earned() -> void:
 
 func _on_puzzle_pool_completed(mode: String) -> void:
 	var pool_name: String = SaveManager.text("daily_pool") if mode == "daily" else SaveManager.text("unlimited_pool")
-	_message.text = SaveManager.text("pool_complete") % pool_name
+	_show_board_message(SaveManager.text("pool_complete") % pool_name)
 
 func _on_hint_provided(text: String) -> void:
-	_message.text = text
+	_show_board_message(text)
 
 func _on_hint_placed(word: String, row_length: int) -> void:
 	var source_point: Vector2 = Vector2.ZERO
@@ -3059,11 +3082,11 @@ func _on_tutorial_continue_pressed(button: Button) -> void:
 
 func _on_rewarded_hint_required() -> void:
 	_set_hint_button_text(SaveManager.text("ad_hint"), true)
-	_message.text = SaveManager.text("rewarded_hint_required")
+	_show_board_message(SaveManager.text("rewarded_hint_required"))
 	_hint.disabled = false
 
 func _on_rewarded_ad_unavailable(message: String) -> void:
-	_message.text = message
+	_show_board_message(message)
 	_set_hint_button_text(SaveManager.text("ad_hint"), true)
 	_hint.disabled = false
 
