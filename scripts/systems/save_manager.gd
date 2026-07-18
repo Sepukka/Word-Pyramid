@@ -1,5 +1,6 @@
 extends Node
 
+const AchievementCatalogData = preload("res://scripts/systems/achievement_catalog.gd")
 const DEFAULT_SETTINGS: Dictionary = {"attempts": 4, "sound_enabled": true, "music_enabled": true, "language": "en"}
 const SAVE_PATH: String = "user://word_pyramid_save.json"
 const ENDLESS_DAILY_HEARTS: int = 3
@@ -10,6 +11,19 @@ const DEFAULT_PROGRESSION: Dictionary = {
 	"skill_rating": 900.0,
 	"rated_games": 0,
 	"puzzle_attempt_counts": {}
+}
+const DEFAULT_ACHIEVEMENTS: Dictionary = {
+	"counters": {
+		"total_wins": 0,
+		"daily_wins": 0,
+		"unlimited_wins": 0,
+		"flawless_wins": 0,
+		"no_hint_wins": 0,
+		"last_chance_wins": 0,
+		"best_daily_streak": 0,
+		"player_level": 1
+	},
+	"unseen_stars": 0
 }
 const SKILL_RATING_MIN: float = 500.0
 const SKILL_RATING_MAX: float = 1600.0
@@ -44,6 +58,15 @@ const TEXT: Dictionary = {
 		"pool_complete": "Congratulations! You have played all %s.",
 		"statistics_title": "Statistics",
 		"statistics_subtitle": "Your Word Pyramid record",
+		"achievements": "Achievements",
+		"achievements_title": "Achievement Hall",
+		"achievements_subtitle": "Build your legacy one star at a time.",
+		"achievement_collection": "YOUR COLLECTION",
+		"achievement_stars": "%d / %d stars",
+		"achievement_complete": "Completed",
+		"achievement_next": "Next star",
+		"achievement_special": "SPECIAL ACHIEVEMENT",
+		"achievement_all_complete": "All stars collected",
 		"settings_title": "Settings",
 		"settings_subtitle": "Personalize the challenge",
 		"language": "Language",
@@ -207,6 +230,15 @@ const TEXT: Dictionary = {
 		"pool_complete": "Onneksi olkoon! Olet pelannut kaikki %s.",
 		"statistics_title": "Tilastot",
 		"statistics_subtitle": "Word Pyramid -tuloksesi",
+		"achievements": "Saavutukset",
+		"achievements_title": "Saavutussali",
+		"achievements_subtitle": "Rakenna oma tarinasi tähti kerrallaan.",
+		"achievement_collection": "KOKOELMASI",
+		"achievement_stars": "%d / %d tähteä",
+		"achievement_complete": "Valmis",
+		"achievement_next": "Seuraava tähti",
+		"achievement_special": "ERIKOISSAAVUTUS",
+		"achievement_all_complete": "Kaikki tähdet kerätty",
 		"settings_title": "Asetukset",
 		"settings_subtitle": "Muokkaa haastetta",
 		"language": "Kieli",
@@ -352,6 +384,7 @@ var played_puzzle_ids: Dictionary = {"daily": [], "unlimited": []}
 var endless_state: Dictionary = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 var onboarding: Dictionary = DEFAULT_ONBOARDING.duplicate(true)
 var progression: Dictionary = DEFAULT_PROGRESSION.duplicate(true)
+var achievements: Dictionary = DEFAULT_ACHIEVEMENTS.duplicate(true)
 # Tests can redirect writes without changing the production save location.
 var save_path: String = SAVE_PATH
 
@@ -378,6 +411,8 @@ func load_data() -> void:
 	onboarding = _merge_dictionary(onboarding, saved.get("onboarding", {}))
 	progression = _merge_dictionary(progression, saved.get("progression", {}))
 	_sanitize_progression()
+	achievements = _merge_dictionary(DEFAULT_ACHIEVEMENTS.duplicate(true), saved.get("achievements", {}))
+	_sanitize_achievements()
 
 func reset_to_defaults() -> void:
 	settings = DEFAULT_SETTINGS.duplicate(true)
@@ -388,6 +423,7 @@ func reset_to_defaults() -> void:
 	endless_state = {"date": "", "hearts": ENDLESS_DAILY_HEARTS, "rewarded_heart_claimed": false}
 	onboarding = DEFAULT_ONBOARDING.duplicate(true)
 	progression = DEFAULT_PROGRESSION.duplicate(true)
+	achievements = DEFAULT_ACHIEVEMENTS.duplicate(true)
 
 func reset_all_data() -> void:
 	reset_to_defaults()
@@ -406,7 +442,8 @@ func save_data() -> void:
 		"played_puzzle_ids": played_puzzle_ids,
 		"endless_state": endless_state,
 		"onboarding": onboarding,
-		"progression": progression
+		"progression": progression,
+		"achievements": achievements
 	}
 	file.store_string(JSON.stringify(data))
 
@@ -430,7 +467,8 @@ func complete_onboarding() -> void:
 	onboarding["version"] = ONBOARDING_VERSION
 	save_data()
 
-func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false, progression_reward: Dictionary = {}) -> void:
+func record_result(won: bool, day_key: String = "", mode: String = "", correct_count: int = 0, total_count: int = 0, solved_groups: Array[int] = [], top_solved: bool = false, progression_reward: Dictionary = {}, mistakes_used: int = 0, hints_used: int = 0) -> void:
+	var stars_before: int = get_total_achievement_stars()
 	if won:
 		statistics["wins"] = int(statistics.get("wins", 0)) + 1
 		statistics["streak"] = int(statistics.get("streak", 0)) + 1
@@ -448,6 +486,10 @@ func record_result(won: bool, day_key: String = "", mode: String = "", correct_c
 			"top_solved": top_solved,
 			"progression_reward": progression_reward.duplicate(true)
 		}
+	_record_achievement_result(won, mode, day_key, mistakes_used, hints_used)
+	var newly_earned: int = maxi(get_total_achievement_stars() - stars_before, 0)
+	if newly_earned > 0:
+		achievements["unseen_stars"] = int(achievements.get("unseen_stars", 0)) + newly_earned
 	save_data()
 
 func get_daily_streak(today_key: String = "") -> int:
@@ -604,6 +646,127 @@ func _sanitize_progression() -> void:
 	progression["rated_games"] = get_rated_games()
 	if not (progression.get("puzzle_attempt_counts", {}) is Dictionary):
 		progression["puzzle_attempt_counts"] = {}
+
+func _sanitize_achievements() -> void:
+	var saved_counters_value: Variant = achievements.get("counters", {})
+	var saved_counters: Dictionary = saved_counters_value if saved_counters_value is Dictionary else {}
+	var counters: Dictionary = (DEFAULT_ACHIEVEMENTS["counters"] as Dictionary).duplicate(true)
+	for metric: Variant in counters:
+		counters[metric] = maxi(int(saved_counters.get(metric, counters[metric])), 0)
+	counters["total_wins"] = maxi(int(counters["total_wins"]), int(statistics.get("wins", 0)))
+	counters["daily_wins"] = maxi(int(counters["daily_wins"]), _count_won_daily_results())
+	counters["best_daily_streak"] = maxi(int(counters["best_daily_streak"]), _calculate_best_daily_streak())
+	counters["player_level"] = maxi(int(counters["player_level"]), get_player_level())
+	achievements["counters"] = counters
+	achievements["unseen_stars"] = maxi(int(achievements.get("unseen_stars", 0)), 0)
+
+func _record_achievement_result(won: bool, mode: String, day_key: String, mistakes_used: int, hints_used: int) -> void:
+	var counters_value: Variant = achievements.get("counters", {})
+	var counters: Dictionary = counters_value if counters_value is Dictionary else (DEFAULT_ACHIEVEMENTS["counters"] as Dictionary).duplicate(true)
+	if won:
+		counters["total_wins"] = int(counters.get("total_wins", 0)) + 1
+		if mode == "daily":
+			counters["daily_wins"] = int(counters.get("daily_wins", 0)) + 1
+		elif mode == "unlimited":
+			counters["unlimited_wins"] = int(counters.get("unlimited_wins", 0)) + 1
+		if mistakes_used <= 0:
+			counters["flawless_wins"] = int(counters.get("flawless_wins", 0)) + 1
+		if hints_used <= 0:
+			counters["no_hint_wins"] = int(counters.get("no_hint_wins", 0)) + 1
+		var max_attempts: int = maxi(int(settings.get("attempts", 4)), 1)
+		if mistakes_used >= max_attempts - 1:
+			counters["last_chance_wins"] = int(counters.get("last_chance_wins", 0)) + 1
+	if mode == "daily" and not day_key.is_empty():
+		counters["best_daily_streak"] = maxi(int(counters.get("best_daily_streak", 0)), _calculate_best_daily_streak())
+	counters["player_level"] = maxi(int(counters.get("player_level", 1)), get_player_level())
+	achievements["counters"] = counters
+
+func get_achievement_snapshots() -> Array[Dictionary]:
+	_sanitize_achievements()
+	var result: Array[Dictionary] = []
+	var language: String = str(settings.get("language", "en"))
+	for definition: Dictionary in AchievementCatalogData.definitions():
+		var snapshot: Dictionary = definition.duplicate(true)
+		var thresholds: Array = definition.get("thresholds", []) as Array
+		var progress: int = get_achievement_metric(str(definition.get("metric", "")))
+		var stars: int = 0
+		var next_target: int = 0
+		for threshold_value: Variant in thresholds:
+			var threshold: int = int(threshold_value)
+			if progress >= threshold:
+				stars += 1
+			elif next_target == 0:
+				next_target = threshold
+		snapshot["title"] = AchievementCatalogData.localized_title(definition, language)
+		snapshot["description"] = AchievementCatalogData.localized_description(definition, language)
+		snapshot["progress"] = progress
+		snapshot["stars"] = stars
+		snapshot["max_stars"] = thresholds.size()
+		snapshot["next_target"] = next_target
+		snapshot["completed"] = stars >= thresholds.size()
+		result.append(snapshot)
+	return result
+
+func get_achievement_metric(metric: String) -> int:
+	var counters_value: Variant = achievements.get("counters", {})
+	var counters: Dictionary = counters_value if counters_value is Dictionary else {}
+	if metric == "modes_won":
+		return (1 if int(counters.get("daily_wins", 0)) > 0 else 0) + (1 if int(counters.get("unlimited_wins", 0)) > 0 else 0)
+	return maxi(int(counters.get(metric, 0)), 0)
+
+func get_total_achievement_stars() -> int:
+	var total: int = 0
+	var counters_value: Variant = achievements.get("counters", {})
+	var counters: Dictionary = counters_value if counters_value is Dictionary else {}
+	for definition: Dictionary in AchievementCatalogData.definitions():
+		var metric: String = str(definition.get("metric", ""))
+		var progress: int
+		if metric == "modes_won":
+			progress = (1 if int(counters.get("daily_wins", 0)) > 0 else 0) + (1 if int(counters.get("unlimited_wins", 0)) > 0 else 0)
+		else:
+			progress = maxi(int(counters.get(metric, 0)), 0)
+		for threshold_value: Variant in definition.get("thresholds", []):
+			if progress >= int(threshold_value):
+				total += 1
+	return total
+
+func get_max_achievement_stars() -> int:
+	return AchievementCatalogData.max_stars()
+
+func get_unseen_achievement_stars() -> int:
+	return maxi(int(achievements.get("unseen_stars", 0)), 0)
+
+func mark_achievements_seen() -> void:
+	if get_unseen_achievement_stars() == 0:
+		return
+	achievements["unseen_stars"] = 0
+	save_data()
+
+func _count_won_daily_results() -> int:
+	var total: int = 0
+	for result_value: Variant in daily_results.values():
+		if result_value is Dictionary and bool((result_value as Dictionary).get("won", false)):
+			total += 1
+	return total
+
+func _calculate_best_daily_streak() -> int:
+	var won_dates: Array[String] = []
+	for date_value: Variant in daily_results:
+		var result_value: Variant = daily_results[date_value]
+		if result_value is Dictionary and bool((result_value as Dictionary).get("won", false)):
+			won_dates.append(str(date_value))
+	if won_dates.is_empty():
+		return 0
+	won_dates.sort()
+	var best: int = 1
+	var current: int = 1
+	for index: int in range(1, won_dates.size()):
+		if won_dates[index] == _date_offset(won_dates[index - 1], 1):
+			current += 1
+		else:
+			current = 1
+		best = maxi(best, current)
+	return best
 
 func get_endless_hearts(day_key: String = "") -> int:
 	_refresh_endless_day(day_key)

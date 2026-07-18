@@ -14,6 +14,19 @@
 - Daily Challenge selection remains date-based, but Daily results still award
   XP and use the same fixed difficulty metadata.
 
+## Achievements
+
+- Achievement definitions live in `scripts/systems/achievement_catalog.gd`.
+- Seven achievements have three star tiers and three are one-time special
+  achievements, for 24 stars in total.
+- Progress is stored offline in the normal save file under `achievements`.
+- Existing total wins and Daily wins are migrated from old save data. Metrics
+  that older versions did not record begin counting after this update.
+- Debug auto-solve intentionally awards XP only and does not advance
+  achievements.
+- New stars create a badge on the trophy button until the Achievement Hall is
+  opened.
+
 ## Future population adjustment
 
 Puzzle ratings are not changed from player data yet. A future backend can

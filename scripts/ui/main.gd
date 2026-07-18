@@ -5,6 +5,9 @@ const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const SETTINGS_TOGGLE_ON: Texture2D = preload("res://assets/toggle_on.svg")
 const SETTINGS_TOGGLE_OFF: Texture2D = preload("res://assets/toggle_off.svg")
+const TROPHY_ICON: Texture2D = preload("res://assets/icons/trophy.svg")
+const ACHIEVEMENT_STAR: Texture2D = preload("res://assets/icons/achievement_star.svg")
+const ACHIEVEMENT_STAR_LOCKED: Texture2D = preload("res://assets/icons/achievement_star_locked.svg")
 
 const UI_BACKGROUND: Color = Color("fffdf5")
 const UI_SURFACE: Color = Color.WHITE
@@ -34,6 +37,7 @@ const UI_TEAL: Color = Color("00bfa5")
 @onready var _endless_heart_label: Label = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus/HeartLabel") as Label
 @onready var _reward_heart_button: Button = get_node_or_null("HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/EndlessStatus/RewardHeartButton") as Button
 @onready var _settings_button: Button = get_node_or_null("HomeLayer/Content/Header/SettingsButton") as Button
+@onready var _achievements_button: Button = get_node_or_null("HomeLayer/Content/Header/AchievementsButton") as Button
 @onready var _daily_card: PanelContainer = get_node_or_null("HomeLayer/Content/DailyCard") as PanelContainer
 @onready var _brand_title: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Title") as Label
 @onready var _brand_subtitle: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Subtitle") as Label
@@ -60,7 +64,7 @@ var _font_dm_sans_bold: FontVariation
 var _font_dm_sans_spaced: FontVariation
 
 func _ready() -> void:
-	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _daily_card == null:
+	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _achievements_button == null or _daily_card == null:
 		# The editor can keep an older Main scene in memory after its .tscn file
 		# changes externally. Reload once so the editable scene tree is used.
 		call_deferred("_reload_editable_home_scene")
@@ -78,11 +82,13 @@ func _ready() -> void:
 	_apply_unlimited_button_style()
 	_apply_endless_status_style()
 	_apply_settings_button_style()
+	_apply_achievements_button_style()
 	_play_button.button_down.connect(func() -> void: _animate_play_button(0.97))
 	_play_button.button_up.connect(func() -> void: _animate_play_button(1.0))
 	_unlimited_button.pressed.connect(_on_unlimited_pressed)
 	_reward_heart_button.pressed.connect(_on_rewarded_heart_pressed)
 	_settings_button.pressed.connect(show_settings)
+	_achievements_button.pressed.connect(show_achievements)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
 	if not AdManager.rewarded_heart_earned.is_connected(_on_rewarded_heart_earned):
 		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
@@ -125,6 +131,7 @@ func _font_variation(base_font: Font, weight: int, embolden: float, glyph_spacin
 func show_main_menu() -> void:
 	_clear_content()
 	_apply_home_texts()
+	_refresh_achievement_badge()
 	_show_home()
 	_layout_home_layout()
 
@@ -280,6 +287,41 @@ func _apply_settings_button_style() -> void:
 	_settings_button.add_theme_font_size_override("font_size", 17)
 	_settings_button.add_theme_constant_override("outline_size", 0)
 
+func _apply_achievements_button_style() -> void:
+	_achievements_button.text = ""
+	_achievements_button.icon = TROPHY_ICON
+	_achievements_button.expand_icon = true
+	_achievements_button.custom_minimum_size = Vector2(40, 40)
+	_achievements_button.add_theme_stylebox_override("normal", _settings_icon_style(Color.WHITE, UI_BORDER))
+	_achievements_button.add_theme_stylebox_override("hover", _settings_icon_style(Color("fff8ce"), UI_YELLOW))
+	_achievements_button.add_theme_stylebox_override("pressed", _settings_icon_style(Color("ffef92"), UI_PRIMARY))
+	_achievements_button.tooltip_text = SaveManager.text("achievements")
+	_refresh_achievement_badge()
+
+func _refresh_achievement_badge() -> void:
+	if not is_instance_valid(_achievements_button):
+		return
+	var old_badge: Node = _achievements_button.get_node_or_null("NewStarsBadge")
+	if old_badge != null:
+		old_badge.queue_free()
+	var unseen: int = SaveManager.get_unseen_achievement_stars()
+	if unseen <= 0:
+		return
+	var badge := Label.new()
+	badge.name = "NewStarsBadge"
+	badge.text = str(mini(unseen, 9)) if unseen < 10 else "9+"
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	badge.position = Vector2(25, -4)
+	badge.size = Vector2(20, 20)
+	badge.add_theme_font_override("font", _font_dm_sans_bold)
+	badge.add_theme_font_size_override("font_size", 10)
+	badge.add_theme_color_override("font_color", UI_PRIMARY)
+	badge.add_theme_stylebox_override("normal", _achievement_badge_style(UI_YELLOW, UI_PRIMARY, 10))
+	_achievements_button.add_child(badge)
+
 func _apply_home_texts() -> void:
 	var is_finnish: bool = PuzzleLoader.get_language() == "fi"
 	var daily_puzzle: Dictionary = PuzzleLoader.get_daily_puzzle(Time.get_date_string_from_system())
@@ -321,6 +363,8 @@ func _apply_home_texts() -> void:
 		_card_streak.text = SaveManager.daily_streak_text()
 	if _home_hint != null:
 		_home_hint.text = "[center]%s[/center]" % SaveManager.text("home_hint_markup")
+	if _achievements_button != null:
+		_achievements_button.tooltip_text = SaveManager.text("achievements")
 
 func _update_home_heart_icons(hearts: int) -> void:
 	var index: int = 0
@@ -471,6 +515,253 @@ func _connect_game_board(board: GameBoard) -> void:
 	board.request_new_game.connect(_start_next_game)
 	board.request_tutorial_exit.connect(_on_tutorial_exit)
 	board.request_mode_transition.connect(_transition_from_board_to_mode)
+
+func show_achievements() -> void:
+	_hide_home()
+	_clear_content()
+	var overlay := Control.new()
+	overlay.name = "AchievementsOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+	_active_view = overlay
+
+	var background := ColorRect.new()
+	background.color = UI_BACKGROUND
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(background)
+	_add_decor_shape(overlay, Vector2(-54, 72), Vector2(128, 128), UI_YELLOW, 0.22, 64)
+	_add_decor_shape(overlay, Vector2(size.x - 52, 154), Vector2(92, 72), UI_MAGENTA, 0.11, 20, 12.0)
+	_add_decor_shape(overlay, Vector2(-18, size.y - 118), Vector2(82, 82), UI_TEAL, 0.12, 22, -9.0)
+
+	var safe_margin := MarginContainer.new()
+	safe_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	safe_margin.add_theme_constant_override("margin_left", 14)
+	safe_margin.add_theme_constant_override("margin_right", 14)
+	safe_margin.add_theme_constant_override("margin_top", 18)
+	safe_margin.add_theme_constant_override("margin_bottom", 20)
+	overlay.add_child(safe_margin)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 11)
+	safe_margin.add_child(page)
+	page.add_child(_achievement_header())
+
+	var snapshots: Array[Dictionary] = SaveManager.get_achievement_snapshots()
+	page.add_child(_achievement_summary())
+	var scroll := ScrollContainer.new()
+	scroll.name = "AchievementScroll"
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var list_margin := MarginContainer.new()
+	list_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_margin.add_theme_constant_override("margin_bottom", 10)
+	scroll.add_child(list_margin)
+	var list := VBoxContainer.new()
+	list.name = "AchievementList"
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	list_margin.add_child(list)
+	var delay: float = 0.02
+	for snapshot: Dictionary in snapshots:
+		var card := _achievement_card(snapshot)
+		list.add_child(card)
+		card.modulate.a = 0.0
+		var tween := create_tween()
+		tween.tween_interval(delay)
+		tween.tween_property(card, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		delay += 0.025
+	SaveManager.mark_achievements_seen()
+	_refresh_achievement_badge()
+
+func _achievement_header() -> Control:
+	var row := HBoxContainer.new()
+	row.name = "AchievementHeader"
+	row.add_theme_constant_override("separation", 9)
+	var back := Button.new()
+	back.text = "<"
+	back.custom_minimum_size = Vector2(42, 42)
+	back.add_theme_font_override("font", _font_fredoka_bold)
+	back.add_theme_font_size_override("font_size", 20)
+	back.add_theme_color_override("font_color", UI_PRIMARY)
+	back.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	back.add_theme_stylebox_override("normal", _achievement_badge_style(UI_YELLOW, UI_PRIMARY, 13))
+	back.add_theme_stylebox_override("hover", _achievement_badge_style(Color("ffe33d"), UI_PRIMARY, 13))
+	back.add_theme_stylebox_override("pressed", _achievement_badge_style(Color("e9c400"), UI_PRIMARY, 13))
+	back.pressed.connect(show_main_menu)
+	row.add_child(back)
+	var trophy_plate := PanelContainer.new()
+	trophy_plate.custom_minimum_size = Vector2(44, 44)
+	trophy_plate.add_theme_stylebox_override("panel", _achievement_badge_style(Color.WHITE, UI_BORDER, 14))
+	row.add_child(trophy_plate)
+	var trophy := TextureRect.new()
+	trophy.texture = TROPHY_ICON
+	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trophy_plate.add_child(trophy)
+	var title_stack := VBoxContainer.new()
+	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_stack.add_theme_constant_override("separation", -2)
+	row.add_child(title_stack)
+	var title := Label.new()
+	title.text = SaveManager.text("achievements_title")
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	title_stack.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = SaveManager.text("achievements_subtitle")
+	subtitle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	subtitle.add_theme_font_override("font", FONT_DM_SANS)
+	subtitle.add_theme_font_size_override("font_size", 10)
+	subtitle.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	title_stack.add_child(subtitle)
+	return row
+
+func _achievement_summary() -> Control:
+	var total: int = SaveManager.get_total_achievement_stars()
+	var maximum: int = SaveManager.get_max_achievement_stars()
+	var card := PanelContainer.new()
+	card.name = "AchievementSummary"
+	var style := _round_style(UI_PRIMARY, UI_PRIMARY, 22)
+	style.shadow_color = Color(0.12, 0.04, 0.35, 0.22)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 5)
+	card.add_theme_stylebox_override("panel", style)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_top", 15)
+	margin.add_theme_constant_override("margin_bottom", 15)
+	card.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 7)
+	margin.add_child(content)
+	var top := HBoxContainer.new()
+	content.add_child(top)
+	var label := Label.new()
+	label.text = SaveManager.text("achievement_collection")
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_override("font", _font_dm_sans_spaced)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", UI_YELLOW)
+	top.add_child(label)
+	var count := Label.new()
+	count.text = SaveManager.text("achievement_stars") % [total, maximum]
+	count.add_theme_font_override("font", _font_fredoka_bold)
+	count.add_theme_font_size_override("font_size", 15)
+	count.add_theme_color_override("font_color", Color.WHITE)
+	top.add_child(count)
+	var progress := ProgressBar.new()
+	progress.name = "CollectionProgress"
+	progress.custom_minimum_size.y = 9
+	progress.min_value = 0
+	progress.max_value = maxi(maximum, 1)
+	progress.value = total
+	progress.show_percentage = false
+	progress.add_theme_stylebox_override("background", _achievement_progress_style(Color("3f2b80"), 5))
+	progress.add_theme_stylebox_override("fill", _achievement_progress_style(UI_YELLOW, 5))
+	content.add_child(progress)
+	return card
+
+func _achievement_card(snapshot: Dictionary) -> Control:
+	var accent := _achievement_accent(str(snapshot.get("accent", "purple")))
+	var completed := bool(snapshot.get("completed", false))
+	var card := PanelContainer.new()
+	card.name = "AchievementCard_%s" % str(snapshot.get("id", "unknown"))
+	card.add_theme_stylebox_override("panel", _achievement_card_style(accent, completed))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 13)
+	margin.add_theme_constant_override("margin_right", 13)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	card.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 7)
+	margin.add_child(content)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	content.add_child(top)
+	var emblem := PanelContainer.new()
+	emblem.custom_minimum_size = Vector2(48, 48)
+	emblem.add_theme_stylebox_override("panel", _achievement_badge_style(Color(accent, 0.14), accent, 15))
+	top.add_child(emblem)
+	var icon := TextureRect.new()
+	icon.texture = TROPHY_ICON
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.modulate = Color.WHITE if completed else Color(1, 1, 1, 0.86)
+	emblem.add_child(icon)
+	var title_stack := VBoxContainer.new()
+	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_stack.add_theme_constant_override("separation", 1)
+	top.add_child(title_stack)
+	var title := Label.new()
+	title.text = str(snapshot.get("title", "Achievement"))
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	title_stack.add_child(title)
+	var description := Label.new()
+	description.text = str(snapshot.get("description", ""))
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.add_theme_font_override("font", FONT_DM_SANS)
+	description.add_theme_font_size_override("font_size", 11)
+	description.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	title_stack.add_child(description)
+	if bool(snapshot.get("special", false)):
+		var special := Label.new()
+		special.text = SaveManager.text("achievement_special")
+		special.add_theme_font_override("font", _font_dm_sans_spaced)
+		special.add_theme_font_size_override("font_size", 8)
+		special.add_theme_color_override("font_color", UI_PRIMARY)
+		special.add_theme_stylebox_override("normal", _achievement_badge_style(Color("fff3a8"), UI_YELLOW, 9))
+		top.add_child(special)
+
+	var stars_and_progress := HBoxContainer.new()
+	stars_and_progress.add_theme_constant_override("separation", 7)
+	content.add_child(stars_and_progress)
+	var star_row := HBoxContainer.new()
+	star_row.add_theme_constant_override("separation", 2)
+	stars_and_progress.add_child(star_row)
+	var earned_stars := int(snapshot.get("stars", 0))
+	var max_stars := int(snapshot.get("max_stars", 1))
+	for star_index: int in max_stars:
+		var star := TextureRect.new()
+		star.custom_minimum_size = Vector2(25, 25)
+		star.texture = ACHIEVEMENT_STAR if star_index < earned_stars else ACHIEVEMENT_STAR_LOCKED
+		star.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		star.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		star.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		star_row.add_child(star)
+	var progress_label := Label.new()
+	progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	progress_label.add_theme_font_override("font", _font_dm_sans_semibold)
+	progress_label.add_theme_font_size_override("font_size", 11)
+	progress_label.add_theme_color_override("font_color", accent if not completed else UI_TEAL)
+	var current := int(snapshot.get("progress", 0))
+	var target := int(snapshot.get("next_target", 0))
+	if completed:
+		progress_label.text = SaveManager.text("achievement_complete")
+	else:
+		progress_label.text = "%s  %d / %d" % [SaveManager.text("achievement_next"), current, target]
+	stars_and_progress.add_child(progress_label)
+	var thresholds: Array = snapshot.get("thresholds", []) as Array
+	var final_target: int = int(thresholds.back()) if not thresholds.is_empty() else 1
+	var bar_target: int = final_target if completed else maxi(target, 1)
+	var progress_bar := ProgressBar.new()
+	progress_bar.custom_minimum_size.y = 7
+	progress_bar.min_value = 0
+	progress_bar.max_value = maxi(bar_target, 1)
+	progress_bar.value = mini(current, bar_target)
+	progress_bar.show_percentage = false
+	progress_bar.add_theme_stylebox_override("background", _achievement_progress_style(Color("e9e4f5"), 4))
+	progress_bar.add_theme_stylebox_override("fill", _achievement_progress_style(UI_YELLOW if completed else accent, 4))
+	content.add_child(progress_bar)
+	return card
 
 func _start_next_game() -> void:
 	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
@@ -1174,6 +1465,43 @@ func _settings_icon_style(fill: Color, border: Color) -> StyleBoxFlat:
 	style.shadow_color = Color(0, 0, 0, 0.07)
 	style.shadow_size = 4
 	style.shadow_offset = Vector2(0, 2)
+	return style
+
+func _achievement_accent(accent_name: String) -> Color:
+	match accent_name:
+		"yellow":
+			return Color("d3a900")
+		"teal":
+			return UI_TEAL
+		"coral":
+			return UI_RED
+		_:
+			return Color("6d45d7")
+
+func _achievement_card_style(accent: Color, completed: bool) -> StyleBoxFlat:
+	var fill := Color("fffbea") if completed else Color.WHITE
+	var border := UI_YELLOW if completed else Color(accent, 0.58)
+	var style := _round_style(fill, border, 20)
+	style.set_border_width_all(2)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.11)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 4)
+	return style
+
+func _achievement_badge_style(fill: Color, border: Color, radius: int) -> StyleBoxFlat:
+	var style := _round_style(fill, border, radius)
+	style.set_border_width_all(2)
+	style.content_margin_left = 7.0
+	style.content_margin_right = 7.0
+	style.content_margin_top = 3.0
+	style.content_margin_bottom = 3.0
+	return style
+
+func _achievement_progress_style(fill: Color, radius: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = Color.TRANSPARENT
+	style.set_corner_radius_all(radius)
 	return style
 
 func _theme_setup() -> void:

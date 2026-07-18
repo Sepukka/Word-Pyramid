@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://dgsmu2t5m8jkd" path="res://scripts/ui/main.gd" id="1_main"]
 [ext_resource type="Texture2D" uid="uid://ccgbysyxddyrb" path="res://assets/home_background_logo.png" id="2_art"]
 [ext_resource type="Texture2D" path="res://assets/heart.svg" id="3_heart"]
+[ext_resource type="Texture2D" path="res://assets/icons/trophy.svg" id="4_trophy"]
 
 [node name="Main" type="Control" unique_id=1563371808]
 layout_mode = 3
@@ -47,10 +48,18 @@ theme_override_constants/separation = 12
 
 [node name="Header" type="HBoxContainer" parent="HomeLayer/Content" unique_id=1138040889]
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="HeaderSpacer" type="Control" parent="HomeLayer/Content/Header" unique_id=618626143]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="AchievementsButton" type="Button" parent="HomeLayer/Content/Header"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+tooltip_text = "Achievements"
+icon = ExtResource("4_trophy")
+expand_icon = true
 
 [node name="SettingsButton" type="Button" parent="HomeLayer/Content/Header" unique_id=287112472]
 custom_minimum_size = Vector2(40, 40)

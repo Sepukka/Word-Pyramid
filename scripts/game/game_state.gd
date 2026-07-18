@@ -675,7 +675,7 @@ func _finish(won: bool) -> void:
 	_save_active_game()
 	if not won and game_mode == UNLIMITED_MODE:
 		SaveManager.consume_endless_heart()
-	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved, result_progression)
+	SaveManager.record_result(won, daily_date, game_mode, result_correct_count, _total_word_count(), result_solved_groups, result_top_solved, result_progression, mistakes_used, hints_used)
 	SaveManager.record_puzzle_played(_progress_key(), str(puzzle.get("id", "")))
 	game_finished.emit(won, str(puzzle.get("top_word", "")))
 	if game_mode == DAILY_MODE and SaveManager.get_played_puzzle_ids(_progress_key()).size() >= PuzzleLoader.get_puzzles(game_mode).size():
