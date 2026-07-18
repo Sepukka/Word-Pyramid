@@ -1321,15 +1321,7 @@ func _on_result_pressed() -> void:
 	_show_aftermath(GameState.completed_won)
 
 func _on_share_pressed() -> void:
-	var correct: int = max(GameState.result_correct_count, 0)
-	var total: int = max(GameState.result_total_count(), correct)
-	var text: String = SaveManager.text("share_daily_result") % [
-		GameState.daily_date,
-		correct,
-		total,
-		SaveManager.get_daily_streak(GameState.daily_date)
-	]
-	DisplayServer.clipboard_set(text)
+	DisplayServer.clipboard_set(GameState.build_share_text())
 	_show_board_message(SaveManager.text("result_copied"))
 
 func _show_aftermath(won: bool) -> void:

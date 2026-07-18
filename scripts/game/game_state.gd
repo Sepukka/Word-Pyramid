@@ -737,6 +737,46 @@ func _save_active_game() -> void:
 func result_total_count() -> int:
 	return _total_word_count()
 
+func result_row_was_solved(row_length: int) -> bool:
+	if row_length == 1:
+		return result_top_solved
+	for index: int in puzzle.get("groups", []).size():
+		var group: Dictionary = puzzle["groups"][index]
+		if int(group.get("size", 0)) == row_length:
+			return result_solved_groups.has(index)
+	return false
+
+func build_share_text() -> String:
+	# The share result mirrors the five visual board rows without revealing any
+	# answer words. Solved rows retain their game colors; missed rows stay blank.
+	var lines: Array[String] = []
+	var mode_title: String = SaveManager.text("share_mode_daily") if game_mode == DAILY_MODE else SaveManager.text("share_mode_unlimited")
+	lines.append("Word Pyramid · %s" % mode_title)
+	if game_mode == DAILY_MODE and not daily_date.is_empty():
+		lines.append(daily_date)
+	lines.append("")
+	var solved_rows: int = 0
+	var row_symbols: Dictionary = {
+		1: "🟪",
+		2: "🟥",
+		3: "🟦",
+		4: "🟩",
+		5: "🟨",
+	}
+	for row_length: int in [1, 2, 3, 4, 5]:
+		var found: bool = result_row_was_solved(row_length)
+		if found:
+			solved_rows += 1
+		var block: String = str(row_symbols[row_length]) if found else "⬜"
+		lines.append(" ".repeat(5 - row_length) + block.repeat(row_length))
+	lines.append("")
+	var maximum_mistakes: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var mistakes_used: int = clampi(maximum_mistakes - attempts_left, 0, maximum_mistakes)
+	lines.append(SaveManager.text("share_summary") % [solved_rows, mistakes_used, hints_used])
+	if game_mode == DAILY_MODE:
+		lines.append(SaveManager.text("share_streak") % SaveManager.get_daily_streak(daily_date))
+	return "\n".join(lines)
+
 func _player_correct_count() -> int:
 	var count: int = 1 if is_top_solved else 0
 	for index: int in solved_groups:
