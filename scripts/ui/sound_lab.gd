@@ -5,18 +5,6 @@ const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 
 const SOUND_GROUPS: Array[Dictionary] = [
 	{
-		"tab": "Läpäisy",
-		"title": "Pelin läpäisy",
-		"icon": "★",
-		"subtitle": "Soi, kun koko pyramidi valmistuu.",
-		"option_notes": ["1,3 s", "1,1 s", "1,0 s"],
-		"streams": [
-			preload("res://assets/audio/sfx/sound_lab/completion_1.ogg"),
-			preload("res://assets/audio/sfx/sound_lab/completion_2.ogg"),
-			preload("res://assets/audio/sfx/sound_lab/completion_3.ogg"),
-		],
-	},
-	{
 		"tab": "Level up",
 		"title": "Level up",
 		"icon": "◆",
@@ -230,9 +218,9 @@ func _play_option(option_index: int) -> void:
 			"normal",
 			_button_style(Color("fff3bd") if button_index == option_index else PURPLE_LIGHT, YELLOW if button_index == option_index else BORDER, 18, 2)
 		)
-	if _category_index == 2:
+	if _category_index == 1:
 		await _play_xp_sequence(stream, generation)
-	elif _category_index == 3:
+	elif _category_index == 2:
 		await _play_move_sequence(stream, generation)
 	else:
 		_player.stream = stream

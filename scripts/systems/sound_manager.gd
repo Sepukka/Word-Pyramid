@@ -4,6 +4,7 @@ const SELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click1.w
 const DESELECT_CLICK: AudioStream = preload("res://addons/kenney_ui_audio/click2.wav")
 const ROW_CORRECT: AudioStream = preload("res://assets/audio/sfx/kenney_interface/row_correct.wav")
 const WRONG_ANSWER: AudioStream = preload("res://assets/audio/sfx/kenney_interface/wrong_answer_b.wav")
+const GAME_COMPLETE: AudioStream = preload("res://assets/audio/sfx/pixabay/game_complete.mp3")
 const BACKGROUND_MUSIC: AudioStreamOggVorbis = preload("res://assets/audio/music/word_pyramid_background_loop.ogg")
 const SAMPLE_PLAYER_COUNT: int = 4
 const SKIP_UI_CLICK_SOUND_META: StringName = &"skip_ui_click_sound"
@@ -60,6 +61,11 @@ func success() -> void:
 
 func failure() -> void:
 	_play_sample(WRONG_ANSWER, -8.5)
+
+func game_complete(delay: float = 0.34) -> void:
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	_play_sample(GAME_COMPLETE, -7.5)
 
 func set_music_enabled(value: bool) -> void:
 	music_enabled = value

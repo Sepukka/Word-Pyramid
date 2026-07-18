@@ -1,5 +1,19 @@
 # Audio asset records
 
+## Pixabay Content License
+
+- `assets/audio/sfx/pixabay/game_complete.mp3`
+  - Purpose: completing a full puzzle successfully
+  - Title: `Level Complete`
+  - Creator: Universfield
+  - Source: https://pixabay.com/sound-effects/film-special-effects-level-complete-143022/
+  - License shown on source page: Pixabay Content License
+  - Downloaded: 2026-07-18
+  - SHA-256: `0C765F662886E27537915B52AA735914EFE43F4D52A9983E861C0E094AA0C5FD`
+
+License terms at the time of integration:
+https://pixabay.com/service/license-summary/
+
 ## Kenney Interface Sounds
 
 The active correct-row and wrong-answer sounds come from Kenney's Interface
@@ -23,12 +37,9 @@ Godot through the Godot Asset Library.
 ### Temporary sound laboratory candidates
 
 The sound laboratory contains three candidates for every remaining gameplay
-sound. Completion and level-up candidates come from Kenney's CC0 Music Jingles
-pack; XP and word-movement candidates come from Kenney Interface Sounds.
+sound. Level-up candidates come from Kenney's CC0 Music Jingles pack; XP and
+word-movement candidates come from Kenney Interface Sounds.
 
-- `assets/audio/sfx/sound_lab/completion_1.ogg` — `jingles_PIZZI07.ogg`
-- `assets/audio/sfx/sound_lab/completion_2.ogg` — `jingles_PIZZI03.ogg`
-- `assets/audio/sfx/sound_lab/completion_3.ogg` — `jingles_PIZZI01.ogg`
 - `assets/audio/sfx/sound_lab/level_up_1.ogg` — `jingles_PIZZI12.ogg`
 - `assets/audio/sfx/sound_lab/level_up_2.ogg` — `jingles_PIZZI14.ogg`
 - `assets/audio/sfx/sound_lab/level_up_3.ogg` — `jingles_PIZZI15.ogg`

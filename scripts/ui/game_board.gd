@@ -1148,6 +1148,8 @@ func _on_game_finished(won: bool, top_word: String) -> void:
 	_share.visible = false
 	_message.text = SaveManager.text("game_complete") % top_word if won else SaveManager.text("game_failed")
 	_update_mistakes()
+	if won and should_wait_for_board:
+		SoundManager.game_complete()
 	if should_wait_for_board:
 		await get_tree().create_timer(AFTERMATH_REVEAL_DELAY).timeout
 		if not is_inside_tree() or not GameState.is_finished:
