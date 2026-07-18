@@ -293,6 +293,16 @@
 		"unlimited_020": {"tier": 5, "rating": 1380},
 		"unlimited_021": {"tier": 4, "rating": 1200},
 		"unlimited_022": {"tier": 5, "rating": 1360},
+		"unlimited_023": {"tier": 1, "rating": 800},
+		"unlimited_024": {"tier": 1, "rating": 820},
+		"unlimited_025": {"tier": 1, "rating": 860},
+		"unlimited_026": {"tier": 2, "rating": 920},
+		"unlimited_027": {"tier": 2, "rating": 950},
+		"unlimited_028": {"tier": 2, "rating": 980},
+		"unlimited_029": {"tier": 3, "rating": 1040},
+		"unlimited_030": {"tier": 3, "rating": 1080},
+		"unlimited_031": {"tier": 3, "rating": 1120},
+		"unlimited_032": {"tier": 4, "rating": 1240},
 		"fi_unlimited_001": {
 			"tier": 1.0,
 			"rating": 840.0
