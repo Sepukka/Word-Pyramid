@@ -6,6 +6,7 @@ const ROW_CORRECT: AudioStream = preload("res://assets/audio/sfx/kenney_interfac
 const WRONG_ANSWER: AudioStream = preload("res://assets/audio/sfx/kenney_interface/wrong_answer_b.wav")
 const GAME_COMPLETE: AudioStream = preload("res://assets/audio/sfx/pixabay/game_complete.mp3")
 const LEVEL_UP: AudioStream = preload("res://assets/audio/sfx/pixabay/level_up.mp3")
+const XP_GAIN: AudioStream = preload("res://assets/audio/sfx/pixabay/xp_gain_ambient.wav")
 const BACKGROUND_MUSIC: AudioStreamOggVorbis = preload("res://assets/audio/music/word_pyramid_background_loop.ogg")
 const SAMPLE_PLAYER_COUNT: int = 4
 const SKIP_UI_CLICK_SOUND_META: StringName = &"skip_ui_click_sound"
@@ -70,6 +71,9 @@ func game_complete(delay: float = 0.34) -> void:
 
 func level_up() -> void:
 	_play_sample(LEVEL_UP, -7.5)
+
+func xp_gain() -> void:
+	_play_sample(XP_GAIN, -12.0)
 
 func set_music_enabled(value: bool) -> void:
 	music_enabled = value

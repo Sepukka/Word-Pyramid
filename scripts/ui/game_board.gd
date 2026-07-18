@@ -1494,9 +1494,20 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.24)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var play_xp_sound: bool = _fresh_result_reveal
 	var play_level_up_sound: bool = _fresh_result_reveal and level_after > level_before
 	_fresh_result_reveal = false
-	_animate_aftermath_xp(layer, xp_reward_label, xp_progress, total_xp_before, total_xp_after, xp_gained, final_xp_copy, play_level_up_sound)
+	_animate_aftermath_xp(
+		layer,
+		xp_reward_label,
+		xp_progress,
+		total_xp_before,
+		total_xp_after,
+		xp_gained,
+		final_xp_copy,
+		play_xp_sound,
+		play_level_up_sound
+	)
 	if won and play_streak_animation:
 		_animate_streak_win(layer, flame, streak_number, streak_caption, streak_from, streak_to)
 	elif not won and play_streak_animation:
@@ -1851,11 +1862,15 @@ func _stop_aftermath_motion(stop_xp: bool = false) -> void:
 	if stop_xp and _aftermath_xp_tween != null and _aftermath_xp_tween.is_running():
 		_aftermath_xp_tween.kill()
 
-func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, play_level_up_sound: bool) -> void:
+func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, play_xp_sound: bool, play_level_up_sound: bool) -> void:
 	if xp_gained <= 0 or total_after <= total_before:
 		return
 	_aftermath_xp_tween = create_tween()
 	_aftermath_xp_tween.tween_interval(XP_REWARD_ANIMATION_DELAY)
+	_aftermath_xp_tween.tween_callback(func() -> void:
+		if play_xp_sound and is_instance_valid(layer) and layer == _aftermath_layer:
+			SoundManager.xp_gain()
+	)
 	_aftermath_xp_tween.tween_method(
 		func(animated_total: float) -> void:
 			if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label) and is_instance_valid(progress):
