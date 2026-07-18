@@ -620,7 +620,7 @@ func show_settings() -> void:
 	tutorial_button.pressed.connect(_start_tutorial)
 	panel.add_child(tutorial_button)
 	var wrong_sound_demo_button: Button = Button.new()
-	wrong_sound_demo_button.text = "Debug: Testaa väärinäänet" if str(SaveManager.settings.get("language", "en")) == "fi" else "Debug: Test wrong sounds"
+	wrong_sound_demo_button.text = "Debug: Testaa läpäisyäänet" if str(SaveManager.settings.get("language", "en")) == "fi" else "Debug: Test completion sounds"
 	wrong_sound_demo_button.custom_minimum_size = Vector2(0, 44)
 	wrong_sound_demo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrong_sound_demo_button.add_theme_font_override("font", _font_fredoka_semibold)

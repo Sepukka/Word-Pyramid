@@ -2,16 +2,15 @@ extends Control
 
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
-const WRONG_SOUNDS: Array[AudioStream] = [
-	preload("res://assets/audio/sfx/kenney_interface/wrong_answer.wav"),
-	preload("res://assets/audio/sfx/kenney_interface/wrong_answer_b.wav"),
-	preload("res://assets/audio/sfx/kenney_interface/wrong_answer_c.wav"),
+const COMPLETION_SOUNDS: Array[AudioStream] = [
+	preload("res://assets/audio/sfx/kenney_interface/game_complete_a.wav"),
+	preload("res://assets/audio/sfx/kenney_interface/game_complete_b.wav"),
+	preload("res://assets/audio/sfx/kenney_interface/game_complete_c.wav"),
 ]
 
 const PURPLE: Color = Color("1a0a5e")
 const PURPLE_LIGHT: Color = Color("eee9fa")
 const YELLOW: Color = Color("ffd600")
-const CORAL: Color = Color("ff5533")
 const OFF_WHITE: Color = Color("fffdf5")
 const BORDER: Color = Color("d6cfef")
 
@@ -80,7 +79,7 @@ func _build_screen() -> void:
 	card_margin.add_child(content)
 
 	var badge := Label.new()
-	badge.text = "✕"
+	badge.text = "★"
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	badge.custom_minimum_size = Vector2(58, 58)
@@ -88,11 +87,11 @@ func _build_screen() -> void:
 	badge.add_theme_font_override("font", FONT_FREDOKA)
 	badge.add_theme_font_size_override("font_size", 28)
 	badge.add_theme_color_override("font_color", Color.WHITE)
-	badge.add_theme_stylebox_override("normal", _button_style(CORAL, PURPLE, 18, 2))
+	badge.add_theme_stylebox_override("normal", _button_style(YELLOW, PURPLE, 18, 2))
 	content.add_child(badge)
 
 	var title := Label.new()
-	title.text = "Valitse väärinääni"
+	title.text = "Valitse läpäisyääni"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", FONT_FREDOKA)
 	title.add_theme_font_size_override("font_size", 28)
@@ -100,7 +99,7 @@ func _build_screen() -> void:
 	content.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Paina vaihtoehtoja ja valitse peliin parhaiten sopiva."
+	subtitle.text = "Tämä ääni soi, kun koko pyramidi valmistuu."
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	subtitle.add_theme_font_override("font", FONT_DM_SANS)
@@ -108,9 +107,9 @@ func _build_screen() -> void:
 	subtitle.add_theme_color_override("font_color", Color("7868ac"))
 	content.add_child(subtitle)
 
-	for index: int in WRONG_SOUNDS.size():
+	for index: int in COMPLETION_SOUNDS.size():
 		var button := Button.new()
-		button.text = "Vaihtoehto %d%s" % [index + 1, "  ·  Nykyinen" if index == 0 else ""]
+		button.text = "Vaihtoehto %d" % (index + 1)
 		button.custom_minimum_size = Vector2(0, 58)
 		button.set_meta(&"skip_ui_click_sound", true)
 		button.add_theme_font_override("font", FONT_FREDOKA)
@@ -126,7 +125,7 @@ func _build_screen() -> void:
 		_buttons.append(button)
 
 	_status = Label.new()
-	_status.text = "Nykyinen peliääni: vaihtoehto 1"
+	_status.text = "Paina nappia kuunnellaksesi"
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_font_override("font", FONT_DM_SANS)
 	_status.add_theme_font_size_override("font_size", 13)
@@ -143,7 +142,7 @@ func _build_screen() -> void:
 
 func _play_option(index: int) -> void:
 	_player.stop()
-	_player.stream = WRONG_SOUNDS[index]
+	_player.stream = COMPLETION_SOUNDS[index]
 	_player.play()
 	_status.text = "Kuuntelet vaihtoehtoa %d" % (index + 1)
 	for button_index: int in _buttons.size():

@@ -14,10 +14,19 @@ Godot through the Godot Asset Library.
   - Purpose: an incorrect guess
 - `assets/audio/sfx/kenney_interface/wrong_answer_b.wav`
   - Original file: `error_005.wav`
-  - Purpose: temporary wrong-answer sound test, option 2
+  - Purpose: the selected incorrect-guess sound
 - `assets/audio/sfx/kenney_interface/wrong_answer_c.wav`
   - Original file: `error_006.wav`
-  - Purpose: temporary wrong-answer sound test, option 3
+  - Purpose: retained wrong-answer sound test alternative
+- `assets/audio/sfx/kenney_interface/game_complete_a.wav`
+  - Original file: `confirmation_001.wav`
+  - Purpose: temporary game-completion sound test, option 1
+- `assets/audio/sfx/kenney_interface/game_complete_b.wav`
+  - Original file: `confirmation_003.wav`
+  - Purpose: temporary game-completion sound test, option 2
+- `assets/audio/sfx/kenney_interface/game_complete_c.wav`
+  - Original file: `confirmation_004.wav`
+  - Purpose: temporary game-completion sound test, option 3
 - License copy: `assets/audio/sfx/kenney_interface/LICENSE.txt`
 
 Sources:
