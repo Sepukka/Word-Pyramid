@@ -23,6 +23,15 @@ func _ready() -> void:
 	_assert(not word_buttons.is_empty(), "tutorial word tiles are created")
 	var first_tile: Button = word_buttons.values()[0] as Button
 	_assert(first_tile.size.y <= 80.0, "tutorial guide space is deducted from the pyramid")
+	var intro: Control = board.get("_tutorial_intro_layer") as Control
+	var intro_card: PanelContainer = intro.find_child("TutorialIntroCard", true, false) as PanelContainer if intro != null else null
+	var intro_start: Button = intro.find_child("TutorialStart", true, false) as Button if intro != null else null
+	_assert(intro_card != null and intro_start != null, "tutorial introduction is built")
+	_assert(intro_card.get_global_rect().position.x >= -0.5, "tutorial introduction stays inside the phone on the left")
+	_assert(intro_card.get_global_rect().end.x <= PHONE_SIZE.x + 0.5, "tutorial introduction stays inside the phone on the right")
+	_assert(intro_card.get_global_rect().position.y >= -0.5, "tutorial introduction stays inside the phone at the top")
+	_assert(intro_card.get_global_rect().end.y <= PHONE_SIZE.y + 0.5, "tutorial introduction stays inside the phone at the bottom")
+	_assert(intro_start.get_global_rect().end.y <= intro_card.get_global_rect().end.y + 0.5, "tutorial start action fits its card")
 
 	print("TUTORIAL_LAYOUT_SMOKE_TEST_PASS")
 	board.queue_free()

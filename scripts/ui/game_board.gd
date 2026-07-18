@@ -42,8 +42,11 @@ const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
 const XP_REWARD_ANIMATION_DELAY: float = 0.38
 const XP_REWARD_ANIMATION_DURATION: float = 1.20
-const TUTORIAL_HINT_BREAK: float = 1.15
-const TUTORIAL_CHECK_BREAK: float = 1.00
+const TUTORIAL_HINT_BREAK: float = 1.65
+const TUTORIAL_CHECK_BREAK: float = 1.30
+const TUTORIAL_FINISH_BREAK: float = 2.00
+const TUTORIAL_SOFT_HELP_DELAY: float = 5.5
+const TUTORIAL_STRONG_HELP_DELAY: float = 10.0
 const FONT_AXIS_WIDTH: int = 2003072104 # wdth
 
 var _card: PanelContainer
@@ -102,7 +105,13 @@ var _tutorial_finishing: bool = false
 var _tutorial_spotlight: ColorRect
 var _tutorial_paused: bool = false
 var _tutorial_pause_id: int = 0
+var _tutorial_help_id: int = 0
+var _tutorial_help_level: int = 0
+var _tutorial_target_words: Array[String] = []
+var _tutorial_focus_words: Array[String] = []
 var _tutorial_focus_tweens: Dictionary = {}
+var _tutorial_guide_button: Button
+var _tutorial_intro_layer: Control
 var _tutorial_completion_layer: Control
 var _instructions_layer: Control
 
@@ -295,18 +304,37 @@ func _build() -> void:
 		# A plain Control isolates the VBox from the Label's changing wrapped-text
 		# minimum height, so every tutorial instruction occupies the same space.
 		var message_slot: Control = Control.new()
-		message_slot.custom_minimum_size = Vector2(0, 76)
+		message_slot.custom_minimum_size = Vector2(0, 96)
 		message_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		message_slot.clip_contents = true
 		content.add_child(message_slot)
 		message_slot.add_child(_message)
 		_message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_message.offset_bottom = -32.0
 		_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_message.add_theme_font_override("font", _font_fredoka_semibold)
 		_message.add_theme_font_size_override("font_size", 18)
 		_message.add_theme_color_override("font_color", UI_TEXT)
 		_message.add_theme_stylebox_override("normal", _tutorial_guide_style())
 		_message.z_index = 22
+		_tutorial_guide_button = Button.new()
+		_tutorial_guide_button.name = "TutorialGuideContinue"
+		_tutorial_guide_button.text = SaveManager.text("tutorial_continue")
+		_tutorial_guide_button.custom_minimum_size = Vector2(104, 28)
+		_tutorial_guide_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		_tutorial_guide_button.position = Vector2(-52, -30)
+		_tutorial_guide_button.add_theme_font_override("font", _font_fredoka_semibold)
+		_tutorial_guide_button.add_theme_font_size_override("font_size", 13)
+		_tutorial_guide_button.add_theme_color_override("font_color", UI_PRIMARY)
+		_tutorial_guide_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+		_tutorial_guide_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+		_tutorial_guide_button.add_theme_stylebox_override("normal", _small_pill_style(UI_YELLOW, UI_PRIMARY))
+		_tutorial_guide_button.add_theme_stylebox_override("hover", _small_pill_style(Color("ffe23d"), UI_PRIMARY))
+		_tutorial_guide_button.add_theme_stylebox_override("pressed", _small_pill_style(Color("e9c400"), UI_PRIMARY))
+		_tutorial_guide_button.visible = false
+		_tutorial_guide_button.z_index = 22
+		_tutorial_guide_button.pressed.connect(_on_tutorial_guide_continue)
+		message_slot.add_child(_tutorial_guide_button)
 	else:
 		content.add_child(_message)
 	_selection = Label.new()
@@ -398,7 +426,7 @@ func _build() -> void:
 	game_actions.add_child(menu)
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
 		_tutorial_spotlight = ColorRect.new()
-		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.16)
+		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.35)
 		_tutorial_spotlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_tutorial_spotlight.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_tutorial_spotlight.z_index = 20
@@ -425,7 +453,7 @@ func refresh() -> void:
 		_show_play_actions()
 		if is_tutorial:
 			_tutorial_stage = 0
-			_apply_tutorial_stage()
+			_show_tutorial_intro()
 
 func _build_pyramid() -> void:
 	for tween_value: Variant in _tile_motion_tweens.values():
@@ -739,8 +767,13 @@ func _single_line_font_size(text: String, available_width: float, maximum_size: 
 
 func _update_mistakes() -> void:
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		_mistakes.visible = false
-		_lives_row.visible = false
+		var explaining_mistakes: bool = _tutorial_stage == 1 and not _tutorial_finishing
+		_mistakes.visible = explaining_mistakes
+		_lives_row.visible = explaining_mistakes
+		if explaining_mistakes:
+			var maximum: int = int(SaveManager.settings.get("attempts", 4))
+			_mistakes.text = SaveManager.text("tutorial_mistakes_counter") % maximum
+			_update_lives(0, maximum)
 		return
 	_mistakes.visible = true
 	_lives_row.visible = true
@@ -801,6 +834,7 @@ func _on_game_started(_puzzle_title: String, _attempts_left: int) -> void:
 	refresh()
 
 func _on_selection_changed(selection: Array[String]) -> void:
+	var tutorial_selection_changed: bool = GameState.game_mode == GameState.TUTORIAL_MODE and selection != _displayed_selection
 	var is_at_limit: bool = selection.size() >= GameState.get_selection_limit()
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
@@ -817,7 +851,7 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_placing else Control.MOUSE_FILTER_STOP
 		tile.focus_mode = Control.FOCUS_NONE if _is_placing or selection_blocked else Control.FOCUS_ALL
 		_apply_word_tile_visual(tile, selected, showing_wrong)
-		if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused and GameState.is_tutorial_word_allowed(word) and not selected:
+		if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused and _tutorial_focus_words.has(word) and not selected:
 			tile.add_theme_stylebox_override("normal", _tutorial_tile_style())
 			tile.add_theme_stylebox_override("hover", _tutorial_tile_style())
 		_set_tile_lift(tile, false if showing_wrong else selected, was_selected != selected and not _is_placing)
@@ -827,6 +861,8 @@ func _on_selection_changed(selection: Array[String]) -> void:
 	_update_selection(selection)
 	if GameState.game_mode == GameState.TUTORIAL_MODE and not _tutorial_paused:
 		_update_tutorial_selection_message()
+		if tutorial_selection_changed and _tutorial_stage >= 5:
+			_reset_tutorial_reduced_help()
 
 func _on_group_solved(group: Dictionary) -> void:
 	var row_length: int = int(group.get("size", 0))
@@ -2233,8 +2269,8 @@ func _on_hint_placed(word: String, row_length: int) -> void:
 		locked_tile.modulate.a = 0.0
 	if _hinted_tiles.has(word):
 		call_deferred("_animate_hint_to_locked_slot", word, source_point, source_size, has_source, displaced_word, displaced_point, displaced_size)
-	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 1:
-		_tutorial_stage = 2
+	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 2:
+		_tutorial_stage = 3
 		_hint.disabled = true
 		call_deferred("_advance_tutorial_after_hint")
 
@@ -2289,51 +2325,285 @@ func _on_hint_count_changed(used: int, limit: int) -> void:
 		_set_hint_button_text(SaveManager.text("bonus_hint"))
 		_hint.disabled = false
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		_hint.disabled = _tutorial_stage != 1
+		_hint.disabled = _tutorial_stage != 2
 
 func _apply_tutorial_stage() -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or GameState.is_finished:
 		return
+	_tutorial_help_id += 1
+	_tutorial_help_level = 0
+	_tutorial_target_words.clear()
+	_tutorial_focus_words.clear()
 	var allowed: Array[String] = []
-	var guide_text: String = SaveManager.text("tutorial_select_group")
+	var guide_text: String = SaveManager.text("tutorial_first_group")
+	if is_instance_valid(_tutorial_guide_button):
+		_tutorial_guide_button.visible = false
 	match _tutorial_stage:
 		0:
-			allowed = GameState.tutorial_group_words(2)
+			_tutorial_target_words = _tutorial_selectable_words(2)
+			allowed.assign(_tutorial_target_words)
+			_tutorial_focus_words.assign(_tutorial_target_words)
 		1:
-			guide_text = SaveManager.text("tutorial_use_hint")
+			guide_text = SaveManager.text("tutorial_mistakes_body")
+			if is_instance_valid(_tutorial_guide_button):
+				_tutorial_guide_button.visible = true
 		2:
-			allowed = GameState.tutorial_group_words(5)
-			guide_text = SaveManager.text("tutorial_finish_row")
+			guide_text = SaveManager.text("tutorial_use_hint")
 		3:
-			allowed = GameState.tutorial_group_words(3)
+			_tutorial_target_words = _tutorial_selectable_words(5)
+			allowed.assign(_tutorial_target_words)
+			_tutorial_focus_words.assign(_tutorial_target_words)
+			guide_text = SaveManager.text("tutorial_finish_hint_row")
 		4:
-			allowed = GameState.tutorial_group_words(4)
+			_tutorial_target_words = _tutorial_selectable_words(1)
+			allowed.assign(_tutorial_target_words)
+			_tutorial_focus_words.assign(_tutorial_target_words)
+			guide_text = SaveManager.text("tutorial_top_any_order")
 		5:
-			allowed = GameState.tutorial_group_words(1)
-			guide_text = SaveManager.text("tutorial_top_word")
+			_tutorial_target_words = _tutorial_selectable_words(3)
+			allowed = _tutorial_all_selectable_words()
+			if not _tutorial_target_words.is_empty():
+				_tutorial_focus_words = [_tutorial_target_words[0]]
+				_tutorial_help_level = 1
+			guide_text = SaveManager.text("tutorial_find_three")
+		6:
+			_tutorial_target_words = _tutorial_selectable_words(4)
+			allowed = _tutorial_all_selectable_words()
+			guide_text = SaveManager.text("tutorial_find_last")
 	GameState.set_tutorial_allowed_words(allowed)
-	_hint.disabled = _tutorial_paused or _tutorial_stage != 1
+	_hint.disabled = _tutorial_paused or _tutorial_stage != 2
 	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
+	_update_mistakes()
 	if not _tutorial_paused:
 		_message.text = guide_text
 	_update_tutorial_spotlight()
+	if _tutorial_stage >= 5:
+		_arm_tutorial_idle_help()
+
+func _tutorial_selectable_words(row_length: int) -> Array[String]:
+	var result: Array[String] = []
+	for word: String in GameState.tutorial_group_words(row_length):
+		if _word_buttons.has(word):
+			result.append(word)
+	return result
+
+func _tutorial_all_selectable_words() -> Array[String]:
+	var result: Array[String] = []
+	for word: String in _word_order:
+		if _word_buttons.has(word):
+			result.append(word)
+	return result
+
+func _reset_tutorial_reduced_help() -> void:
+	if _tutorial_stage < 5:
+		return
+	_tutorial_help_id += 1
+	_tutorial_help_level = 0
+	_tutorial_focus_words.clear()
+	# The first independent task keeps one gentle example. The final task begins
+	# completely unassisted and only reveals help if the player becomes idle.
+	if _tutorial_stage == 5 and not _tutorial_target_words.is_empty():
+		_tutorial_focus_words = [_tutorial_target_words[0]]
+		_tutorial_help_level = 1
+	_update_tutorial_spotlight()
+	_arm_tutorial_idle_help()
+
+func _arm_tutorial_idle_help() -> void:
+	if GameState.game_mode != GameState.TUTORIAL_MODE or _tutorial_stage < 5 or _tutorial_paused or _tutorial_finishing or GameState.can_check_selection():
+		return
+	_tutorial_help_id += 1
+	var help_id: int = _tutorial_help_id
+	await get_tree().create_timer(TUTORIAL_SOFT_HELP_DELAY).timeout
+	if not _tutorial_help_is_current(help_id):
+		return
+	_apply_tutorial_idle_help(1)
+	await get_tree().create_timer(TUTORIAL_STRONG_HELP_DELAY - TUTORIAL_SOFT_HELP_DELAY).timeout
+	if not _tutorial_help_is_current(help_id):
+		return
+	_apply_tutorial_idle_help(2)
+
+func _apply_tutorial_idle_help(level: int) -> void:
+	if _tutorial_stage < 5 or _tutorial_target_words.is_empty():
+		return
+	_tutorial_help_level = clampi(level, 0, 2)
+	_tutorial_focus_words.clear()
+	if _tutorial_help_level >= 2:
+		_tutorial_focus_words.assign(_tutorial_target_words)
+		_message.text = SaveManager.text("tutorial_strong_help")
+	elif _tutorial_stage == 5 and _tutorial_target_words.size() > 1:
+		_tutorial_focus_words = _tutorial_target_words.slice(0, 2)
+		_message.text = SaveManager.text("tutorial_soft_help")
+	else:
+		_tutorial_focus_words = [_tutorial_target_words[0]]
+		_message.text = SaveManager.text("tutorial_soft_help")
+	_update_tutorial_spotlight()
+
+func _tutorial_help_is_current(help_id: int) -> bool:
+	return (
+		is_inside_tree()
+		and help_id == _tutorial_help_id
+		and GameState.game_mode == GameState.TUTORIAL_MODE
+		and _tutorial_stage >= 5
+		and not _tutorial_paused
+		and not _tutorial_finishing
+	)
+
+func _on_tutorial_guide_continue() -> void:
+	if _tutorial_stage != 1 or _tutorial_paused:
+		return
+	_tutorial_stage = 2
+	_apply_tutorial_stage()
+
+func _show_tutorial_intro() -> void:
+	if is_instance_valid(_tutorial_intro_layer):
+		return
+	_tutorial_paused = true
+	GameState.set_tutorial_allowed_words([])
+	_update_tutorial_spotlight()
+	_tutorial_intro_layer = Control.new()
+	_tutorial_intro_layer.name = "TutorialIntro"
+	_tutorial_intro_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_intro_layer.z_index = 50
+	_tutorial_intro_layer.modulate.a = 0.0
+	add_child(_tutorial_intro_layer)
+	var shade: ColorRect = ColorRect.new()
+	shade.color = Color(0.07, 0.025, 0.20, 0.92)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_intro_layer.add_child(shade)
+	var card: PanelContainer = PanelContainer.new()
+	card.name = "TutorialIntroCard"
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.position = Vector2(-170, -220)
+	card.size = Vector2(340, 440)
+	card.add_theme_stylebox_override("panel", _tutorial_completion_style())
+	_tutorial_intro_layer.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 22)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 12)
+	margin.add_child(content)
+	var eyebrow: Label = Label.new()
+	eyebrow.text = SaveManager.text("tutorial_intro_eyebrow")
+	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	eyebrow.add_theme_font_override("font", _font_dm_sans_semibold)
+	eyebrow.add_theme_font_size_override("font_size", 11)
+	eyebrow.add_theme_color_override("font_color", UI_MAGENTA)
+	content.add_child(eyebrow)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("tutorial_intro_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 27)
+	title.add_theme_color_override("font_color", UI_PRIMARY)
+	content.add_child(title)
+	var body: Label = Label.new()
+	body.text = SaveManager.text("tutorial_intro_body")
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_override("font", _font_dm_sans_semibold)
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	content.add_child(body)
+	var preview: VBoxContainer = VBoxContainer.new()
+	preview.alignment = BoxContainer.ALIGNMENT_CENTER
+	preview.add_theme_constant_override("separation", 3)
+	content.add_child(preview)
+	var row_colors: Array[Color] = [UI_MAGENTA, UI_RED, UI_TEAL, UI_YELLOW, Color("d7c8ff")]
+	for row_size: int in range(1, 6):
+		var row: HBoxContainer = HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 3)
+		preview.add_child(row)
+		for _tile_index: int in range(row_size):
+			var tile: Panel = Panel.new()
+			tile.custom_minimum_size = Vector2(27, 22)
+			var tile_style: StyleBoxFlat = StyleBoxFlat.new()
+			tile_style.bg_color = row_colors[row_size - 1]
+			tile_style.corner_radius_top_left = 6
+			tile_style.corner_radius_top_right = 6
+			tile_style.corner_radius_bottom_left = 6
+			tile_style.corner_radius_bottom_right = 6
+			tile_style.shadow_color = Color(0.08, 0.03, 0.20, 0.14)
+			tile_style.shadow_size = 2
+			tile.add_theme_stylebox_override("panel", tile_style)
+			row.add_child(tile)
+	var note: Label = Label.new()
+	note.text = SaveManager.text("tutorial_intro_note")
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_override("font", _font_dm_sans_semibold)
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color", UI_PRIMARY)
+	content.add_child(note)
+	var start_button: Button = Button.new()
+	start_button.name = "TutorialStart"
+	start_button.text = SaveManager.text("tutorial_intro_start")
+	start_button.custom_minimum_size = Vector2(0, 48)
+	start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	start_button.add_theme_font_override("font", _font_fredoka_bold)
+	start_button.add_theme_font_size_override("font_size", 16)
+	start_button.add_theme_color_override("font_color", UI_PRIMARY)
+	start_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	start_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	start_button.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
+	start_button.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
+	start_button.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	start_button.pressed.connect(_on_tutorial_intro_start.bind(start_button))
+	content.add_child(start_button)
+	await get_tree().process_frame
+	if not is_instance_valid(card):
+		return
+	card.pivot_offset = card.size * 0.5
+	card.scale = Vector2(0.95, 0.95)
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(_tutorial_intro_layer, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _on_tutorial_intro_start(button: Button) -> void:
+	if button.disabled or not is_instance_valid(_tutorial_intro_layer):
+		return
+	button.disabled = true
+	var layer: Control = _tutorial_intro_layer
+	var tween: Tween = create_tween()
+	tween.tween_property(layer, "modulate:a", 0.0, 0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tween.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if _tutorial_intro_layer == layer:
+		_tutorial_intro_layer = null
+	_tutorial_paused = false
+	_tutorial_stage = 0
+	_apply_tutorial_stage()
 
 func _update_tutorial_selection_message() -> void:
 	if _tutorial_stage == 1:
+		_message.text = SaveManager.text("tutorial_mistakes_body")
+		_check.disabled = true
+		_update_tutorial_spotlight()
+		return
+	if _tutorial_stage == 2:
 		_message.text = SaveManager.text("tutorial_use_hint")
 		_hint.disabled = false
 		_check.disabled = true
 		_update_tutorial_spotlight()
 		return
-	var expected_count: int = GameState.tutorial_allowed_words.size()
-	if expected_count > 0 and GameState.selected_words.size() == expected_count:
+	if not GameState.selected_words.is_empty() and GameState.can_check_selection():
 		_message.text = SaveManager.text("tutorial_press_check")
-	elif _tutorial_stage == 2:
-		_message.text = SaveManager.text("tutorial_finish_row")
+	elif _tutorial_stage == 3:
+		_message.text = SaveManager.text("tutorial_finish_hint_row")
+	elif _tutorial_stage == 4:
+		_message.text = SaveManager.text("tutorial_top_any_order")
 	elif _tutorial_stage == 5:
-		_message.text = SaveManager.text("tutorial_top_word")
+		_message.text = SaveManager.text("tutorial_find_three")
+	elif _tutorial_stage == 6:
+		_message.text = SaveManager.text("tutorial_find_last")
 	else:
-		_message.text = SaveManager.text("tutorial_select_group")
+		_message.text = SaveManager.text("tutorial_first_group")
 	_update_tutorial_spotlight()
 
 func _update_tutorial_spotlight() -> void:
@@ -2343,17 +2613,30 @@ func _update_tutorial_spotlight() -> void:
 		_tutorial_spotlight.visible = false
 		_clear_tutorial_focus()
 		return
-	_tutorial_spotlight.visible = true
+	var full_guidance: bool = _tutorial_stage <= 4
+	var reduced_guidance: bool = _tutorial_stage >= 5 and not _tutorial_focus_words.is_empty()
+	_tutorial_spotlight.visible = full_guidance or reduced_guidance
+	if full_guidance:
+		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.35)
+	elif _tutorial_help_level >= 2:
+		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.28)
+	else:
+		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.10)
 	for word: String in _word_buttons:
 		var tile: Button = _word_buttons[word]
-		var focused: bool = GameState.is_tutorial_word_allowed(word)
+		var focused: bool = _tutorial_focus_words.has(word)
 		tile.z_index = 21 if focused else 0
 		_set_tutorial_focus(tile, focused)
-	_hint.z_index = 21 if _tutorial_stage == 1 else 0
-	_set_tutorial_focus(_hint, _tutorial_stage == 1)
-	var selection_ready: bool = not GameState.tutorial_allowed_words.is_empty() and GameState.selected_words.size() == GameState.tutorial_allowed_words.size()
+	_hint.z_index = 21 if _tutorial_stage == 2 else 0
+	_set_tutorial_focus(_hint, _tutorial_stage == 2)
+	var selection_ready: bool = not GameState.selected_words.is_empty() and GameState.can_check_selection()
 	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
 	_set_tutorial_focus(_check, selection_ready and GameState.can_check_selection())
+	if is_instance_valid(_tutorial_guide_button):
+		_tutorial_guide_button.z_index = 21 if _tutorial_stage == 1 else 0
+		_set_tutorial_focus(_tutorial_guide_button, _tutorial_stage == 1)
+	_lives_row.z_index = 21 if _tutorial_stage == 1 else 0
+	_set_tutorial_focus(_lives_row, _tutorial_stage == 1)
 	_message.z_index = 22
 
 func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) -> void:
@@ -2379,8 +2662,10 @@ func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) 
 	_tutorial_focus_tweens[key] = tween
 	if focused:
 		# Keep the prompt visibly alive instead of relying on a one-time scale
-		# change that is easy to miss on a phone-sized tile.
-		tween.set_loops()
+		# change that is easy to miss on a phone-sized tile. A large finite loop
+		# avoids Godot 4.7's infinite-loop diagnostic while remaining effectively
+		# continuous for the lifetime of a tutorial step.
+		tween.set_loops(600)
 		tween.tween_property(control, "scale", Vector2(1.06, 1.06), 0.50).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tween.tween_property(control, "scale", Vector2(1.025, 1.025), 0.60).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	else:
@@ -2397,6 +2682,11 @@ func _clear_tutorial_focus() -> void:
 	_check.z_index = 0
 	_set_tutorial_focus(_hint, false)
 	_set_tutorial_focus(_check, false)
+	if is_instance_valid(_tutorial_guide_button):
+		_tutorial_guide_button.z_index = 0
+		_set_tutorial_focus(_tutorial_guide_button, false)
+	_lives_row.z_index = 0
+	_set_tutorial_focus(_lives_row, false)
 
 func _start_tutorial_break(duration: float) -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or _tutorial_finishing:
@@ -2430,17 +2720,17 @@ func _advance_tutorial_after_group(row_length: int) -> void:
 			return
 	if _tutorial_stage == 0 and row_length == 2:
 		_tutorial_stage = 1
-	elif _tutorial_stage == 2 and row_length == 5:
-		_tutorial_stage = 3
-	elif _tutorial_stage == 3 and row_length == 3:
+	elif _tutorial_stage == 3 and row_length == 5:
 		_tutorial_stage = 4
-	elif _tutorial_stage == 4 and row_length == 4:
+	elif _tutorial_stage == 4 and row_length == 1:
 		_tutorial_stage = 5
+	elif _tutorial_stage == 5 and row_length == 3:
+		_tutorial_stage = 6
 	_apply_tutorial_stage()
 
 func _advance_tutorial_after_hint() -> void:
-	await get_tree().create_timer(0.58).timeout
-	if is_inside_tree() and GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 2:
+	await get_tree().create_timer(TUTORIAL_HINT_BREAK).timeout
+	if is_inside_tree() and GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage == 3:
 		_apply_tutorial_stage()
 
 func _on_tutorial_completed() -> void:
@@ -2453,7 +2743,7 @@ func _on_tutorial_completed() -> void:
 	_check.disabled = true
 	_update_tutorial_spotlight()
 	_message.text = SaveManager.text("tutorial_complete")
-	await get_tree().create_timer(0.95).timeout
+	await get_tree().create_timer(TUTORIAL_FINISH_BREAK).timeout
 	if is_inside_tree():
 		_show_tutorial_completion_screen()
 
