@@ -372,6 +372,18 @@
 		"fi_unlimited_020": {
 			"tier": 2.0,
 			"rating": 950.0
-		}
+		},
+		"fi_unlimited_021": {"tier": 4, "rating": 1260},
+		"fi_unlimited_022": {"tier": 4, "rating": 1240},
+		"fi_unlimited_023": {"tier": 5, "rating": 1380},
+		"fi_unlimited_024": {"tier": 4, "rating": 1280},
+		"fi_unlimited_025": {"tier": 4, "rating": 1220},
+		"fi_unlimited_026": {"tier": 4, "rating": 1300},
+		"fi_unlimited_027": {"tier": 5, "rating": 1360},
+		"fi_unlimited_028": {"tier": 5, "rating": 1320},
+		"fi_unlimited_029": {"tier": 4, "rating": 1300},
+		"fi_unlimited_030": {"tier": 4, "rating": 1240},
+		"fi_unlimited_031": {"tier": 5, "rating": 1380},
+		"fi_unlimited_032": {"tier": 4, "rating": 1280}
 	}
 }
