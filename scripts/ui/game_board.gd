@@ -58,6 +58,7 @@ var _pyramid: VBoxContainer
 var _check: Button
 var _clear: Button
 var _hint: Button
+var _debug_auto_solve: Button
 var _result: Button
 var _share: Button
 var _aftermath_layer: Control
@@ -246,6 +247,19 @@ func _build() -> void:
 	margin.add_child(content)
 	var top: HBoxContainer = HBoxContainer.new()
 	content.add_child(top)
+	_debug_auto_solve = Button.new()
+	_debug_auto_solve.text = SaveManager.text("debug_auto_solve")
+	_debug_auto_solve.add_theme_font_override("font", _font_dm_sans_semibold)
+	_debug_auto_solve.add_theme_font_size_override("font_size", 11)
+	_debug_auto_solve.add_theme_color_override("font_color", UI_PRIMARY)
+	_debug_auto_solve.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	_debug_auto_solve.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	_debug_auto_solve.add_theme_stylebox_override("normal", _small_pill_style(Color("fff3bd"), UI_YELLOW))
+	_debug_auto_solve.add_theme_stylebox_override("hover", _small_pill_style(UI_YELLOW, UI_PRIMARY))
+	_debug_auto_solve.add_theme_stylebox_override("pressed", _small_pill_style(Color("e9c400"), UI_PRIMARY))
+	_debug_auto_solve.pressed.connect(_on_debug_auto_solve_pressed)
+	_debug_auto_solve.visible = GameState.game_mode != GameState.TUTORIAL_MODE
+	top.add_child(_debug_auto_solve)
 	var spacer: Control = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
@@ -394,6 +408,8 @@ func refresh() -> void:
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
 	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
+	_debug_auto_solve.visible = not is_tutorial and not GameState.is_finished
+	_debug_auto_solve.disabled = GameState.is_auto_solving
 	_selection.visible = not is_tutorial
 	_message.text = SaveManager.text("tutorial_select_group") if is_tutorial else (SaveManager.text("daily_message") if is_daily else SaveManager.text("unlimited_message"))
 	_mode_label.text = SaveManager.text("tutorial_mode_label").to_upper() if is_tutorial else (SaveManager.text("daily_challenge_label").to_upper() if is_daily else "∞ %s · %s" % [SaveManager.text("unlimited_mode_label").to_upper(), (SaveManager.text("difficulty_short") % PuzzleLoader.get_difficulty_tier(GameState.puzzle)).to_upper()])
@@ -1144,6 +1160,7 @@ func _on_game_finished(won: bool, top_word: String) -> void:
 	_aftermath_scheduled = true
 	for tile: Button in _word_buttons.values():
 		tile.disabled = true
+	_debug_auto_solve.visible = false
 	_hint.visible = false
 	_check.visible = false
 	_result.visible = false
@@ -1169,6 +1186,17 @@ func _show_play_actions() -> void:
 	_share.visible = false
 	_hint.disabled = false
 	_check.disabled = not GameState.can_check_selection()
+	_debug_auto_solve.visible = GameState.game_mode != GameState.TUTORIAL_MODE
+	_debug_auto_solve.disabled = GameState.is_auto_solving
+
+func _on_debug_auto_solve_pressed() -> void:
+	if GameState.is_finished or GameState.is_auto_solving:
+		return
+	_debug_auto_solve.disabled = true
+	_debug_auto_solve.visible = false
+	_hint.disabled = true
+	_check.disabled = true
+	GameState.debug_auto_solve()
 
 func _show_result_actions() -> void:
 	_hint.visible = false
@@ -1377,7 +1405,7 @@ func _show_aftermath(won: bool) -> void:
 	streak_box.add_theme_constant_override("separation", 10)
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = not is_endless
-	var play_streak_animation: bool = has_daily_streak and SaveManager.consume_daily_streak_animation(GameState.daily_date)
+	var play_streak_animation: bool = has_daily_streak and not GameState.is_debug_completion and SaveManager.consume_daily_streak_animation(GameState.daily_date)
 	var flame: TextureRect = TextureRect.new()
 	flame.name = "StreakFlame"
 	flame.texture = ICON_FLAME

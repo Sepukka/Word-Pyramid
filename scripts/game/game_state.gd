@@ -29,6 +29,7 @@ var is_finished: bool = false
 var completed_won: bool = false
 var is_top_solved: bool = false
 var is_auto_solving: bool = false
+var is_debug_completion: bool = false
 var wrong_guesses: Array = []
 var last_failed_guess: Array[String] = []
 var last_failed_active: bool = false
@@ -56,6 +57,7 @@ func start_tutorial() -> bool:
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	last_failed_guess.clear()
 	last_failed_active = false
@@ -124,6 +126,7 @@ func start_new_game(mode: String = "daily") -> bool:
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	last_failed_guess.clear()
 	last_failed_active = false
@@ -165,6 +168,7 @@ func view_daily_result() -> bool:
 		for index: int in puzzle.get("groups", []).size():
 			result_solved_groups.append(index)
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	last_failed_guess.clear()
 	last_failed_active = false
@@ -192,6 +196,7 @@ func restart_current() -> bool:
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	last_failed_guess.clear()
 	last_failed_active = false
@@ -214,6 +219,7 @@ func reset_debug_state() -> void:
 	completed_won = false
 	is_top_solved = false
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	last_failed_guess.clear()
 	last_failed_active = false
@@ -281,6 +287,7 @@ func restore_game() -> bool:
 		for index: int in puzzle.get("groups", []).size():
 			result_solved_groups.append(index)
 	is_auto_solving = false
+	is_debug_completion = false
 	wrong_guesses.clear()
 	for guess_value: Variant in saved.get("wrong_guesses", []):
 		wrong_guesses.append(_to_string_array(guess_value))
@@ -550,6 +557,17 @@ func check_selection() -> void:
 		_save_active_game()
 	selection_changed.emit(selected_words)
 
+func debug_auto_solve() -> void:
+	if puzzle.is_empty() or is_finished or is_auto_solving or game_mode == TUTORIAL_MODE:
+		return
+	selected_words.clear()
+	last_failed_guess.clear()
+	last_failed_active = false
+	is_debug_completion = true
+	is_auto_solving = true
+	selection_changed.emit(selected_words)
+	_auto_solve_remaining(true)
+
 func get_unsolved_words() -> Array[String]:
 	var words: Array[String] = []
 	for group_value: Variant in puzzle.get("groups", []):
@@ -581,7 +599,7 @@ func _get_required_words(group: Dictionary) -> Array[String]:
 func _is_complete() -> bool:
 	return solved_groups.size() == 4 and is_top_solved
 
-func _auto_solve_remaining() -> void:
+func _auto_solve_remaining(debug_completion: bool = false) -> void:
 	await get_tree().create_timer(0.28).timeout
 	if not is_top_solved:
 		selected_words.append(str(puzzle.get("top_word", "")))
@@ -608,9 +626,22 @@ func _auto_solve_remaining() -> void:
 			await get_tree().create_timer(AUTO_SOLVE_ROW_INTERVAL).timeout
 			break
 	is_auto_solving = false
-	_finish(false)
+	if debug_completion:
+		_finish_debug_completion()
+	else:
+		_finish(false)
+
+func _finish_debug_completion() -> void:
+	is_finished = true
+	completed_won = true
+	result_correct_count = _total_word_count()
+	result_solved_groups.assign(solved_groups)
+	result_top_solved = is_top_solved
+	result_progression.clear()
+	game_finished.emit(true, str(puzzle.get("top_word", "")))
 
 func _finish(won: bool) -> void:
+	is_debug_completion = false
 	is_finished = true
 	completed_won = won
 	if won:
