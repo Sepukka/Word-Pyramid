@@ -3,11 +3,16 @@ extends Node
 func _ready() -> void:
 	SaveManager.save_path = "res://.godot-test-data/progression_save.json"
 	SaveManager.progression = SaveManager.DEFAULT_PROGRESSION.duplicate(true)
-	for mode: String in [GameState.DAILY_MODE, GameState.UNLIMITED_MODE]:
-		for puzzle: Dictionary in PuzzleLoader.get_puzzles(mode):
-			assert(PuzzleLoader.get_difficulty_tier(puzzle) in [1, 2, 3, 4, 5], "Every puzzle needs a difficulty tier")
-			var rating: int = PuzzleLoader.get_effective_difficulty_rating(puzzle)
-			assert(rating >= 500 and rating <= 1600, "Every puzzle needs a valid fixed rating")
+	var original_language: String = PuzzleLoader.get_language()
+	for language: String in ["en", "fi"]:
+		assert(PuzzleLoader.set_language(language), "Progression test must load %s puzzles" % language)
+		for mode: String in [GameState.DAILY_MODE, GameState.UNLIMITED_MODE]:
+			for puzzle: Dictionary in PuzzleLoader.get_puzzles(mode):
+				assert(PuzzleLoader.validate_puzzle(puzzle).is_empty(), "%s %s puzzle %s must validate" % [language, mode, puzzle.get("id", "")])
+				assert(PuzzleLoader.get_difficulty_tier(puzzle) in [1, 2, 3, 4, 5], "Every puzzle needs a difficulty tier")
+				var rating: int = PuzzleLoader.get_effective_difficulty_rating(puzzle)
+				assert(rating >= 500 and rating <= 1600, "Every puzzle needs a valid fixed rating")
+	assert(PuzzleLoader.set_language(original_language), "Progression test must restore the original language")
 	var puzzles: Array[Dictionary] = PuzzleLoader.get_puzzles(GameState.UNLIMITED_MODE)
 	assert(not puzzles.is_empty(), "Progression test needs Infinity puzzles")
 
