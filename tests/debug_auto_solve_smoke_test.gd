@@ -37,8 +37,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	board.refresh()
 	var debug_button: Button = board.get("_debug_auto_solve") as Button
-	assert(is_instance_valid(debug_button) and debug_button.visible, "Gameplay screen must show the debug solve button")
-	debug_button.pressed.emit()
+	assert(is_instance_valid(debug_button) and not debug_button.visible, "Gameplay screen must not expose the debug solve button")
+	board.call("_on_debug_auto_solve_pressed")
 	assert(debug_button.disabled or not debug_button.visible, "Debug solve button must lock while solving")
 	var timeout: float = 8.0
 	while not GameState.is_finished and timeout > 0.0:

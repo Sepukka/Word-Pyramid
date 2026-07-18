@@ -68,6 +68,15 @@ func _ready() -> void:
 	_assert(play_button.icon == null, "lock icon is removed after unlocking")
 	_assert(GameState.start_new_game(GameState.DAILY_MODE), "Daily opens through game state after unlocking")
 
+	main.call("show_settings")
+	await get_tree().process_frame
+	var settings_sheet: PanelContainer = main.get("_settings_sheet") as PanelContainer
+	_assert(settings_sheet != null, "settings sheet opens for release UI verification")
+	for button_node: Node in settings_sheet.find_children("*", "Button", true, false):
+		var settings_button: Button = button_node as Button
+		var button_text: String = settings_button.text.to_lower()
+		_assert(not button_text.contains("debug") and not button_text.contains("äänilaboratorio") and not button_text.contains("sound laboratory"), "settings do not expose development buttons")
+
 	print("ONBOARDING_UNLOCK_SMOKE_TEST_PASS")
 	main.queue_free()
 	await get_tree().process_frame

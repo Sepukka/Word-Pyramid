@@ -271,7 +271,7 @@ func _build() -> void:
 	_debug_auto_solve.add_theme_stylebox_override("hover", _small_pill_style(UI_YELLOW, UI_PRIMARY))
 	_debug_auto_solve.add_theme_stylebox_override("pressed", _small_pill_style(Color("e9c400"), UI_PRIMARY))
 	_debug_auto_solve.pressed.connect(_on_debug_auto_solve_pressed)
-	_debug_auto_solve.visible = GameState.game_mode != GameState.TUTORIAL_MODE
+	_debug_auto_solve.visible = false
 	top.add_child(_debug_auto_solve)
 	var spacer: Control = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -440,7 +440,7 @@ func refresh() -> void:
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
 	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
-	_debug_auto_solve.visible = not is_tutorial and not GameState.is_finished
+	_debug_auto_solve.visible = false
 	_debug_auto_solve.disabled = GameState.is_auto_solving
 	_selection.visible = not is_tutorial
 	if is_tutorial:
@@ -1289,7 +1289,7 @@ func _show_play_actions() -> void:
 	_share.visible = false
 	_hint.disabled = false
 	_check.disabled = not GameState.can_check_selection()
-	_debug_auto_solve.visible = GameState.game_mode != GameState.TUTORIAL_MODE
+	_debug_auto_solve.visible = false
 	_debug_auto_solve.disabled = GameState.is_auto_solving
 
 func _on_debug_auto_solve_pressed() -> void:
