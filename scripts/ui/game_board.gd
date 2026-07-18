@@ -112,6 +112,9 @@ var _tutorial_focus_words: Array[String] = []
 var _tutorial_focus_tweens: Dictionary = {}
 var _tutorial_guide_button: Button
 var _tutorial_intro_layer: Control
+var _tutorial_feature_layer: Control
+var _tutorial_feature_card: Control
+var _tutorial_feature_tween: Tween
 var _tutorial_completion_layer: Control
 var _instructions_layer: Control
 
@@ -2345,8 +2348,6 @@ func _apply_tutorial_stage() -> void:
 			_tutorial_focus_words.assign(_tutorial_target_words)
 		1:
 			guide_text = SaveManager.text("tutorial_mistakes_body")
-			if is_instance_valid(_tutorial_guide_button):
-				_tutorial_guide_button.visible = true
 		2:
 			guide_text = SaveManager.text("tutorial_use_hint")
 		3:
@@ -2377,6 +2378,10 @@ func _apply_tutorial_stage() -> void:
 	if not _tutorial_paused:
 		_message.text = guide_text
 	_update_tutorial_spotlight()
+	if not _tutorial_paused and _tutorial_stage == 1:
+		call_deferred("_show_tutorial_mistakes_feature")
+	elif not _tutorial_paused and _tutorial_stage == 2:
+		call_deferred("_show_tutorial_hint_feature")
 	if _tutorial_stage >= 5:
 		_arm_tutorial_idle_help()
 
@@ -2453,6 +2458,164 @@ func _on_tutorial_guide_continue() -> void:
 		return
 	_tutorial_stage = 2
 	_apply_tutorial_stage()
+
+func _show_tutorial_mistakes_feature() -> void:
+	if _tutorial_stage != 1 or _tutorial_paused or is_instance_valid(_tutorial_feature_layer):
+		return
+	await get_tree().process_frame
+	if _tutorial_stage != 1 or _tutorial_paused or not is_instance_valid(_lives_row):
+		return
+	_create_tutorial_feature_layer(1)
+	var card: PanelContainer = PanelContainer.new()
+	card.name = "TutorialMistakesFeature"
+	card.size = Vector2(304, 178)
+	card.add_theme_stylebox_override("panel", _tutorial_completion_style())
+	_tutorial_feature_layer.add_child(card)
+	_tutorial_feature_card = card
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 9)
+	margin.add_child(content)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("tutorial_mistakes_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", UI_PRIMARY)
+	content.add_child(title)
+	var dots: HBoxContainer = HBoxContainer.new()
+	dots.alignment = BoxContainer.ALIGNMENT_CENTER
+	dots.add_theme_constant_override("separation", 12)
+	content.add_child(dots)
+	var maximum: int = int(SaveManager.settings.get("attempts", 4))
+	for _index: int in range(maximum):
+		var dot: Panel = Panel.new()
+		dot.custom_minimum_size = Vector2(18, 18)
+		dot.add_theme_stylebox_override("panel", _life_dot_style(false))
+		dots.add_child(dot)
+	var action: Button = Button.new()
+	action.name = "TutorialMistakesContinue"
+	action.text = SaveManager.text("tutorial_continue")
+	action.custom_minimum_size = Vector2(150, 42)
+	action.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	action.disabled = true
+	action.add_theme_font_override("font", _font_fredoka_bold)
+	action.add_theme_font_size_override("font_size", 15)
+	action.add_theme_color_override("font_color", UI_PRIMARY)
+	action.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	action.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	action.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
+	action.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
+	action.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	action.pressed.connect(_on_tutorial_mistakes_feature_pressed.bind(action))
+	content.add_child(action)
+	_lives_row.modulate.a = 0.0
+	await _animate_tutorial_feature_in(card, _lives_row, Vector2(304, 178))
+	if is_instance_valid(action) and _tutorial_stage == 1:
+		action.disabled = false
+
+func _on_tutorial_mistakes_feature_pressed(action: Button) -> void:
+	if action.disabled or _tutorial_stage != 1 or not is_instance_valid(_tutorial_feature_card):
+		return
+	action.disabled = true
+	await _animate_tutorial_feature_back(_tutorial_feature_card, _lives_row)
+	_lives_row.modulate.a = 1.0
+	_clear_tutorial_feature_layer()
+	_tutorial_stage = 2
+	_apply_tutorial_stage()
+
+func _show_tutorial_hint_feature() -> void:
+	if _tutorial_stage != 2 or _tutorial_paused or is_instance_valid(_tutorial_feature_layer):
+		return
+	await get_tree().process_frame
+	if _tutorial_stage != 2 or _tutorial_paused or not is_instance_valid(_hint):
+		return
+	_create_tutorial_feature_layer(2)
+	var action: Button = _action_button(_hint.text)
+	action.name = "TutorialHintFeature"
+	action.icon = ICON_LIGHTBULB
+	action.expand_icon = true
+	action.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	action.add_theme_constant_override("icon_max_width", 24)
+	action.custom_minimum_size = Vector2(230, 72)
+	action.size = Vector2(230, 72)
+	action.disabled = true
+	action.add_theme_font_size_override("font_size", 18)
+	action.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
+	action.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
+	action.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	action.pressed.connect(_on_tutorial_hint_feature_pressed.bind(action))
+	_tutorial_feature_layer.add_child(action)
+	_tutorial_feature_card = action
+	_hint.modulate.a = 0.0
+	await _animate_tutorial_feature_in(action, _hint, Vector2(230, 72))
+	if is_instance_valid(action) and _tutorial_stage == 2:
+		action.disabled = false
+
+func _on_tutorial_hint_feature_pressed(action: Button) -> void:
+	if action.disabled or _tutorial_stage != 2 or not is_instance_valid(_tutorial_feature_card):
+		return
+	action.disabled = true
+	await _animate_tutorial_feature_back(_tutorial_feature_card, _hint)
+	_hint.modulate.a = 1.0
+	_clear_tutorial_feature_layer()
+	_on_hint_pressed()
+
+func _create_tutorial_feature_layer(stage: int) -> void:
+	_tutorial_feature_layer = Control.new()
+	_tutorial_feature_layer.name = "TutorialFeatureLayer"
+	_tutorial_feature_layer.set_meta("tutorial_stage", stage)
+	_tutorial_feature_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tutorial_feature_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tutorial_feature_layer.z_index = 31
+	add_child(_tutorial_feature_layer)
+
+func _animate_tutorial_feature_in(feature: Control, source: Control, feature_size: Vector2) -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(feature) or not is_instance_valid(source):
+		return
+	var source_center: Vector2 = source.get_global_rect().get_center() - get_global_rect().position
+	var target_center: Vector2 = Vector2(size.x * 0.5, size.y * 0.54)
+	feature.size = feature_size
+	feature.position = source_center - feature_size * 0.5
+	feature.pivot_offset = feature_size * 0.5
+	feature.scale = Vector2(0.68, 0.68)
+	feature.modulate.a = 0.35
+	if _tutorial_feature_tween != null and _tutorial_feature_tween.is_running():
+		_tutorial_feature_tween.kill()
+	_tutorial_feature_tween = create_tween().set_parallel(true)
+	_tutorial_feature_tween.tween_property(feature, "position", target_center - feature_size * 0.5, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tutorial_feature_tween.tween_property(feature, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tutorial_feature_tween.tween_property(feature, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await _tutorial_feature_tween.finished
+
+func _animate_tutorial_feature_back(feature: Control, source: Control) -> void:
+	if not is_instance_valid(feature) or not is_instance_valid(source):
+		return
+	var source_center: Vector2 = source.get_global_rect().get_center() - get_global_rect().position
+	var target_position: Vector2 = source_center - feature.size * 0.5
+	if _tutorial_feature_tween != null and _tutorial_feature_tween.is_running():
+		_tutorial_feature_tween.kill()
+	_tutorial_feature_tween = create_tween().set_parallel(true)
+	_tutorial_feature_tween.tween_property(feature, "position", target_position, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_tutorial_feature_tween.tween_property(feature, "scale", Vector2(0.68, 0.68), 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tutorial_feature_tween.tween_property(feature, "modulate:a", 0.25, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await _tutorial_feature_tween.finished
+
+func _clear_tutorial_feature_layer() -> void:
+	if _tutorial_feature_tween != null and _tutorial_feature_tween.is_running():
+		_tutorial_feature_tween.kill()
+	_tutorial_feature_tween = null
+	_tutorial_feature_card = null
+	if is_instance_valid(_tutorial_feature_layer):
+		_tutorial_feature_layer.queue_free()
+	_tutorial_feature_layer = null
 
 func _show_tutorial_intro() -> void:
 	if is_instance_valid(_tutorial_intro_layer):
@@ -2592,7 +2755,8 @@ func _update_tutorial_selection_message() -> void:
 		_check.disabled = true
 		_update_tutorial_spotlight()
 		return
-	if not GameState.selected_words.is_empty() and GameState.can_check_selection():
+	var target_size_reached: bool = not _tutorial_target_words.is_empty() and GameState.selected_words.size() == _tutorial_target_words.size()
+	if target_size_reached and GameState.can_check_selection():
 		_message.text = SaveManager.text("tutorial_press_check")
 	elif _tutorial_stage == 3:
 		_message.text = SaveManager.text("tutorial_finish_hint_row")
@@ -2633,8 +2797,8 @@ func _update_tutorial_spotlight() -> void:
 	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
 	_set_tutorial_focus(_check, selection_ready and GameState.can_check_selection())
 	if is_instance_valid(_tutorial_guide_button):
-		_tutorial_guide_button.z_index = 21 if _tutorial_stage == 1 else 0
-		_set_tutorial_focus(_tutorial_guide_button, _tutorial_stage == 1)
+		_tutorial_guide_button.z_index = 0
+		_set_tutorial_focus(_tutorial_guide_button, false)
 	_lives_row.z_index = 21 if _tutorial_stage == 1 else 0
 	_set_tutorial_focus(_lives_row, _tutorial_stage == 1)
 	_message.z_index = 22
