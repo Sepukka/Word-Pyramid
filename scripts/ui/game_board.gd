@@ -510,14 +510,18 @@ func _build_pyramid() -> void:
 		_pyramid_rows[row_length] = row
 		var solved_group: Dictionary = _solved_group_for_row(row_length)
 		if not solved_group.is_empty():
-			if row_length == _animating_row:
-				var placed_row: Array[Label] = []
+			# The top word always remains a word block. Other solved rows are only
+			# represented by word blocks during their placement animation, after
+			# which a category card covers the completed row.
+			if row_length == 1 or row_length == _animating_row:
+				var placed_row: Array[Button] = []
 				var locked_hint_words: Array[String] = GameState.get_hint_words_for_row(row_length)
 				for solved_word: String in GameState._to_string_array(solved_group.get("words", [])):
-					var placed_tile: Label = _create_placed_tile(solved_word, row_length)
+					var placed_tile: Button = _create_placed_tile(solved_word, row_length)
 					# The hint was already locked in this row, so keep it visible
 					# while the remaining blocks finish their placement animation.
-					placed_tile.modulate.a = 1.0 if locked_hint_words.has(solved_word) else 0.0
+					var placement_is_finished: bool = row_length != _animating_row
+					placed_tile.modulate.a = 1.0 if placement_is_finished or locked_hint_words.has(solved_word) else 0.0
 					row.add_child(placed_tile)
 					placed_row.append(placed_tile)
 				_placed_tiles[row_length] = placed_row
@@ -560,16 +564,10 @@ func _build_pyramid() -> void:
 
 func _create_word_tile(word: String) -> Button:
 	var tile: Button = Button.new()
+	_configure_word_tile(tile, word)
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
-	tile.text = _display_word(word)
 	tile.toggle_mode = true
-	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.tooltip_text = SaveManager.text("select_tooltip") % word
-	tile.add_theme_font_override("font", _tile_font(word))
-	tile.add_theme_color_override("font_color", UI_TEXT)
-	tile.add_theme_font_size_override("font_size", 13)
 	_apply_word_tile_visual(tile, false)
 	tile.pressed.connect(_on_word_tile_pressed.bind(tile, word))
 	return tile
@@ -584,17 +582,12 @@ func _on_word_tile_pressed(tile: Button, word: String) -> void:
 
 func _create_hinted_tile(word: String, row_length: int) -> Button:
 	var tile: Button = Button.new()
+	_configure_word_tile(tile, word)
 	tile.name = "HintedTile_%d" % row_length
 	tile.set_meta("hinted", true)
 	tile.set_meta("row_length", row_length)
 	tile.set_meta(SoundManager.SKIP_UI_CLICK_SOUND_META, true)
-	tile.text = _display_word(word)
 	tile.disabled = true
-	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tile.add_theme_font_override("font", _tile_font(word))
-	tile.add_theme_font_size_override("font_size", 13)
 	# Hinted tiles are rebuilt whenever the board refreshes. Apply the row style
 	# to the disabled state itself so the locked color survives that rebuild.
 	tile.add_theme_color_override("font_disabled_color", _row_text(row_length))
@@ -602,18 +595,28 @@ func _create_hinted_tile(word: String, row_length: int) -> Button:
 	tile.tooltip_text = SaveManager.text("hint_tooltip")
 	return tile
 
-func _create_placed_tile(word: String, row_length: int) -> Label:
-	var tile: Label = Label.new()
+func _create_placed_tile(word: String, row_length: int) -> Button:
+	var tile: Button = Button.new()
+	_configure_word_tile(tile, word)
+	tile.name = "PlacedTile_%d" % row_length
+	tile.disabled = true
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.focus_mode = Control.FOCUS_NONE
+	_apply_static_tile_visual(tile, _tile_style(_row_fill(row_length), _row_border(row_length)), _row_text(row_length))
+	return tile
+
+func _configure_word_tile(tile: Button, word: String) -> void:
+	# Every board word uses this exact text configuration. Keeping playable,
+	# hinted, placed, and flying tiles on the same Button control prevents Godot
+	# from changing text metrics when a correct row is rebuilt.
 	tile.text = _display_word(word)
-	tile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tile.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tile.set_meta("word", word)
 	tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tile.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tile.add_theme_font_override("font", _tile_font(word))
 	tile.add_theme_font_size_override("font_size", 13)
-	tile.add_theme_color_override("font_color", _row_text(row_length))
-	tile.add_theme_stylebox_override("normal", _tile_style(_row_fill(row_length), _row_border(row_length)))
-	return tile
+	tile.add_theme_color_override("font_color", UI_TEXT)
 
 func _create_category_card(group: Dictionary) -> PanelContainer:
 	var card: PanelContainer = PanelContainer.new()
@@ -715,7 +718,7 @@ func _layout_for_width() -> void:
 		hinted_tile.size = Vector2(tile_size, tile_height)
 		hinted_tile.add_theme_font_size_override("font_size", shared_font_size)
 	for row_length: int in _placed_tiles:
-		for placed_tile: Label in _placed_tiles[row_length]:
+		for placed_tile: Button in _placed_tiles[row_length]:
 			placed_tile.custom_minimum_size = Vector2(tile_size, tile_height)
 			placed_tile.size = Vector2(tile_size, tile_height)
 			placed_tile.add_theme_font_size_override("font_size", shared_font_size)
@@ -875,8 +878,11 @@ func _on_group_solved(group: Dictionary) -> void:
 		_row_reveal_tween = create_tween()
 		_row_reveal_tween.tween_interval(0.60)
 		_row_reveal_tween.tween_callback(func() -> void: _show_placed_row(row_length))
-		_row_reveal_tween.tween_interval(0.24)
-		_row_reveal_tween.tween_callback(func() -> void: _activate_category_card(row_length, group))
+		if row_length == 1:
+			_row_reveal_tween.tween_callback(_finish_top_word_placement)
+		else:
+			_row_reveal_tween.tween_interval(0.24)
+			_row_reveal_tween.tween_callback(func() -> void: _activate_category_card(row_length, group))
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
 		call_deferred("_advance_tutorial_after_group", row_length)
 
@@ -884,10 +890,10 @@ func _on_top_solved(_word: String) -> void:
 	_on_group_solved({"size": 1, "words": [str(GameState.puzzle.get("top_word", ""))]})
 
 func _activate_category_card(row_length: int, group: Dictionary) -> void:
-	if not _pyramid_rows.has(row_length) or not _placed_tiles.has(row_length):
+	if row_length == 1 or not _pyramid_rows.has(row_length) or not _placed_tiles.has(row_length):
 		return
 	var row: HBoxContainer = _pyramid_rows[row_length]
-	for placed_tile: Label in _placed_tiles[row_length]:
+	for placed_tile: Button in _placed_tiles[row_length]:
 		row.remove_child(placed_tile)
 		placed_tile.queue_free()
 	_placed_tiles.erase(row_length)
@@ -907,6 +913,12 @@ func _activate_category_card(row_length: int, group: Dictionary) -> void:
 	tween.tween_property(category_card, "modulate:a", 1.0, 0.20)
 	_on_selection_changed(GameState.selected_words)
 
+func _finish_top_word_placement() -> void:
+	_animating_row = -1
+	_is_placing = false
+	_row_reveal_tween = null
+	_on_selection_changed(GameState.selected_words)
+
 func _size_category_card_for_row(category_card: PanelContainer, row_length: int) -> void:
 	var row_wrapper: Control = _pyramid_row_wrappers.get(row_length) as Control
 	if row_wrapper == null:
@@ -921,7 +933,7 @@ func _size_category_card_for_row(category_card: PanelContainer, row_length: int)
 func _show_placed_row(row_length: int) -> void:
 	if not _placed_tiles.has(row_length):
 		return
-	for placed_tile: Label in _placed_tiles[row_length]:
+	for placed_tile: Button in _placed_tiles[row_length]:
 		placed_tile.modulate.a = 1.0
 
 func _cancel_row_reveal_animation() -> void:
@@ -939,11 +951,28 @@ func _capture_row_swap(row_length: int) -> Dictionary:
 	for word: String in GameState.selected_words:
 		if _word_buttons.has(word):
 			var tile: Button = _word_buttons[word]
-			selected.append({"word": word, "point": _to_board_point(tile.get_global_rect().get_center()), "size": tile.size})
+			selected.append({
+				"word": word,
+				"point": _to_board_point(tile.get_global_rect().get_center()),
+				"size": tile.size,
+				"font_size": tile.get_theme_font_size("font_size"),
+			})
 	for word: String in _word_buttons:
 		var target_tile: Button = _word_buttons[word]
 		if int(target_tile.get_meta("row_length", 0)) == row_length:
-			targets.append({"word": word, "point": _to_board_point(target_tile.get_global_rect().get_center()), "size": target_tile.size, "row_length": row_length})
+			var resting_center: Vector2 = target_tile.get_global_rect().get_center()
+			# Selected blocks are visually lifted, but a solved row must always land
+			# on the row's fixed resting baseline. Without this correction the final
+			# destination varied depending on which target slots were selected.
+			if bool(target_tile.get_meta("selection_lifted", false)):
+				resting_center.y += SELECTION_LIFT
+			targets.append({
+				"word": word,
+				"point": _to_board_point(resting_center),
+				"size": target_tile.size,
+				"font_size": target_tile.get_theme_font_size("font_size"),
+				"row_length": row_length,
+			})
 	return {"selected": selected, "targets": targets}
 
 func _apply_swap_to_word_order(swap: Dictionary) -> void:
@@ -1003,7 +1032,8 @@ func _animate_row_swap(swap: Dictionary) -> void:
 			var matched_target: Dictionary = open_targets[matching_target_index]
 			var fixed_point: Vector2 = matched_target.get("point", Vector2.ZERO)
 			var fixed_size: Vector2 = matched_target.get("size", Vector2(76.0, 76.0))
-			_fly_ghost(str(source.get("word", "")), fixed_point, fixed_point, fixed_size, correct_fill, correct_border)
+			var fixed_font_size: int = int(source.get("font_size", _uniform_tile_font_size(fixed_size.x)))
+			_fly_ghost(str(source.get("word", "")), source.get("point", fixed_point), fixed_point, fixed_size, correct_fill, correct_border, fixed_font_size, true)
 			open_targets.remove_at(matching_target_index)
 		else:
 			moving_selected.append(source)
@@ -1014,24 +1044,27 @@ func _animate_row_swap(swap: Dictionary) -> void:
 		var target_point: Vector2 = target.get("point", Vector2.ZERO)
 		var source_size: Vector2 = source.get("size", Vector2(76.0, 76.0))
 		var target_size: Vector2 = target.get("size", Vector2(76.0, 76.0))
-		_fly_ghost(str(source.get("word", "")), source_point, target_point, source_size, correct_fill, correct_border)
+		var source_font_size: int = int(source.get("font_size", _uniform_tile_font_size(source_size.x)))
+		_fly_ghost(str(source.get("word", "")), source_point, target_point, source_size, correct_fill, correct_border, source_font_size, true)
 		var target_word: String = str(target.get("word", ""))
 		if target_word != str(source.get("word", "")) and not GameState.selected_words.has(target_word):
-			_fly_ghost(target_word, target_point, source_point, target_size, UI_SURFACE, UI_BORDER)
+			var target_font_size: int = int(target.get("font_size", _uniform_tile_font_size(target_size.x)))
+			_fly_ghost(target_word, target_point, source_point, target_size, UI_SURFACE, UI_BORDER, target_font_size)
 
-func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: Vector2, fill_color: Color, border_color: Color) -> void:
-	var ghost: Label = Label.new()
-	ghost.text = _display_word(word)
+func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: Vector2, fill_color: Color, border_color: Color, font_size: int = -1, preserve_selected_visual: bool = false) -> void:
+	var ghost: Button = Button.new()
+	_configure_word_tile(ghost, word)
+	ghost.name = "FlyingTile"
 	ghost.position = start - block_size * 0.5
 	ghost.size = block_size
-	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	ghost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ghost.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	ghost.add_theme_font_override("font", _tile_font(word))
-	ghost.add_theme_font_size_override("font_size", _uniform_tile_font_size(block_size.x))
-	ghost.add_theme_color_override("font_color", UI_TEXT)
-	ghost.add_theme_stylebox_override("normal", _tile_style(fill_color, border_color))
+	ghost.custom_minimum_size = block_size
+	ghost.disabled = true
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.focus_mode = Control.FOCUS_NONE
+	ghost.add_theme_font_size_override("font_size", _uniform_tile_font_size(block_size.x) if font_size < 0 else font_size)
+	var style: StyleBoxFlat = _selected_tile_style() if preserve_selected_visual else _tile_style(fill_color, border_color)
+	var text_color: Color = UI_PRIMARY if preserve_selected_visual else UI_TEXT
+	_apply_static_tile_visual(ghost, style, text_color)
 	ghost.z_index = 10
 	add_child(ghost)
 	_row_animation_ghosts.append(ghost)
@@ -1144,11 +1177,15 @@ func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) 
 	else:
 		style = _tile_style(UI_SURFACE, UI_BORDER)
 		text_color = UI_TEXT
-	tile.add_theme_stylebox_override("normal", style)
-	tile.add_theme_stylebox_override("pressed", style)
-	tile.add_theme_stylebox_override("hover_pressed", style)
-	tile.add_theme_stylebox_override("disabled", style)
+	_apply_static_tile_visual(tile, style, text_color)
 	tile.add_theme_stylebox_override("hover", style if selected or wrong else _tile_style(UI_SURFACE, Color("a89dd4")))
+
+func _apply_static_tile_visual(tile: Button, style: StyleBoxFlat, text_color: Color) -> void:
+	# Apply one geometry-identical style to every state. A tile can be disabled
+	# while it is placed or flying, but that state must never change its margins,
+	# font metrics, or outer block dimensions.
+	for state: String in ["normal", "pressed", "hover_pressed", "disabled", "hover", "focus"]:
+		tile.add_theme_stylebox_override(state, style)
 	_apply_tile_text_colors(tile, text_color)
 	tile.add_theme_color_override("font_disabled_color", text_color)
 

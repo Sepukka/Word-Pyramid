@@ -76,6 +76,12 @@ func _verify_fixed_block_metrics() -> void:
 	var placed_rows: Dictionary = _board.get("_placed_tiles")
 	for row_value: Variant in placed_rows.values():
 		for placed_value: Variant in row_value:
-			var placed_tile: Label = placed_value as Label
+			var placed_tile: Button = placed_value as Button
+			assert(placed_tile != null, "Every placed word must retain the same Button control type")
 			assert(placed_tile.size.is_equal_approx(_expected_tile_size), "A placed word block changed size during automatic completion")
 			assert(placed_tile.get_theme_font_size("font_size") == _expected_font_size, "A placed word block changed font size during automatic completion")
+	var ghosts: Array[Control] = _board.get("_row_animation_ghosts")
+	for ghost: Control in ghosts:
+		assert(ghost is Button, "A moving word must retain the same Button control type")
+		assert(ghost.size.is_equal_approx(_expected_tile_size), "A moving word block changed size during automatic completion")
+		assert(ghost.get_theme_font_size("font_size") == _expected_font_size, "A moving word block changed font size during automatic completion")
