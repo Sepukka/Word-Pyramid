@@ -1,4 +1,4 @@
-# Word Pyramid UI Style Guide For Godot
+# Word Ascent UI Style Guide For Godot
 
 This file is the Godot companion to the real design source:
 
@@ -6,7 +6,7 @@ This file is the Godot companion to the real design source:
 C:\Users\paavo\Downloads\Word Pyramid Game UI\guidelines\Guidelines.md
 ```
 
-Always consult that file first before editing Word Pyramid UI. It is the single source of truth for colors, spacing, fonts, animations, component patterns, and result-screen behavior.
+Always consult that file first before editing Word Ascent UI. It is the single source of truth for colors, spacing, fonts, animations, component patterns, and result-screen behavior.
 
 The React prototype remains useful for implementation examples:
 
@@ -19,10 +19,10 @@ C:\Users\paavo\Downloads\Word Pyramid Game UI\src\App.tsx
 - Style: Memphis-inspired puzzle game UI.
 - Tone: focused, rewarding, clean.
 - Phone-first target: 390x844.
-- The pyramid is the hero. UI chrome should support it, not compete with it.
+- The word mountain is the hero. UI chrome should support it, not compete with it.
 - Do not invent a new style when `Guidelines.md` already specifies one.
 - Do not use thin text for important UI. Important UI uses Fredoka 600-700.
-- Do not swap pyramid level colors.
+- Do not swap mountain level colors.
 - Do not use soft shadows for cards/buttons where the guide specifies hard Memphis offset shadows.
 
 ## Fonts
@@ -65,7 +65,7 @@ Use exact values from `Guidelines.md`.
 --bg-outer     #E8E0F0
 --navy         #1A0A5E
 --navy-light   #EEE9FA
---muted        #9B8CD4
+--muted        #7666A8
 --muted-light  #D6CFEF
 --border       #D6CFEF
 --error        #FF5533
@@ -79,12 +79,36 @@ Level colors are fixed:
 
 ```text
 Level 1 APEX, 1 tile: #B939FF, text #FFFFFF, tint #F5E0FF
-Level 2 PAIR, 2 tiles: #FF5533, text #FFFFFF, tint #FFE8E3
-Level 3 TRIO, 3 tiles: #00BFA5, text #FFFFFF, tint #CCFAF4
+Level 2 PAIR, 2 tiles: #FF5533, text #1A0A5E, tint #FFE8E3
+Level 3 TRIO, 3 tiles: #00BFA5, text #1A0A5E, tint #CCFAF4
 Level 4 BASE, 4 tiles: #FFD600, text #1A0A5E, tint #FFFBCC
 ```
 
-Note: the current Godot game has a 5-row/15-word pyramid. Preserve the same color identity principles when mapping the extra row, and do not make adjacent lower rows visually indistinguishable.
+Note: the current Godot game has a 5-level/15-word mountain. Preserve the same color identity principles when mapping the extra level, and do not make adjacent lower levels visually indistinguishable.
+
+## Semantic Color Roles
+
+Use color to communicate one stable meaning throughout the game:
+
+```text
+Navy #1A0A5E       brand, headings, selected tiles
+Yellow #FFD600     primary actions, rewards, current day
+Teal #00BFA5       success, solved state, positive progress
+Coral #FF5533      errors, failed state, lost Stamina
+Magenta #B939FF    hints and the apex level
+Lavender surfaces  neutral, secondary, disabled, locked
+```
+
+- Do not use yellow as the selected-tile outline; it is reserved for primary
+  actions and rewards.
+- Do not use coral for selection; it is reserved for errors and failure.
+- Never communicate success/failure by color alone. Pair it with a checkmark,
+  cross, icon, label, or distinct shape.
+- Secondary text on the warm background uses `#7666A8`, which provides about
+  4.9:1 contrast. The older `#9B8CD4` is decorative only and must not be used
+  for essential small text.
+- Coral and teal level tiles use navy text because white text does not provide
+  enough contrast at the game tile font size.
 
 Confetti colors for win result:
 
@@ -160,7 +184,7 @@ overlay/sheet -> full-screen Control + ColorRect backdrop + PanelContainer sheet
 
 Prefer responsive containers. Avoid absolute positioning unless building overlay decoration, confetti, or animation ghosts.
 
-## Pyramid Tiles
+## Mountain Tiles
 
 Spec from `Guidelines.md`:
 
@@ -193,6 +217,11 @@ Do not stretch tiles into a different shape. If text does not fit, reduce font s
 Must follow the guideline/prototype:
 
 - App title is Fredoka, large, thick, navy.
+- The compact Word Ascent mark uses navy outlines, a short hard offset shadow,
+  a snow-capped summit, and a small yellow flag.
+- Decorative mountain silhouettes, dot clusters, and four-point sparkles may
+  appear at screen edges at low contrast. They must never compete with copy or
+  interactive controls.
 - Daily challenge card uses the Memphis card feel.
 - Date badge is compact and yellow.
 - Metadata should be theme + `15 words` + `4 categories`.
@@ -203,11 +232,15 @@ Must follow the guideline/prototype:
 
 ## Game Board
 
-- Keep the pyramid centered in the playable area.
+- Keep the mountain centered in the playable area.
+- Use the compact summit mark beside the Word Ascent header instead of a text
+  triangle or emoji.
+- Background mountain, dot, and sparkle motifs remain decorative and
+  non-interactive.
 - Preserve tile shape and uniform tile width.
 - Action buttons must be large enough for phone taps.
 - Selected text must stay readable.
-- The bottom area should not look empty, but the pyramid should not collide with buttons.
+- The bottom area should not look empty, but the mountain should not collide with buttons.
 
 ## Result / Aftermath Screen
 
@@ -289,7 +322,7 @@ Do not show a separate `Result: 15/15` button in aftermath unless the user expli
 Follow timings from `Guidelines.md`:
 
 ```text
-Wrong guess: shake pyramid, flash wrong tiles, revert after ~620ms
+Wrong guess: shake mountain, flash wrong tiles, revert after ~620ms
 Loss overlay: about 820ms after final wrong submit
 Win overlay: about 600ms after final solved group
 Streak number changes/animates: about 700ms after overlay appears

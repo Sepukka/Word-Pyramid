@@ -1,80 +1,80 @@
 {
   "puzzles": [
-    {"id":"daily_001","title":"Cosmic Connections","groups":[
-      {"size":2,"label":"Rocky planets","words":["MERCURY","VENUS"]},
-      {"size":3,"label":"Galilean moons","words":["IO","EUROPA","GANYMEDE"]},
-      {"size":4,"label":"Space agencies","words":["NASA","ESA","JAXA","ISRO"]},
-      {"size":5,"label":"Constellations","words":["ORION","LYRA","DRACO","ARIES","CYGNUS"]}
-    ],"top_word":"COMET"},
-    {"id":"daily_002","title":"Taste of Italy","groups":[
-      {"size":2,"label":"Italian cheeses","words":["RICOTTA","MASCARPONE"]},
-      {"size":3,"label":"Pasta shapes","words":["PENNE","FUSILLI","RIGATONI"]},
-      {"size":4,"label":"Italian cities","words":["ROME","MILAN","NAPLES","VERONA"]},
-      {"size":5,"label":"Pizza toppings","words":["BASIL","OLIVE","ANCHOVY","MUSHROOM","PEPPERONI"]}
-    ],"top_word":"GELATO"},
-    {"id":"daily_003","title":"Bookish Day","groups":[
-      {"size":2,"label":"Shakespeare tragedies","words":["HAMLET","OTHELLO"]},
-      {"size":3,"label":"Famous detectives","words":["POIROT","MARPLE","HOLMES"]},
-      {"size":4,"label":"Book formats","words":["HARDCOVER","PAPERBACK","EBOOK","AUDIOBOOK"]},
-      {"size":5,"label":"Library sections","words":["FICTION","HISTORY","POETRY","BIOGRAPHY","SCIENCE"]}
-    ],"top_word":"BOOKMARK"},
-    {"id":"daily_004","title":"Ocean Depths","groups":[
-      {"size":2,"label":"Ocean currents","words":["GULFSTREAM","KUROSHIO"]},
-      {"size":3,"label":"Sea mammals","words":["DOLPHIN","WALRUS","MANATEE"]},
-      {"size":4,"label":"Coral reef fish","words":["CLOWNFISH","ANGELFISH","BUTTERFLYFISH","PARROTFISH"]},
-      {"size":5,"label":"Things found on a beach","words":["SHELL","DRIFTWOOD","PEBBLE","SEAGRASS","SANDCASTLE"]}
-    ],"top_word":"ANCHOR","display_breaks":{"BUTTERFLYFISH":"BUTTERFLY\nFISH","SANDCASTLE":"SAND\nCASTLE"}},
-    {"id":"daily_005","title":"Around the World","groups":[
-      {"size":2,"label":"Countries in Scandinavia","words":["FINLAND","SWEDEN"]},
-      {"size":3,"label":"Capital cities","words":["LISBON","OTTAWA","SEOUL"]},
-      {"size":4,"label":"Famous rivers","words":["NILE","DANUBE","AMAZON","YANGTZE"]},
-      {"size":5,"label":"Desert animals","words":["CAMEL","FENNEC","SCORPION","MEERKAT","JERBOA"]}
-    ],"top_word":"PASSPORT"},
-    {"id":"daily_006","title":"Screen Time","groups":[
-      {"size":2,"label":"Silent film stars","words":["CHAPLIN","KEATON"]},
-      {"size":3,"label":"Pixar films","words":["COCO","RATATOUILLE","WALLE"]},
-      {"size":4,"label":"Film crew roles","words":["DIRECTOR","EDITOR","GAFFER","PRODUCER"]},
-      {"size":5,"label":"Cinema snacks","words":["POPCORN","NACHOS","PRETZEL","SODA","CANDY"]}
-    ],"top_word":"PROJECTOR"},
-    {"id":"daily_007","title":"Garden Party","groups":[
-      {"size":2,"label":"Garden tools","words":["TROWEL","RAKE"]},
-      {"size":3,"label":"Spring flowers","words":["TULIP","DAFFODIL","CROCUS"]},
-      {"size":4,"label":"Herbs","words":["THYME","SAGE","MINT","DILL"]},
-      {"size":5,"label":"Things a plant needs","words":["SUNLIGHT","WATER","SOIL","AIR","NUTRIENTS"]}
-    ],"top_word":"GREENHOUSE"},
-    {"id":"daily_008","title":"On the Move","groups":[
-      {"size":2,"label":"Two-wheeled vehicles","words":["BICYCLE","SCOOTER"]},
-      {"size":3,"label":"Railway terms","words":["PLATFORM","CARRIAGE","LOCOMOTIVE"]},
-      {"size":4,"label":"Airport codes","words":["HEL","LHR","JFK","NRT"]},
-      {"size":5,"label":"Road trip supplies","words":["MAP","FUEL","SNACKS","CAMERA","SUNGLASSES"]}
-    ],"top_word":"SUITCASE"},
-    {"id":"daily_009","title":"Music Room","groups":[
-      {"size":2,"label":"String instruments","words":["VIOLIN","CELLO"]},
-      {"size":3,"label":"Musical tempos","words":["LARGO","ANDANTE","PRESTO"]},
-      {"size":4,"label":"Music notation symbols","words":["CLEF","REST","SHARP","FERMATA"]},
-      {"size":5,"label":"Festival essentials","words":["TENT","WRISTBAND","STAGE","SPEAKERS","CROWDS"]}
-    ],"top_word":"ENCORE"},
-    {"id":"daily_010","title":"Weather Watch","groups":[
-      {"size":2,"label":"Cloud types","words":["CIRRUS","CUMULUS"]},
-      {"size":3,"label":"Winter weather","words":["SLEET","FROST","BLIZZARD"]},
-      {"size":4,"label":"Weather instruments","words":["BAROMETER","ANEMOMETER","THERMOMETER","RAIN_GAUGE"]},
-      {"size":5,"label":"Things to pack for rain","words":["UMBRELLA","RAINCOAT","BOOTS","PONCHO","TOWEL"]}
-    ],"top_word":"RAINBOW"},
-    {"id":"daily_011","title":"Space","groups":[{"size":2,"label":"Constellations","words":["ORION","CASSIOPEIA"]},{"size":3,"label":"Spacecraft","words":["APOLLO","VOYAGER","SOYUZ"]},{"size":4,"label":"Planets","words":["MERCURY","VENUS","MARS","SATURN"]},{"size":5,"label":"Astronomy Terms","words":["GALAXY","NEBULA","COMET","ASTEROID","ECLIPSE"]}],"top_word":"SUPERNOVA"},
-    {"id":"daily_012","title":"Music","groups":[{"size":2,"label":"Composers","words":["MOZART","BEETHOVEN"]},{"size":3,"label":"Instruments","words":["PIANO","VIOLIN","TRUMPET"]},{"size":4,"label":"Music Genres","words":["JAZZ","REGGAE","OPERA","BLUES"]},{"size":5,"label":"Concert Essentials","words":["STAGE","MICROPHONE","ENCORE","AUDIENCE","APPLAUSE"]}],"top_word":"SYMPHONY"},
-    {"id":"daily_013","title":"Ocean","groups":[{"size":2,"label":"Coral Reef Creatures","words":["CLOWNFISH","STINGRAY"]},{"size":3,"label":"Sea Animals","words":["OCTOPUS","DOLPHIN","SEAL"]},{"size":4,"label":"Ocean Features","words":["REEF","TRENCH","CURRENT","TIDE"]},{"size":5,"label":"At the Beach","words":["SHELL","SAND","TOWEL","UMBRELLA","SURFBOARD"]}],"top_word":"TSUNAMI"},
-    {"id":"daily_014","title":"Ancient Egypt","groups":[{"size":2,"label":"Pharaohs","words":["TUTANKHAMUN","RAMSES"]},{"size":3,"label":"Gods","words":["RA","ANUBIS","ISIS"]},{"size":4,"label":"Monuments","words":["PYRAMID","SPHINX","OBELISK","TEMPLE"]},{"size":5,"label":"Archaeology","words":["SARCOPHAGUS","PAPYRUS","HIEROGLYPH","TOMB","MUMMY"]}],"top_word":"NILE"},
-    {"id":"daily_015","title":"Superheroes","groups":[{"size":2,"label":"DC Heroes","words":["BATMAN","SUPERMAN"]},{"size":3,"label":"Marvel Heroes","words":["SPIDER-MAN","IRON MAN","WOLVERINE"]},{"size":4,"label":"Superpowers","words":["FLIGHT","INVISIBILITY","TELEPATHY","SUPERSTRENGTH"]},{"size":5,"label":"Hero Gear","words":["CAPE","MASK","SHIELD","GADGET","COSTUME"]}],"top_word":"HERO","display_breaks":{"SUPERSTRENGTH":"SUPER\nSTRENGTH"}},
-    {"id":"daily_016","title":"Movies","groups":[{"size":2,"label":"Film Directors","words":["SPIELBERG","NOLAN"]},{"size":3,"label":"Movie Genres","words":["COMEDY","THRILLER","WESTERN"]},{"size":4,"label":"Awards","words":["OSCAR","EMMY","BAFTA","GOLDEN GLOBE"]},{"size":5,"label":"Cinema","words":["POPCORN","PROJECTOR","TICKET","SCREEN","TRAILER"]}],"top_word":"BLOCKBUSTER","display_breaks":{"GOLDEN GLOBE":"GOLDEN\nGLOBE","BLOCKBUSTER":"BLOCK\nBUSTER"}},
-    {"id":"daily_017","title":"Cooking","groups":[{"size":2,"label":"Kitchen Tools","words":["WHISK","LADLE"]},{"size":3,"label":"Herbs","words":["BASIL","THYME","OREGANO"]},{"size":4,"label":"Cooking Methods","words":["BAKE","BOIL","FRY","GRILL"]},{"size":5,"label":"Ingredients","words":["FLOUR","BUTTER","GARLIC","ONION","PEPPER"]}],"top_word":"RECIPE"},
-    {"id":"daily_018","title":"Weather","groups":[{"size":2,"label":"Clouds","words":["CIRRUS","CUMULUS"]},{"size":3,"label":"Precipitation","words":["RAIN","SNOW","HAIL"]},{"size":4,"label":"Storms","words":["HURRICANE","TORNADO","BLIZZARD","THUNDERSTORM"]},{"size":5,"label":"Weather Tools","words":["THERMOMETER","BAROMETER","RADAR","SATELLITE","FORECAST"]}],"top_word":"CLIMATE","display_breaks":{"THUNDERSTORM":"THUNDER\nSTORM","THERMOMETER":"THERMO\nMETER"}},
-    {"id":"daily_019","title":"Pirates","groups":[{"size":2,"label":"Famous Pirates","words":["BLACKBEARD","KIDD"]},{"size":3,"label":"Ship Parts","words":["MAST","HELM","ANCHOR"]},{"size":4,"label":"Pirate Weapons","words":["CUTLASS","PISTOL","CANNON","DAGGER"]},{"size":5,"label":"Treasure Hunt","words":["MAP","CHEST","ISLAND","PARROT","COMPASS"]}],"top_word":"BUCCANEER"},
-    {"id":"daily_020","title":"Artificial Intelligence","groups":[{"size":2,"label":"AI Companies","words":["OPENAI","GOOGLE"]},{"size":3,"label":"AI Models","words":["GPT","GEMINI","CLAUDE"]},{"size":4,"label":"Computing Terms","words":["ALGORITHM","DATASET","NEURAL NETWORK","MACHINE LEARNING"]},{"size":5,"label":"Technology","words":["ROBOT","SENSOR","SERVER","CHIP","AUTOMATION"]}],"top_word":"INTELLIGENCE","display_breaks":{"NEURAL NETWORK":"NEURAL\nNETWORK","MACHINE LEARNING":"MACHINE\nLEARNING","INTELLIGENCE":"INTELLI\nGENCE"}},
-    {"id":"daily_021","title":"Word Connections","groups":[{"size":2,"label":"Things with Keys","words":["PIANO","LOCK"]},{"size":3,"label":"Things with Rings","words":["PHONE","TREE","SATURN"]},{"size":4,"label":"Things You Can Break","words":["RECORD","PROMISE","CODE","SILENCE"]},{"size":5,"label":"Things with a Face","words":["CLOCK","COIN","CARD","MOUNTAIN","PERSON"]}],"top_word":"CONNECTION"},
-    {"id":"daily_022","title":"Word Connections II","groups":[{"size":2,"label":"Can Be Sharp","words":["KNIFE","MIND"]},{"size":3,"label":"Have a Shell","words":["EGG","TURTLE","NUT"]},{"size":4,"label":"Can Be Drafted","words":["PLAYER","LETTER","PLAN","LAW"]},{"size":5,"label":"Can Be Charged","words":["PHONE","BATTERY","CUSTOMER","CRIME","PRICE"]}],"top_word":"POWER"},
-    {"id":"daily_023","title":"Word Connections III","groups":[{"size":2,"label":"Have Teeth","words":["COMB","SAW"]},{"size":3,"label":"Can Run","words":["WATER","ENGINE","PROGRAM"]},{"size":4,"label":"Can Be Folded","words":["PAPER","HAND","CLOTHES","CHAIR"]},{"size":5,"label":"Found on a Table","words":["FORK","CARD","LAMP","BOOK","ELBOW"]}],"top_word":"SURFACE"},
-    {"id":"daily_024","title":"Word Connections IV","groups":[{"size":2,"label":"Can Be Cracked","words":["JOKE","CODE"]},{"size":3,"label":"Have a Crown","words":["KING","TOOTH","TREE"]},{"size":4,"label":"Can Be Played","words":["GAME","ROLE","CARD","INSTRUMENT"]},{"size":5,"label":"Can Be Opened","words":["DOOR","ACCOUNT","BOOK","WINDOW","BOTTLE"]}],"top_word":"KEY"},
-    {"id":"daily_025","title":"Word Connections V","groups":[{"size":2,"label":"Have a Tail","words":["COMET","COIN"]},{"size":3,"label":"Can Be Cast","words":["ACTOR","SHADOW","SPELL"]},{"size":4,"label":"Can Be Raised","words":["HAND","FLAG","CHILD","QUESTION"]},{"size":5,"label":"Can Be Served","words":["FOOD","BALL","CUSTOMER","SENTENCE","COUNTRY"]}],"top_word":"TURN"},
+	{"id":"daily_001","title":"Cosmic Connections","groups":[
+	  {"size":2,"label":"Rocky planets","words":["MERCURY","VENUS"]},
+	  {"size":3,"label":"Galilean moons","words":["IO","EUROPA","GANYMEDE"]},
+	  {"size":4,"label":"Space agencies","words":["NASA","ESA","JAXA","ISRO"]},
+	  {"size":5,"label":"Constellations","words":["ORION","LYRA","DRACO","ARIES","CYGNUS"]}
+	],"top_word":"COMET"},
+	{"id":"daily_002","title":"Taste of Italy","groups":[
+	  {"size":2,"label":"Italian cheeses","words":["RICOTTA","MASCARPONE"]},
+	  {"size":3,"label":"Pasta shapes","words":["PENNE","FUSILLI","RIGATONI"]},
+	  {"size":4,"label":"Italian cities","words":["ROME","MILAN","NAPLES","VERONA"]},
+	  {"size":5,"label":"Pizza toppings","words":["BASIL","OLIVE","ANCHOVY","MUSHROOM","PEPPERONI"]}
+	],"top_word":"GELATO"},
+	{"id":"daily_003","title":"Bookish Day","groups":[
+	  {"size":2,"label":"Shakespeare tragedies","words":["HAMLET","OTHELLO"]},
+	  {"size":3,"label":"Famous detectives","words":["POIROT","MARPLE","HOLMES"]},
+	  {"size":4,"label":"Book formats","words":["HARDCOVER","PAPERBACK","EBOOK","AUDIOBOOK"]},
+	  {"size":5,"label":"Library sections","words":["FICTION","HISTORY","POETRY","BIOGRAPHY","SCIENCE"]}
+	],"top_word":"BOOKMARK"},
+	{"id":"daily_004","title":"Ocean Depths","groups":[
+	  {"size":2,"label":"Ocean currents","words":["GULFSTREAM","KUROSHIO"]},
+	  {"size":3,"label":"Sea mammals","words":["DOLPHIN","WALRUS","MANATEE"]},
+	  {"size":4,"label":"Coral reef fish","words":["CLOWNFISH","ANGELFISH","BUTTERFLYFISH","PARROTFISH"]},
+	  {"size":5,"label":"Things found on a beach","words":["SHELL","DRIFTWOOD","PEBBLE","SEAGRASS","SANDCASTLE"]}
+	],"top_word":"ANCHOR","display_breaks":{"BUTTERFLYFISH":"BUTTERFLY\nFISH","SANDCASTLE":"SAND\nCASTLE"}},
+	{"id":"daily_005","title":"Around the World","groups":[
+	  {"size":2,"label":"Countries in Scandinavia","words":["FINLAND","SWEDEN"]},
+	  {"size":3,"label":"Capital cities","words":["LISBON","OTTAWA","SEOUL"]},
+	  {"size":4,"label":"Famous rivers","words":["NILE","DANUBE","AMAZON","YANGTZE"]},
+	  {"size":5,"label":"Desert animals","words":["CAMEL","FENNEC","SCORPION","MEERKAT","JERBOA"]}
+	],"top_word":"PASSPORT"},
+	{"id":"daily_006","title":"Screen Time","groups":[
+	  {"size":2,"label":"Silent film stars","words":["CHAPLIN","KEATON"]},
+	  {"size":3,"label":"Pixar films","words":["COCO","RATATOUILLE","WALLE"]},
+	  {"size":4,"label":"Film crew roles","words":["DIRECTOR","EDITOR","GAFFER","PRODUCER"]},
+	  {"size":5,"label":"Cinema snacks","words":["POPCORN","NACHOS","PRETZEL","SODA","CANDY"]}
+	],"top_word":"PROJECTOR"},
+	{"id":"daily_007","title":"Garden Party","groups":[
+	  {"size":2,"label":"Garden tools","words":["TROWEL","RAKE"]},
+	  {"size":3,"label":"Spring flowers","words":["TULIP","DAFFODIL","CROCUS"]},
+	  {"size":4,"label":"Herbs","words":["THYME","SAGE","MINT","DILL"]},
+	  {"size":5,"label":"Things a plant needs","words":["SUNLIGHT","WATER","SOIL","AIR","NUTRIENTS"]}
+	],"top_word":"GREENHOUSE"},
+	{"id":"daily_008","title":"On the Move","groups":[
+	  {"size":2,"label":"Two-wheeled vehicles","words":["BICYCLE","SCOOTER"]},
+	  {"size":3,"label":"Railway terms","words":["PLATFORM","CARRIAGE","LOCOMOTIVE"]},
+	  {"size":4,"label":"Airport codes","words":["HEL","LHR","JFK","NRT"]},
+	  {"size":5,"label":"Road trip supplies","words":["MAP","FUEL","SNACKS","CAMERA","SUNGLASSES"]}
+	],"top_word":"SUITCASE"},
+	{"id":"daily_009","title":"Music Room","groups":[
+	  {"size":2,"label":"String instruments","words":["VIOLIN","CELLO"]},
+	  {"size":3,"label":"Musical tempos","words":["LARGO","ANDANTE","PRESTO"]},
+	  {"size":4,"label":"Music notation symbols","words":["CLEF","REST","SHARP","FERMATA"]},
+	  {"size":5,"label":"Festival essentials","words":["TENT","WRISTBAND","STAGE","SPEAKERS","CROWDS"]}
+	],"top_word":"ENCORE"},
+	{"id":"daily_010","title":"Weather Watch","groups":[
+	  {"size":2,"label":"Cloud types","words":["CIRRUS","CUMULUS"]},
+	  {"size":3,"label":"Winter weather","words":["SLEET","FROST","BLIZZARD"]},
+	  {"size":4,"label":"Weather instruments","words":["BAROMETER","ANEMOMETER","THERMOMETER","RAIN_GAUGE"]},
+	  {"size":5,"label":"Things to pack for rain","words":["UMBRELLA","RAINCOAT","BOOTS","PONCHO","TOWEL"]}
+	],"top_word":"RAINBOW"},
+	{"id":"daily_011","title":"Space","groups":[{"size":2,"label":"Constellations","words":["ORION","CASSIOPEIA"]},{"size":3,"label":"Spacecraft","words":["APOLLO","VOYAGER","SOYUZ"]},{"size":4,"label":"Planets","words":["MERCURY","VENUS","MARS","SATURN"]},{"size":5,"label":"Astronomy Terms","words":["GALAXY","NEBULA","COMET","ASTEROID","ECLIPSE"]}],"top_word":"SUPERNOVA"},
+	{"id":"daily_012","title":"Music","groups":[{"size":2,"label":"Composers","words":["MOZART","BEETHOVEN"]},{"size":3,"label":"Instruments","words":["PIANO","VIOLIN","TRUMPET"]},{"size":4,"label":"Music Genres","words":["JAZZ","REGGAE","OPERA","BLUES"]},{"size":5,"label":"Concert Essentials","words":["STAGE","MICROPHONE","ENCORE","AUDIENCE","APPLAUSE"]}],"top_word":"SYMPHONY"},
+	{"id":"daily_013","title":"Ocean","groups":[{"size":2,"label":"Coral Reef Creatures","words":["CLOWNFISH","STINGRAY"]},{"size":3,"label":"Sea Animals","words":["OCTOPUS","DOLPHIN","SEAL"]},{"size":4,"label":"Ocean Features","words":["REEF","TRENCH","CURRENT","TIDE"]},{"size":5,"label":"At the Beach","words":["SHELL","SAND","TOWEL","UMBRELLA","SURFBOARD"]}],"top_word":"TSUNAMI"},
+	{"id":"daily_014","title":"Ancient Egypt","groups":[{"size":2,"label":"Pharaohs","words":["TUTANKHAMUN","RAMSES"]},{"size":3,"label":"Gods","words":["RA","ANUBIS","ISIS"]},{"size":4,"label":"Monuments","words":["STATUE","SPHINX","OBELISK","TEMPLE"]},{"size":5,"label":"Archaeology","words":["SARCOPHAGUS","PAPYRUS","HIEROGLYPH","TOMB","MUMMY"]}],"top_word":"NILE"},
+	{"id":"daily_015","title":"Superheroes","groups":[{"size":2,"label":"DC Heroes","words":["BATMAN","SUPERMAN"]},{"size":3,"label":"Marvel Heroes","words":["SPIDER-MAN","IRON MAN","WOLVERINE"]},{"size":4,"label":"Superpowers","words":["FLIGHT","INVISIBILITY","TELEPATHY","SUPERSTRENGTH"]},{"size":5,"label":"Hero Gear","words":["CAPE","MASK","SHIELD","GADGET","COSTUME"]}],"top_word":"HERO","display_breaks":{"SUPERSTRENGTH":"SUPER\nSTRENGTH"}},
+	{"id":"daily_016","title":"Movies","groups":[{"size":2,"label":"Film Directors","words":["SPIELBERG","NOLAN"]},{"size":3,"label":"Movie Genres","words":["COMEDY","THRILLER","WESTERN"]},{"size":4,"label":"Awards","words":["OSCAR","EMMY","BAFTA","GOLDEN GLOBE"]},{"size":5,"label":"Cinema","words":["POPCORN","PROJECTOR","TICKET","SCREEN","TRAILER"]}],"top_word":"BLOCKBUSTER","display_breaks":{"GOLDEN GLOBE":"GOLDEN\nGLOBE","BLOCKBUSTER":"BLOCK\nBUSTER"}},
+	{"id":"daily_017","title":"Cooking","groups":[{"size":2,"label":"Kitchen Tools","words":["WHISK","LADLE"]},{"size":3,"label":"Herbs","words":["BASIL","THYME","OREGANO"]},{"size":4,"label":"Cooking Methods","words":["BAKE","BOIL","FRY","GRILL"]},{"size":5,"label":"Ingredients","words":["FLOUR","BUTTER","GARLIC","ONION","PEPPER"]}],"top_word":"RECIPE"},
+	{"id":"daily_018","title":"Weather","groups":[{"size":2,"label":"Clouds","words":["CIRRUS","CUMULUS"]},{"size":3,"label":"Precipitation","words":["RAIN","SNOW","HAIL"]},{"size":4,"label":"Storms","words":["HURRICANE","TORNADO","BLIZZARD","THUNDERSTORM"]},{"size":5,"label":"Weather Tools","words":["THERMOMETER","BAROMETER","RADAR","SATELLITE","FORECAST"]}],"top_word":"CLIMATE","display_breaks":{"THUNDERSTORM":"THUNDER\nSTORM","THERMOMETER":"THERMO\nMETER","BAROMETER":"BARO\nMETER"}},
+	{"id":"daily_019","title":"Pirates","groups":[{"size":2,"label":"Famous Pirates","words":["BLACKBEARD","KIDD"]},{"size":3,"label":"Ship Parts","words":["MAST","HELM","ANCHOR"]},{"size":4,"label":"Pirate Weapons","words":["CUTLASS","PISTOL","CANNON","DAGGER"]},{"size":5,"label":"Treasure Hunt","words":["MAP","CHEST","ISLAND","PARROT","COMPASS"]}],"top_word":"BUCCANEER"},
+	{"id":"daily_020","title":"Artificial Intelligence","groups":[{"size":2,"label":"AI Companies","words":["OPENAI","GOOGLE"]},{"size":3,"label":"AI Models","words":["GPT","GEMINI","CLAUDE"]},{"size":4,"label":"Computing Terms","words":["ALGORITHM","DATASET","NEURAL NETWORK","MACHINE LEARNING"]},{"size":5,"label":"Technology","words":["ROBOT","SENSOR","SERVER","CHIP","AUTOMATION"]}],"top_word":"INTELLIGENCE","display_breaks":{"NEURAL NETWORK":"NEURAL\nNETWORK","MACHINE LEARNING":"MACHINE\nLEARNING","INTELLIGENCE":"INTELLI\nGENCE"}},
+	{"id":"daily_021","title":"At the Post Office","groups":[{"size":2,"label":"Mail Items","words":["LETTER","POSTCARD"]},{"size":3,"label":"Packing Supplies","words":["BOX","TAPE","BUBBLE WRAP"]},{"size":4,"label":"Address Details","words":["NAME","STREET","POSTCODE","CITY"]},{"size":5,"label":"Postal Services","words":["DELIVERY","PICKUP","TRACKING","FORWARDING","RETURN"]}],"top_word":"POST OFFICE","display_breaks":{"BUBBLE WRAP":"BUBBLE\nWRAP","POST OFFICE":"POST\nOFFICE"}},
+	{"id":"daily_022","title":"At the Dentist","groups":[{"size":2,"label":"Types of Teeth","words":["CANINE","MOLAR"]},{"size":3,"label":"Dental Professionals","words":["DENTIST","DENTAL HYGIENIST","DENTAL ASSISTANT"]},{"size":4,"label":"Dental Instruments","words":["MIRROR","PROBE","DRILL","SUCTION"]},{"size":5,"label":"Oral Care Supplies","words":["TOOTHBRUSH","TOOTHPASTE","FLOSS","MOUTHWASH","TONGUE SCRAPER"]}],"top_word":"DENTAL CARE","display_breaks":{"DENTAL HYGIENIST":"DENTAL\nHYGIENIST","DENTAL ASSISTANT":"DENTAL\nASSISTANT","TONGUE SCRAPER":"TONGUE\nSCRAPER","DENTAL CARE":"DENTAL\nCARE"}},
+	{"id":"daily_023","title":"At the Office","groups":[{"size":2,"label":"Writing Tools","words":["PEN","PENCIL"]},{"size":3,"label":"Desk Supplies","words":["STAPLER","SCISSORS","TAPE"]},{"size":4,"label":"Office Machines","words":["COMPUTER","MONITOR","PRINTER","SHREDDER"]},{"size":5,"label":"Meeting Items","words":["AGENDA","NOTES","SLIDES","COFFEE","NAME TAG"]}],"top_word":"OFFICE","display_breaks":{"NAME TAG":"NAME\nTAG"}},
+	{"id":"daily_024","title":"At the Zoo","groups":[{"size":2,"label":"Big Cats","words":["LION","TIGER"]},{"size":3,"label":"Primates","words":["GORILLA","CHIMPANZEE","LEMUR"]},{"size":4,"label":"Hoofed Animals","words":["ZEBRA","GIRAFFE","ANTELOPE","CAMEL"]},{"size":5,"label":"Birds","words":["FLAMINGO","PARROT","PENGUIN","OSTRICH","PEACOCK"]}],"top_word":"ZOO"},
+	{"id":"daily_025","title":"In the Workshop","groups":[{"size":2,"label":"Fasteners","words":["NAIL","SCREW"]},{"size":3,"label":"Hand Tools","words":["HAMMER","SAW","FILE"]},{"size":4,"label":"Measuring Tools","words":["RULER","TAPE MEASURE","LEVEL","CALIPER"]},{"size":5,"label":"Protective Gear","words":["GOGGLES","GLOVES","EAR DEFENDERS","RESPIRATOR","OVERALLS"]}],"top_word":"WORKSHOP","display_breaks":{"TAPE MEASURE":"TAPE\nMEASURE","EAR DEFENDERS":"EAR\nDEFENDERS"}},
 	{"id":"daily_026","title":"Breakfast Table","groups":[{"size":2,"label":"Hot Drinks","words":["COFFEE","TEA"]},{"size":3,"label":"Egg Dishes","words":["OMELETTE","SCRAMBLED EGGS","FRITTATA"]},{"size":4,"label":"Breakfast Breads","words":["BAGEL","CROISSANT","TOAST","MUFFIN"]},{"size":5,"label":"Breakfast Toppings","words":["JAM","HONEY","CHEESE","HAM","AVOCADO"]}],"top_word":"BREAKFAST","display_breaks":{"SCRAMBLED EGGS":"SCRAMBLED\nEGGS"}},
 	{"id":"daily_027","title":"Forest Trail","groups":[{"size":2,"label":"Deciduous Trees","words":["OAK","BIRCH"]},{"size":3,"label":"Edible Mushrooms","words":["CHANTERELLE","MOREL","BOLETE"]},{"size":4,"label":"Hiking Gear","words":["BOOTS","COMPASS","MAP","BACKPACK"]},{"size":5,"label":"Signs of Animals","words":["PAWPRINT","HOOFPRINT","FEATHER","DROPPINGS","NEST"]}],"top_word":"FOREST"},
 	{"id":"daily_028","title":"At the Bakery","groups":[{"size":2,"label":"Dough Ingredients","words":["FLOUR","YEAST"]},{"size":3,"label":"Pastries","words":["DONUT","DANISH","ECLAIR"]},{"size":4,"label":"Baking Tools","words":["ROLLING PIN","SPATULA","WHISK","SIEVE"]},{"size":5,"label":"Cake Flavours","words":["VANILLA","CHOCOLATE","LEMON","CARROT","STRAWBERRY"]}],"top_word":"BAKERY","display_breaks":{"ROLLING PIN":"ROLLING\nPIN"}},
@@ -97,14 +97,14 @@
 	{"id":"daily_045","title":"Digital Safety","groups":[{"size":2,"label":"Authentication","words":["PASSWORD","PIN"]},{"size":3,"label":"Online Threats","words":["VIRUS","PHISHING","RANSOMWARE"]},{"size":4,"label":"Digital Defences","words":["FIREWALL","ENCRYPTION","BACKUP","UPDATE"]},{"size":5,"label":"Safe Actions","words":["VERIFY","LOCK","REPORT","DELETE","LOG OUT"]}],"top_word":"CYBERSECURITY","display_breaks":{"RANSOMWARE":"RANSOM\nWARE","ENCRYPTION":"ENCRYP\nTION","CYBERSECURITY":"CYBER\nSECURITY"}}
   ],
   "schedule": {
-    "daily_001": "2026-07-12", "daily_002": "2026-07-13", "daily_003": "2026-07-14", "daily_004": "2026-07-15", "daily_005": "2026-07-16",
-    "daily_006": "2026-07-17", "daily_007": "2026-07-18", "daily_008": "2026-07-19", "daily_009": "2026-07-20", "daily_010": "2026-07-21",
-    "daily_011": "2026-07-22", "daily_012": "2026-07-23", "daily_013": "2026-07-24", "daily_014": "2026-07-25", "daily_015": "2026-07-26",
-    "daily_016": "2026-07-27", "daily_017": "2026-07-28", "daily_018": "2026-07-29", "daily_019": "2026-07-30", "daily_020": "2026-07-31",
-    "daily_021": "2026-08-01", "daily_022": "2026-08-02", "daily_023": "2026-08-03", "daily_024": "2026-08-04", "daily_025": "2026-08-05",
-    "daily_026": "2026-08-06", "daily_027": "2026-08-07", "daily_028": "2026-08-08", "daily_029": "2026-08-09", "daily_030": "2026-08-10",
-    "daily_031": "2026-08-11", "daily_032": "2026-08-12", "daily_033": "2026-08-13", "daily_034": "2026-08-14", "daily_035": "2026-08-15",
-    "daily_036": "2026-08-16", "daily_037": "2026-08-17", "daily_038": "2026-08-18", "daily_039": "2026-08-19", "daily_040": "2026-08-20",
-    "daily_041": "2026-08-21", "daily_042": "2026-08-22", "daily_043": "2026-08-23", "daily_044": "2026-08-24", "daily_045": "2026-08-25"
+	"daily_001": "2026-07-12", "daily_002": "2026-07-13", "daily_003": "2026-07-14", "daily_004": "2026-07-15", "daily_005": "2026-07-16",
+	"daily_006": "2026-07-17", "daily_007": "2026-07-18", "daily_008": "2026-07-19", "daily_009": "2026-07-20", "daily_010": "2026-07-21",
+	"daily_011": "2026-07-22", "daily_012": "2026-07-23", "daily_013": "2026-07-24", "daily_014": "2026-07-25", "daily_015": "2026-07-26",
+	"daily_016": "2026-07-27", "daily_017": "2026-07-28", "daily_018": "2026-07-29", "daily_019": "2026-07-30", "daily_020": "2026-07-31",
+	"daily_021": "2026-08-01", "daily_022": "2026-08-02", "daily_023": "2026-08-03", "daily_024": "2026-08-04", "daily_025": "2026-08-05",
+	"daily_026": "2026-08-06", "daily_027": "2026-08-07", "daily_028": "2026-08-08", "daily_029": "2026-08-09", "daily_030": "2026-08-10",
+	"daily_031": "2026-08-11", "daily_032": "2026-08-12", "daily_033": "2026-08-13", "daily_034": "2026-08-14", "daily_035": "2026-08-15",
+	"daily_036": "2026-08-16", "daily_037": "2026-08-17", "daily_038": "2026-08-18", "daily_039": "2026-08-19", "daily_040": "2026-08-20",
+	"daily_041": "2026-08-21", "daily_042": "2026-08-22", "daily_043": "2026-08-23", "daily_044": "2026-08-24", "daily_045": "2026-08-25"
   }
 }

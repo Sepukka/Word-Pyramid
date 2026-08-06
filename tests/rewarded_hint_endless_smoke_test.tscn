@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://tests/rewarded_hint_endless_smoke_test.gd" type="Script" id="1"]
+
+[node name="RewardedHintEndlessSmokeTest" type="Node"]
+script = ExtResource("1")

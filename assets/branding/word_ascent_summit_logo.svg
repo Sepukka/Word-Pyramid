@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="104" viewBox="0 0 220 104">
+  <defs>
+    <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe38a"/>
+      <stop offset="1" stop-color="#ffc83d"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="0.18" y1="0.05" x2="0.82" y2="1">
+      <stop offset="0" stop-color="#d8c5ff"/>
+      <stop offset="0.48" stop-color="#9670ef"/>
+      <stop offset="1" stop-color="#6940d7"/>
+    </linearGradient>
+    <linearGradient id="facet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8255e5"/>
+      <stop offset="1" stop-color="#4f2db4"/>
+    </linearGradient>
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="165%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#1a0a5e" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <!-- Soft loading-screen scenery kept compact enough for the home header. -->
+  <circle cx="166" cy="47" r="28" fill="url(#sun)" opacity="0.92"/>
+  <path d="M17 78
+           C24 70 33 71 38 76
+           C43 66 58 66 63 78Z"
+        fill="#fffdf7" stroke="#e8deef" stroke-width="1"/>
+  <path d="M166 82
+           C171 75 180 76 184 80
+           C189 72 202 73 205 82Z"
+        fill="#fffdf7" stroke="#e8deef" stroke-width="1"/>
+
+  <ellipse cx="111" cy="93" rx="79" ry="7" fill="#6c45d7" opacity="0.16"/>
+
+  <!-- Slender summit flag sits behind the snow cap. -->
+  <path d="M108 28V5" fill="none" stroke="#17075d" stroke-width="3" stroke-linecap="round"/>
+  <path d="M110 7
+           C120 5 127 10 138 8
+           L136 20
+           C126 22 120 16 110 18Z"
+        fill="#ffc928" stroke="#17075d" stroke-width="1.8" stroke-linejoin="round"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M37 92L103 27
+             C106 24 109 24 112 28
+             L184 92Z"
+          fill="url(#mountain)" stroke="#7040ed" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M109 29L184 92H123L97 65Z"
+          fill="url(#facet)" opacity="0.88"/>
+    <path d="M37 92L83 47L100 64L75 92Z"
+          fill="#b79cf8" opacity="0.70"/>
+
+    <!-- Uneven snow follows the summit and hangs naturally over both facets. -->
+    <path d="M82 49L103 28
+             C106 25 109 25 112 29
+             L130 47
+             L121 45
+             L114 54
+             L107 46
+             L98 57
+             L91 48Z"
+          fill="#fffdf7" stroke="#eee7f5" stroke-width="1.1" stroke-linejoin="round"/>
+
+    <path d="M74 92L101 65L111 76L121 62L150 92Z"
+          fill="#7550de" opacity="0.44"/>
+  </g>
+</svg>

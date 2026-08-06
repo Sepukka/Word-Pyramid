@@ -304,7 +304,7 @@
 	  {"size":2,"label":"Egyptian gods","words":["RA","ANUBIS"]},
 	  {"size":3,"label":"Greek philosophers","words":["SOCRATES","PLATO","ARISTOTLE"]},
 	  {"size":4,"label":"Roman gods","words":["JUPITER","MARS","VENUS","MERCURY"]},
-	  {"size":5,"label":"Ancient structures","words":["PYRAMID","AMPHITHEATRE","AQUEDUCT","TEMPLE","OBELISK"]}
+	  {"size":5,"label":"Ancient structures","words":["FORTRESS","AMPHITHEATRE","AQUEDUCT","TEMPLE","OBELISK"]}
 	],"top_word":"EMPIRE","display_breaks":{"ARISTOTLE":"ARIS\nTOTLE","AMPHITHEATRE":"AMPHI\nTHEATRE"}},
 	{"id":"unlimited_052","title":"Language Structure","groups":[
 	  {"size":2,"label":"Punctuation marks","words":["COLON","SEMICOLON"]},

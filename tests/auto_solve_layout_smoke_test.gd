@@ -24,6 +24,7 @@ func _ready() -> void:
 	GameState.is_finished = false
 	GameState.completed_won = false
 	GameState.is_auto_solving = false
+	GameState.last_chance_used = true
 	GameState.attempts_left = 1
 	GameState.hints_used = 0
 

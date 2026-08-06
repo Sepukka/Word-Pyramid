@@ -2,7 +2,7 @@
   "puzzles": [
 	{
 	  "id": "suomalaiset_yhteydet",
-	  "title": "Päivän sanapyramidi",
+	  "title": "Päivän sananousu",
 	  "groups": [
 		{"size": 2, "label": "Suomen virallisia kieliä", "words": ["SUOMI", "RUOTSI"]},
 		{"size": 3, "label": "Suomen järviä", "words": ["SAIMAA", "PÄIJÄNNE", "INARI"]},

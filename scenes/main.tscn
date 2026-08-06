@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://bv2eytvxlv74j"]
 
 [ext_resource type="Script" uid="uid://dgsmu2t5m8jkd" path="res://scripts/ui/main.gd" id="1_main"]
-[ext_resource type="Texture2D" uid="uid://ccgbysyxddyrb" path="res://assets/home_background_logo.png" id="2_art"]
 [ext_resource type="Texture2D" path="res://assets/heart.svg" id="3_heart"]
 [ext_resource type="Texture2D" path="res://assets/icons/trophy.svg" id="4_trophy"]
+[ext_resource type="Texture2D" path="res://assets/branding/word_ascent_summit_logo.svg" id="5_mountain"]
 
 [node name="Main" type="Control" unique_id=1563371808]
 layout_mode = 3
@@ -13,18 +13,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
-
-[node name="HomeBackground" type="TextureRect" parent="." unique_id=800714579]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = ExtResource("2_art")
-expand_mode = 1
-stretch_mode = 6
 
 [node name="HomeLayer" type="MarginContainer" parent="." unique_id=1888551654]
 layout_mode = 1
@@ -71,81 +59,28 @@ layout_mode = 2
 theme_override_constants/separation = 6
 alignment = 1
 
-[node name="MiniPyramid" type="VBoxContainer" parent="HomeLayer/Content/BrandBlock" unique_id=2024350332]
+[node name="MiniMountain" type="TextureRect" parent="HomeLayer/Content/BrandBlock"]
+custom_minimum_size = Vector2(0, 104)
 layout_mode = 2
-theme_override_constants/separation = 4
-alignment = 1
+size_flags_horizontal = 3
+mouse_filter = 2
+texture = ExtResource("5_mountain")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="MiniRow1" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=1590142984]
+[node name="Title" type="RichTextLabel" parent="HomeLayer/Content/BrandBlock" unique_id=2012668484]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="Block" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow1" unique_id=1189422966]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="MiniRow2" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=454487522]
-layout_mode = 2
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow2" unique_id=131723039]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow2" unique_id=774187243]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="MiniRow3" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=453387996]
-layout_mode = 2
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1683053946]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1144997510]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block3" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow3" unique_id=1379065835]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="MiniRow4" type="HBoxContainer" parent="HomeLayer/Content/BrandBlock/MiniPyramid" unique_id=97707079]
-layout_mode = 2
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="Block1" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=1288798623]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block2" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=335950170]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block3" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=1751973780]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Block4" type="Panel" parent="HomeLayer/Content/BrandBlock/MiniPyramid/MiniRow4" unique_id=669312578]
-custom_minimum_size = Vector2(24, 15)
-layout_mode = 2
-
-[node name="Title" type="Label" parent="HomeLayer/Content/BrandBlock" unique_id=2012668484]
-layout_mode = 2
-theme_override_font_sizes/font_size = 44
-text = "Word Pyramid"
+bbcode_enabled = true
+text = "[center][color=#17075D]WORD[/color] [color=#7040ED]ASCENT[/color][/center]"
+fit_content = true
+scroll_active = false
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="HomeLayer/Content/BrandBlock" unique_id=81135053]
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
-text = "DAILY WORD CHALLENGE"
+text = "GROUP WORDS. REACH THE SUMMIT."
 horizontal_alignment = 1
 uppercase = true
 
@@ -173,7 +108,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 size_flags_horizontal = 0
 theme_type_variation = &"HomeDatePill"
-text = "📅  July 13, 2026"
+text = "📅 July 13, 2026"
 
 [node name="CardTitle" type="Label" parent="HomeLayer/Content/DailyCard/CardMargin/CardContent" unique_id=1792568565]
 layout_mode = 2
@@ -199,7 +134,7 @@ custom_minimum_size = Vector2(0, 55)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryPlayButton"
-text = "Play Today's Challenge ->"
+text = "Play Today's Challenge →"
 
 [node name="ModeButtons" type="VBoxContainer" parent="HomeLayer/Content" unique_id=1318477931]
 layout_mode = 2
@@ -228,11 +163,11 @@ theme_override_constants/separation = 0
 
 [node name="Title" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack"]
 layout_mode = 2
-text = "∞ Infinity Mode"
+text = "∞ Endless Mode"
 
 [node name="Subtitle" type="Label" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header/TitleStack"]
 layout_mode = 2
-text = "Endless word pyramids"
+text = "Endless word ascents"
 
 [node name="Hearts" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent/Header"]
 layout_mode = 2
@@ -267,7 +202,7 @@ stretch_mode = 5
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Play Infinity ->"
+text = "Play Endless →"
 
 [node name="EndlessStatus" type="HBoxContainer" parent="HomeLayer/Content/ModeButtons/UnlimitedCard/CardMargin/CardContent"]
 custom_minimum_size = Vector2(0, 34)
@@ -294,8 +229,8 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 bbcode_enabled = true
-text = "[center]Group [b][color=#1A0A5E]10 words[/color][/b] into 4 pyramid levels — any order.
-You get [b][color=#1A0A5E]2 hints[/color][/b] and [b][color=#1A0A5E]4 lives[/color][/b] before the pyramid falls.[/center]"
+text = "[center]Climb a [b][color=#1A0A5E]15-word[/color][/b] mountain — any order.
+You get [b][color=#1A0A5E]2 hints[/color][/b] and [b][color=#1A0A5E]3 Stamina[/color][/b] for the ascent.[/center]"
 fit_content = true
 scroll_active = false
 

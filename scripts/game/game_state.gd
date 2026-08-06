@@ -7,6 +7,8 @@ signal top_solved(word: String)
 signal repeated_guess_attempted
 signal guess_feedback(text: String)
 signal guess_failed(attempts_left: int)
+signal last_chance_required
+signal attempt_restored(attempts_left: int)
 signal game_finished(won: bool, top_word: String)
 signal hint_provided(text: String)
 signal hint_placed(word: String, row_length: int)
@@ -16,6 +18,7 @@ signal puzzle_pool_completed(mode: String)
 signal tutorial_completed
 
 const FREE_HINT_LIMIT: int = 2
+const TUTORIAL_HINT_LIMIT: int = 3
 const DAILY_MODE: String = "daily"
 const UNLIMITED_MODE: String = "unlimited"
 const TUTORIAL_MODE: String = "tutorial"
@@ -37,6 +40,8 @@ var daily_date: String = ""
 var game_mode: String = "daily"
 var hints_used: int = 0
 var rewarded_hint_claimed: bool = false
+var last_chance_pending: bool = false
+var last_chance_used: bool = false
 var hinted_words_by_row: Dictionary = {}
 var result_correct_count: int = -1
 var result_solved_groups: Array[int] = []
@@ -51,9 +56,11 @@ func start_tutorial() -> bool:
 	selected_words.clear()
 	solved_groups.clear()
 	is_top_solved = false
-	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	attempts_left = SaveManager.MAX_ATTEMPTS
 	hints_used = 0
 	rewarded_hint_claimed = false
+	last_chance_pending = false
+	last_chance_used = false
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
@@ -118,9 +125,11 @@ func start_new_game(mode: String = "daily") -> bool:
 	selected_words.clear()
 	solved_groups.clear()
 	is_top_solved = false
-	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	attempts_left = SaveManager.MAX_ATTEMPTS
 	hints_used = 0
 	rewarded_hint_claimed = false
+	last_chance_pending = false
+	last_chance_used = false
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
@@ -134,6 +143,13 @@ func start_new_game(mode: String = "daily") -> bool:
 	result_top_solved = false
 	result_progression.clear()
 	_save_active_game()
+	_log_analytics("puzzle_started", {
+		"mode": game_mode,
+		"puzzle_id": str(puzzle.get("id", "unknown")),
+		"difficulty": PuzzleLoader.get_difficulty_tier(puzzle),
+		"player_level": SaveManager.get_player_level(),
+		"language": PuzzleLoader.get_language()
+	})
 	game_started.emit(str(puzzle.get("title", "Daily Challenge")), attempts_left)
 	hint_count_changed.emit(hints_used, _get_hint_limit())
 	return true
@@ -151,9 +167,11 @@ func view_daily_result() -> bool:
 	for index: int in puzzle.get("groups", []).size():
 		solved_groups.append(index)
 	is_top_solved = true
-	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	attempts_left = SaveManager.MAX_ATTEMPTS
 	hints_used = 0
 	rewarded_hint_claimed = false
+	last_chance_pending = false
+	last_chance_used = false
 	is_finished = true
 	var saved_result: Dictionary = SaveManager.get_daily_result(daily_date)
 	completed_won = bool(saved_result.get("won", false))
@@ -188,9 +206,11 @@ func restart_current() -> bool:
 	selected_words.clear()
 	solved_groups.clear()
 	is_top_solved = false
-	attempts_left = int(SaveManager.settings.get("attempts", 4))
+	attempts_left = SaveManager.MAX_ATTEMPTS
 	hints_used = 0
 	rewarded_hint_claimed = false
+	last_chance_pending = false
+	last_chance_used = false
 	is_finished = false
 	completed_won = false
 	is_auto_solving = false
@@ -225,6 +245,8 @@ func reset_debug_state() -> void:
 	game_mode = DAILY_MODE
 	hints_used = 0
 	rewarded_hint_claimed = false
+	last_chance_pending = false
+	last_chance_used = false
 	hinted_words_by_row.clear()
 	result_correct_count = -1
 	result_solved_groups.clear()
@@ -269,12 +291,16 @@ func restore_game() -> bool:
 	selected_words.assign(_to_string_array(saved.get("selected_words", [])))
 	solved_groups.assign(_to_int_array(saved.get("solved_groups", [])))
 	is_top_solved = bool(saved.get("is_top_solved", false))
-	attempts_left = int(saved.get("attempts_left", SaveManager.settings.get("attempts", 4)))
+	attempts_left = clampi(int(saved.get("attempts_left", SaveManager.MAX_ATTEMPTS)), 0, SaveManager.MAX_ATTEMPTS)
 	hints_used = int(saved.get("hints_used", 0))
 	rewarded_hint_claimed = bool(saved.get("rewarded_hint_claimed", false))
+	last_chance_used = bool(saved.get("last_chance_used", false))
 	result_correct_count = int(saved.get("result_correct_count", -1))
 	result_solved_groups.assign(_to_int_array(saved.get("result_solved_groups", [])))
 	is_finished = bool(saved.get("is_finished", false))
+	# Treat an unfinished zero-attempt save from an older build as pending too,
+	# so updating the app can never restore a board with no usable actions.
+	last_chance_pending = attempts_left <= 0 and not is_finished and not last_chance_used
 	completed_won = bool(saved.get("completed_won", false))
 	result_top_solved = bool(saved.get("result_top_solved", completed_won))
 	var saved_progression: Variant = saved.get("result_progression", {})
@@ -298,10 +324,12 @@ func restore_game() -> bool:
 	hint_count_changed.emit(hints_used, _get_hint_limit())
 	if is_finished:
 		game_finished.emit(completed_won, str(puzzle.get("top_word", "")))
+	elif last_chance_pending:
+		last_chance_required.emit.call_deferred()
 	return true
 
 func toggle_word(word: String) -> void:
-	if is_finished or is_auto_solving or is_word_solved(word):
+	if is_finished or is_auto_solving or last_chance_pending or is_word_solved(word):
 		return
 	if game_mode == TUTORIAL_MODE and not tutorial_allowed_words.has(word):
 		return
@@ -326,12 +354,9 @@ func clear_selection() -> void:
 	selection_changed.emit(selected_words)
 
 func request_hint() -> void:
-	if is_finished or is_auto_solving:
+	if is_finished or is_auto_solving or last_chance_pending:
 		return
 	var hint_limit: int = _get_hint_limit()
-	if hints_used >= hint_limit and game_mode == "unlimited":
-		hint_provided.emit(SaveManager.text("unlimited_hint_limit"))
-		return
 	if hints_used >= hint_limit and not rewarded_hint_claimed:
 		rewarded_hint_required.emit()
 		return
@@ -409,7 +434,7 @@ func _find_next_hint_target() -> Dictionary:
 	return {}
 
 func grant_rewarded_hint() -> void:
-	if is_finished or is_auto_solving or game_mode == "unlimited" or rewarded_hint_claimed:
+	if is_finished or is_auto_solving or rewarded_hint_claimed:
 		return
 	rewarded_hint_claimed = true
 	_save_active_game()
@@ -429,9 +454,15 @@ func _unlock_newly_valid_hint_guess(group: Dictionary) -> void:
 		last_failed_active = false
 
 func _get_hint_limit() -> int:
-	# Unlimited has exactly two hints per puzzle. Daily mode can still expose
-	# its existing rewarded third-hint flow after these two free hints.
-	return FREE_HINT_LIMIT + 1 if rewarded_hint_claimed and game_mode != "unlimited" else FREE_HINT_LIMIT
+	# Every regular puzzle has two free hints and can earn one additional hint
+	# from a rewarded ad. rewarded_hint_claimed also prevents repeat rewards.
+	if game_mode == TUTORIAL_MODE:
+		# The guided hint leaves one optional hint for each of the final two rows.
+		return TUTORIAL_HINT_LIMIT
+	return FREE_HINT_LIMIT + 1 if rewarded_hint_claimed else FREE_HINT_LIMIT
+
+func get_remaining_hint_count() -> int:
+	return maxi(_get_hint_limit() - hints_used, 0)
 
 func get_hint_word_for_row(row_length: int) -> String:
 	var words: Array[String] = get_hint_words_for_row(row_length)
@@ -446,19 +477,40 @@ func get_hint_words_for_row(row_length: int) -> Array[String]:
 	return _to_string_array(value)
 
 func can_check_selection() -> bool:
-	if is_finished or is_auto_solving:
+	if is_finished or is_auto_solving or last_chance_pending:
 		return false
 	var has_valid_size: bool = selected_words.size() == 1 and not is_top_solved
+	var matches_unsolved_group: bool = false
 	for index: int in puzzle.get("groups", []).size():
 		if not solved_groups.has(index):
 			var group: Dictionary = puzzle["groups"][index]
-			if selected_words.size() == _get_required_words(group).size():
+			var required_words: Array[String] = _get_required_words(group)
+			if selected_words.size() == required_words.size():
 				has_valid_size = true
+				if _has_same_words(selected_words, required_words):
+					matches_unsolved_group = true
+	# A hint can reduce a five-word row to four selectable words. If the actual
+	# four-word row is already solved, that must not reopen arbitrary four-word
+	# guesses. The exact hinted-row completion remains valid, but every other
+	# selection of the locked size stays disabled.
+	if _is_original_row_size_solved(selected_words.size()) and not matches_unsolved_group:
+		return false
 	return (
 		(has_valid_size or not get_near_miss_feedback().is_empty())
 		and not is_current_failed_guess()
 		and not is_repeated_wrong_guess()
 	)
+
+func _is_original_row_size_solved(row_length: int) -> bool:
+	if row_length == 1:
+		return is_top_solved
+	for index: int in solved_groups:
+		if index < 0 or index >= puzzle.get("groups", []).size():
+			continue
+		var group_value: Variant = puzzle["groups"][index]
+		if group_value is Dictionary and int((group_value as Dictionary).get("size", 0)) == row_length:
+			return true
+	return false
 
 func get_selection_limit() -> int:
 	var largest_unsolved: int = 1 if not is_top_solved else 0
@@ -545,23 +597,73 @@ func check_selection() -> void:
 	if not feedback.is_empty():
 		guess_feedback.emit(feedback)
 	if attempts_left <= 0:
-		result_correct_count = _player_correct_count()
-		result_solved_groups.assign(solved_groups)
-		result_top_solved = is_top_solved
 		selected_words.clear()
 		if game_mode == TUTORIAL_MODE:
 			# A practice failure restarts the lesson instead of revealing every
 			# answer. The board owns the short acknowledgement transition.
+			result_correct_count = _player_correct_count()
+			result_solved_groups.assign(solved_groups)
+			result_top_solved = is_top_solved
 			_finish(false)
+		elif not last_chance_used:
+			# Wait for the player's rewarded-continue decision before recording
+			# a loss or consuming an Infinity heart.
+			last_chance_pending = true
+			_save_active_game()
+			_log_analytics("last_chance_offered", {
+				"mode": game_mode,
+				"puzzle_id": str(puzzle.get("id", "unknown"))
+			})
+			last_chance_required.emit()
 		else:
+			# A rewarded continue is limited to one per puzzle. If Stamina is
+			# depleted again, the normal reveal-and-fail flow starts immediately.
+			result_correct_count = _player_correct_count()
+			result_solved_groups.assign(solved_groups)
+			result_top_solved = is_top_solved
 			is_auto_solving = true
 			_auto_solve_remaining()
 	else:
 		_save_active_game()
 	selection_changed.emit(selected_words)
 
+func grant_last_chance() -> bool:
+	if not last_chance_pending or is_finished or is_auto_solving:
+		return false
+	last_chance_pending = false
+	last_chance_used = true
+	attempts_left = 1
+	selected_words.clear()
+	last_failed_guess.clear()
+	last_failed_active = false
+	_save_active_game()
+	_log_analytics("last_chance_used", {
+		"mode": game_mode,
+		"puzzle_id": str(puzzle.get("id", "unknown"))
+	})
+	attempt_restored.emit(attempts_left)
+	selection_changed.emit(selected_words)
+	return true
+
+func decline_last_chance() -> void:
+	if not last_chance_pending or is_finished or is_auto_solving:
+		return
+	last_chance_pending = false
+	result_correct_count = _player_correct_count()
+	result_solved_groups.assign(solved_groups)
+	result_top_solved = is_top_solved
+	selected_words.clear()
+	is_auto_solving = true
+	_save_active_game()
+	_log_analytics("last_chance_declined", {
+		"mode": game_mode,
+		"puzzle_id": str(puzzle.get("id", "unknown"))
+	})
+	selection_changed.emit(selected_words)
+	_auto_solve_remaining()
+
 func debug_auto_solve() -> void:
-	if puzzle.is_empty() or is_finished or is_auto_solving or game_mode == TUTORIAL_MODE:
+	if puzzle.is_empty() or is_finished or is_auto_solving or last_chance_pending or game_mode == TUTORIAL_MODE:
 		return
 	selected_words.clear()
 	last_failed_guess.clear()
@@ -640,7 +742,7 @@ func _finish_debug_completion() -> void:
 	result_correct_count = _total_word_count()
 	result_solved_groups.assign(solved_groups)
 	result_top_solved = is_top_solved
-	var max_attempts: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var max_attempts: int = SaveManager.MAX_ATTEMPTS
 	var mistakes_used: int = clampi(max_attempts - attempts_left, 0, max_attempts)
 	result_progression = SaveManager.record_debug_xp_reward(
 		puzzle,
@@ -653,6 +755,7 @@ func _finish_debug_completion() -> void:
 
 func _finish(won: bool) -> void:
 	is_debug_completion = false
+	last_chance_pending = false
 	is_finished = true
 	completed_won = won
 	if won:
@@ -665,7 +768,7 @@ func _finish(won: bool) -> void:
 		tutorial_completed.emit()
 		return
 	var solved_row_count: int = result_solved_groups.size() + (1 if result_top_solved else 0)
-	var max_attempts: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var max_attempts: int = SaveManager.MAX_ATTEMPTS
 	var mistakes_used: int = clampi(max_attempts - attempts_left, 0, max_attempts)
 	result_progression = SaveManager.record_progression_result(
 		puzzle,
@@ -675,6 +778,18 @@ func _finish(won: bool) -> void:
 		mistakes_used,
 		hints_used
 	)
+	_log_analytics("puzzle_finished", {
+		"mode": game_mode,
+		"puzzle_id": str(puzzle.get("id", "unknown")),
+		"won": won,
+		"solved_rows": solved_row_count,
+		"mistakes": mistakes_used,
+		"hints": hints_used,
+		"xp_gained": int(result_progression.get("xp_gained", 0)),
+		"level_after": int(result_progression.get("level_after", SaveManager.get_player_level())),
+		"difficulty": PuzzleLoader.get_difficulty_tier(puzzle),
+		"language": PuzzleLoader.get_language()
+	})
 	_save_active_game()
 	if not won and game_mode == UNLIMITED_MODE:
 		SaveManager.consume_endless_heart()
@@ -726,6 +841,8 @@ func _save_active_game() -> void:
 		"language": PuzzleLoader.get_language(),
 		"hints_used": hints_used,
 		"rewarded_hint_claimed": rewarded_hint_claimed,
+		"last_chance_pending": last_chance_pending,
+		"last_chance_used": last_chance_used,
 		"result_correct_count": result_correct_count,
 		"result_solved_groups": result_solved_groups.duplicate(),
 		"result_top_solved": result_top_solved,
@@ -751,7 +868,7 @@ func build_share_text() -> String:
 	# answer words. Solved rows retain their game colors; missed rows stay blank.
 	var lines: Array[String] = []
 	var mode_title: String = SaveManager.text("share_mode_daily") if game_mode == DAILY_MODE else SaveManager.text("share_mode_unlimited")
-	lines.append("Word Pyramid · %s" % mode_title)
+	lines.append("Word Ascent · %s" % mode_title)
 	if game_mode == DAILY_MODE and not daily_date.is_empty():
 		lines.append(daily_date)
 	lines.append("")
@@ -768,9 +885,12 @@ func build_share_text() -> String:
 		if found:
 			solved_rows += 1
 		var block: String = str(row_symbols[row_length]) if found else "⬜"
-		lines.append(" ".repeat(5 - row_length) + block.repeat(row_length))
+		# Emoji blocks render wider than ordinary text characters in WhatsApp and
+		# Instagram. Two leading spaces per missing block keep the shared result
+		# visually pyramid-shaped in those proportional-font share targets.
+		lines.append(" ".repeat((5 - row_length) * 2) + block.repeat(row_length))
 	lines.append("")
-	var maximum_mistakes: int = maxi(int(SaveManager.settings.get("attempts", 4)), 1)
+	var maximum_mistakes: int = SaveManager.MAX_ATTEMPTS
 	var mistakes_used: int = clampi(maximum_mistakes - attempts_left, 0, maximum_mistakes)
 	lines.append(SaveManager.text("share_summary") % [solved_rows, mistakes_used, hints_used])
 	if game_mode == DAILY_MODE:
@@ -817,6 +937,13 @@ func _to_int_array(values: Variant) -> Array[int]:
 		for value: Variant in values:
 			result.append(int(value))
 	return result
+
+func _log_analytics(event_name: String, parameters: Dictionary = {}) -> void:
+	# Analytics is an optional Android integration. Resolve it at runtime so a
+	# missing/disabled autoload can never prevent the core game from compiling.
+	var manager: Node = get_node_or_null("/root/AnalyticsManager")
+	if manager != null and manager.has_method("log_event"):
+		manager.call("log_event", event_name, parameters)
 
 func _tutorial_puzzle(language: String) -> Dictionary:
 	if language == "fi":

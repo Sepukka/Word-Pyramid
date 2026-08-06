@@ -508,7 +508,7 @@
 						"REPPU",
 						"KOMPASSI",
 						"TERMOSPULLO",
-						"OTSIKKOLAMPPU"
+						"OTSALAMPPU"
 					]
 				},
 				{
@@ -1184,7 +1184,7 @@
 			{"size":2,"label":"Egyptiläisiä jumalia","words":["RA","ANUBIS"]},
 			{"size":3,"label":"Kreikkalaisia filosofeja","words":["SOKRATES","PLATON","ARISTOTELES"]},
 			{"size":4,"label":"Roomalaisia jumalia","words":["JUPITER","MARS","VENUS","MERKURIUS"]},
-			{"size":5,"label":"Antiikin rakennelmia","words":["PYRAMIDI","AMFITEATTERI","AKVEDUKTI","TEMPPELI","OBELISKI"]}
+			{"size":5,"label":"Antiikin rakennelmia","words":["LINNOITUS","AMFITEATTERI","AKVEDUKTI","TEMPPELI","OBELISKI"]}
 		],"top_word":"IMPERIUMI","display_breaks":{"ARISTOTELES":"ARISTO\nTELES","AMFITEATTERI":"AMFI\nTEATTERI"}},
 		{"id":"fi_unlimited_052","title":"Kielen rakenteet","groups":[
 			{"size":2,"label":"Välimerkkejä","words":["KAKSOISPISTE","PUOLIPISTE"]},

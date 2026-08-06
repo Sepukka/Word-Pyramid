@@ -8,6 +8,8 @@ func _ready() -> void:
 	SaveManager.reset_to_defaults()
 	SaveManager.onboarding = {"version": SaveManager.ONBOARDING_VERSION, "language_selected": true}
 	SaveManager.settings["language"] = "en"
+	assert(ResourceLoader.exists("res://assets/audio/sfx/mixkit/achievement_unlocked.wav"), "Achievement unlock sound asset must be available")
+	assert(SoundManager.has_method("achievement_unlock"), "SoundManager must expose the achievement unlock cue")
 	assert(SaveManager.get_max_achievement_stars() == 24, "Achievement catalog star count changed unexpectedly")
 	assert(SaveManager.get_total_achievement_stars() == 0, "Fresh progress must not contain achievement stars")
 	var emitted_unlocks: Array[Dictionary] = []
@@ -49,14 +51,29 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var overlay: Control = main.get_node("AchievementsOverlay") as Control
+	var scroll: ScrollContainer = overlay.find_child("AchievementScroll", true, false) as ScrollContainer
 	var list: VBoxContainer = overlay.find_child("AchievementList", true, false) as VBoxContainer
 	assert(list != null and list.get_child_count() == 10, "Achievement Hall must show every catalog entry")
+	assert(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER, "Achievement Hall must scroll without a visible side bar")
+	assert(not scroll.get_v_scroll_bar().visible, "Achievement Hall vertical scrollbar must stay hidden")
 	var right_edge: float = overlay.get_global_rect().end.x
 	for section_name: String in ["AchievementHeader", "AchievementSummary", "AchievementScroll"]:
 		var section: Control = overlay.find_child(section_name, true, false) as Control
 		assert(section != null and section.get_global_rect().end.x <= right_edge + 0.5, "%s overflowed the phone viewport" % section_name)
 	for card: Control in list.get_children():
 		assert(card.get_global_rect().end.x <= right_edge + 0.5, "Achievement card overflowed the phone viewport: %s" % card.name)
+		assert(card.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Achievement cards must pass drag gestures to the scroll area")
+	var scroll_before: int = scroll.scroll_vertical
+	var drag_press := InputEventMouseButton.new()
+	drag_press.button_index = MOUSE_BUTTON_LEFT
+	drag_press.pressed = true
+	drag_press.position = Vector2(180, 500)
+	main.call("_on_achievement_scroll_input", drag_press, scroll)
+	var drag_motion := InputEventMouseMotion.new()
+	drag_motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	drag_motion.position = Vector2(180, 400)
+	main.call("_on_achievement_scroll_input", drag_motion, scroll)
+	assert(scroll.scroll_vertical > scroll_before, "Dragging directly over achievements must scroll the list")
 
 	var banner_sample: Dictionary = _snapshot("daily_legend").duplicate(true)
 	banner_sample["unlocked_star"] = 1

@@ -23,20 +23,19 @@ func _ready() -> void:
 	board.call("_apply_tutorial_stage")
 	await get_tree().process_frame
 	var lives: HBoxContainer = board.get("_lives_row") as HBoxContainer
-	_assert(lives.visible and lives.get_child_count() == 4, "four attempt markers stay visible at the bottom")
+	_assert(lives.visible and lives.get_child_count() == SaveManager.MAX_ATTEMPTS, "three Stamina segments stay visible at the bottom")
 
 	var wrong_pairs: Array[Array] = [
 		["CAT", "COW"],
 		["DOG", "PIG"],
 		["CAT", "HEN"],
-		["DOG", "EAGLE"],
 	]
 	for index: int in wrong_pairs.size():
 		for word_value: Variant in wrong_pairs[index]:
 			GameState.toggle_word(str(word_value))
 		_assert(GameState.can_check_selection(), "wrong tutorial pair %d can be checked" % index)
 		GameState.check_selection()
-		_assert(GameState.attempts_left == 3 - index, "attempt marker count updates after failure %d" % (index + 1))
+		_assert(GameState.attempts_left == SaveManager.MAX_ATTEMPTS - index - 1, "Stamina count updates after failure %d" % (index + 1))
 		if index < wrong_pairs.size() - 1:
 			GameState.clear_selection()
 
@@ -45,7 +44,7 @@ func _ready() -> void:
 	_assert(restart_cover != null, "a smooth restart cover appears after the final mistake")
 	await get_tree().create_timer(0.75).timeout
 	_assert(not GameState.is_finished, "tutorial starts over instead of staying failed")
-	_assert(GameState.attempts_left == int(SaveManager.settings.get("attempts", 4)), "all tutorial attempts are restored")
+	_assert(GameState.attempts_left == SaveManager.MAX_ATTEMPTS, "all tutorial attempts are restored")
 	var restarted_intro: Control = board.get("_tutorial_intro_layer") as Control
 	_assert(restarted_intro != null, "restart returns to the tutorial introduction")
 	_assert(SaveManager.statistics == statistics_before, "failed practice does not affect real statistics")

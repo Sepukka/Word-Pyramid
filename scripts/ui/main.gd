@@ -9,22 +9,32 @@ const TROPHY_ICON: Texture2D = preload("res://assets/icons/trophy.svg")
 const ACHIEVEMENT_STAR: Texture2D = preload("res://assets/icons/achievement_star.svg")
 const ACHIEVEMENT_STAR_LOCKED: Texture2D = preload("res://assets/icons/achievement_star_locked.svg")
 const LOCK_ICON: Texture2D = preload("res://assets/icons/lock.svg")
+const HEART_ICON: Texture2D = preload("res://assets/heart.svg")
+const STREAK_FLAME_ICON: Texture2D = preload("res://assets/icons/flame_streak.svg")
+const PRIVACY_POLICY_URL: String = "https://sepukka.github.io/Word-Pyramid/"
+const PALETTE = preload("res://scripts/ui/ui_palette.gd")
 
-const UI_BACKGROUND: Color = Color("fffdf5")
-const UI_SURFACE: Color = Color.WHITE
-const UI_PRIMARY: Color = Color("1a0a5e")
-const UI_PRIMARY_HOVER: Color = Color("2a167c")
-const UI_PRIMARY_PRESSED: Color = Color("120742")
-const UI_TEXT: Color = Color("1a0a5e")
-const UI_MUTED_TEXT: Color = Color("9b8cd4")
-const UI_BORDER: Color = Color("d6cfef")
-const UI_SURFACE_TINT: Color = Color("eee9fa")
-const UI_YELLOW: Color = Color("ffd600")
-const UI_MAGENTA: Color = Color("b939ff")
-const UI_RED: Color = Color("ff5533")
-const UI_TEAL: Color = Color("00bfa5")
+const UI_BACKGROUND: Color = PALETTE.BACKGROUND
+const UI_SURFACE: Color = PALETTE.SURFACE
+const UI_PRIMARY: Color = PALETTE.PRIMARY
+const UI_PRIMARY_HOVER: Color = PALETTE.PRIMARY_HOVER
+const UI_PRIMARY_PRESSED: Color = PALETTE.PRIMARY_PRESSED
+const UI_TEXT: Color = PALETTE.TEXT
+const UI_MUTED_TEXT: Color = PALETTE.MUTED_TEXT
+const UI_MUTED_ON_PRIMARY: Color = PALETTE.MUTED_ON_PRIMARY
+const UI_BORDER: Color = PALETTE.BORDER
+const UI_SURFACE_TINT: Color = PALETTE.SURFACE_TINT
+const UI_YELLOW: Color = PALETTE.ACCENT
+const UI_ACCENT_HOVER: Color = PALETTE.ACCENT_HOVER
+const UI_ACCENT_PRESSED: Color = PALETTE.ACCENT_PRESSED
+const UI_MAGENTA: Color = PALETTE.HINT
+const UI_RED: Color = PALETTE.ERROR
+const UI_TEAL: Color = PALETTE.SUCCESS
+const UI_DISABLED_FILL: Color = PALETTE.DISABLED_FILL
+const UI_DISABLED_TEXT: Color = PALETTE.DISABLED_TEXT
+const STREAK_GREEN: Color = PALETTE.STREAK_SUCCESS
+const STREAK_EMPTY: Color = PALETTE.STREAK_EMPTY
 
-@onready var _home_background: TextureRect = get_node_or_null("HomeBackground") as TextureRect
 @onready var _home_layer: MarginContainer = get_node_or_null("HomeLayer") as MarginContainer
 @onready var _logo_spacer: Control = get_node_or_null("HomeLayer/Content/LogoSpacer") as Control
 @onready var _bottom_spacer: Control = get_node_or_null("HomeLayer/Content/BottomSpacer") as Control
@@ -40,7 +50,7 @@ const UI_TEAL: Color = Color("00bfa5")
 @onready var _settings_button: Button = get_node_or_null("HomeLayer/Content/Header/SettingsButton") as Button
 @onready var _achievements_button: Button = get_node_or_null("HomeLayer/Content/Header/AchievementsButton") as Button
 @onready var _daily_card: PanelContainer = get_node_or_null("HomeLayer/Content/DailyCard") as PanelContainer
-@onready var _brand_title: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Title") as Label
+@onready var _brand_title: RichTextLabel = get_node_or_null("HomeLayer/Content/BrandBlock/Title") as RichTextLabel
 @onready var _brand_subtitle: Label = get_node_or_null("HomeLayer/Content/BrandBlock/Subtitle") as Label
 @onready var _date_pill: Label = get_node_or_null("HomeLayer/Content/DailyCard/CardMargin/CardContent/DatePill") as Label
 @onready var _card_title: Label = get_node_or_null("HomeLayer/Content/DailyCard/CardMargin/CardContent/CardTitle") as Label
@@ -55,6 +65,9 @@ var _settings_sheet: PanelContainer
 var _settings_motion_target: VBoxContainer
 var _settings_drag_start_y: float = 0.0
 var _settings_dragging: bool = false
+var _achievement_mouse_drag_start_y: float = 0.0
+var _achievement_mouse_drag_start_scroll: int = 0
+var _achievement_mouse_dragging: bool = false
 var _settings_dismissing: bool = false
 var _settings_snap_tween: Tween
 var _endless_countdown_timer: Timer
@@ -62,12 +75,16 @@ var _font_fredoka_semibold: FontVariation
 var _font_fredoka_bold: FontVariation
 var _font_dm_sans_semibold: FontVariation
 var _font_dm_sans_bold: FontVariation
+var _font_dm_sans_black: FontVariation
 var _font_dm_sans_spaced: FontVariation
 var _achievement_unlock_queue: Array[Dictionary] = []
 var _achievement_banner_showing: bool = false
+var _heart_reward_overlay: Control
+var _home_streak_calendar: VBoxContainer
+var _notification_prompt_queued: bool = false
 
 func _ready() -> void:
-	if _home_background == null or _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _achievements_button == null or _daily_card == null:
+	if _home_layer == null or _play_button == null or _unlimited_card == null or _unlimited_button == null or _endless_hearts_row == null or _endless_status == null or _endless_heart_label == null or _reward_heart_button == null or _settings_button == null or _achievements_button == null or _daily_card == null:
 		# The editor can keep an older Main scene in memory after its .tscn file
 		# changes externally. Reload once so the editable scene tree is used.
 		call_deferred("_reload_editable_home_scene")
@@ -76,11 +93,9 @@ func _ready() -> void:
 	_home_decor = _create_home_decor()
 	add_child(_home_decor)
 	move_child(_home_decor, 0)
-	_home_background.visible = false
 	_theme_setup()
-	_apply_home_texts()
 	_apply_home_card_style()
-	_apply_mini_pyramid_style()
+	_install_home_streak_calendar()
 	_apply_play_button_style()
 	_apply_unlimited_button_style()
 	_apply_endless_status_style()
@@ -122,6 +137,7 @@ func _setup_font_variations() -> void:
 	_font_fredoka_bold = _font_variation(FONT_FREDOKA, 700, 0.48)
 	_font_dm_sans_semibold = _font_variation(FONT_DM_SANS, 600, 0.12)
 	_font_dm_sans_bold = _font_variation(FONT_DM_SANS, 700, 0.22)
+	_font_dm_sans_black = _font_variation(FONT_DM_SANS, 900, 0.72)
 	_font_dm_sans_spaced = _font_variation(FONT_DM_SANS, 600, 0.10, 2)
 
 func _font_variation(base_font: Font, weight: int, embolden: float, glyph_spacing: int = 0) -> FontVariation:
@@ -134,11 +150,17 @@ func _font_variation(base_font: Font, weight: int, embolden: float, glyph_spacin
 	return font
 
 func show_main_menu() -> void:
+	var heart_state_before: Dictionary = _capture_endless_heart_state()
 	_clear_content()
 	_apply_home_texts()
 	_refresh_achievement_badge()
 	_show_home()
 	_layout_home_layout()
+	var refill_amount: int = _daily_heart_refill_amount(heart_state_before)
+	if refill_amount > 0:
+		call_deferred("_play_heart_reward_event", refill_amount, true, int(heart_state_before.get("hearts", 0)))
+	NotificationManager.refresh_schedule()
+	call_deferred("_maybe_offer_daily_notifications")
 
 func _show_home() -> void:
 	_home_decor.visible = true
@@ -160,7 +182,13 @@ func _on_play_pressed() -> void:
 	if SaveManager.is_daily_challenge_completed():
 		if GameState.view_daily_result():
 			show_game()
-		return
+			return
+	if GameState.has_resumable_game(GameState.DAILY_MODE):
+		# Continue today's Daily exactly where the player left it. restore_game()
+		# rejects and clears an expired save, after which the current Daily starts.
+		if GameState.restore_game():
+			show_game()
+			return
 	if GameState.start_new_game("daily"):
 		show_game()
 
@@ -192,9 +220,12 @@ func _on_rewarded_heart_pressed() -> void:
 	AdManager.request_rewarded_heart()
 
 func _on_rewarded_heart_earned() -> void:
+	var hearts_before: int = int(SaveManager.endless_state.get("hearts", 0))
 	if SaveManager.grant_rewarded_endless_heart():
+		var hearts_after: int = SaveManager.get_endless_hearts()
 		_apply_home_texts()
 		_endless_heart_label.text = SaveManager.text("endless_heart_earned")
+		_play_heart_reward_event(maxi(hearts_after - hearts_before, 1), false, hearts_before)
 
 func _on_home_rewarded_ad_unavailable(message: String) -> void:
 	if _home_layer.visible and not is_instance_valid(_active_view):
@@ -236,8 +267,8 @@ func _animate_play_button(scale_target: float) -> void:
 func _apply_play_button_style() -> void:
 	_play_button.add_theme_font_override("font", _font_fredoka_bold)
 	_play_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 1))
-	_play_button.add_theme_stylebox_override("hover", _play_style(Color("ffe23d"), 1))
-	_play_button.add_theme_stylebox_override("pressed", _play_style(Color("e9c400"), 0))
+	_play_button.add_theme_stylebox_override("hover", _play_style(UI_ACCENT_HOVER, 1))
+	_play_button.add_theme_stylebox_override("pressed", _play_style(UI_ACCENT_PRESSED, 0))
 	_play_button.add_theme_color_override("font_color", UI_PRIMARY)
 	_play_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	_play_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
@@ -251,9 +282,9 @@ func _apply_daily_unlock_visuals(unlocked: bool) -> void:
 	if unlocked:
 		_daily_card.add_theme_stylebox_override("panel", _daily_card_style())
 		_play_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 1))
-		_play_button.add_theme_stylebox_override("hover", _play_style(Color("ffe23d"), 1))
-		_play_button.add_theme_stylebox_override("pressed", _play_style(Color("e9c400"), 0))
-		_play_button.add_theme_stylebox_override("disabled", _play_style(Color("d9d3ea"), 0))
+		_play_button.add_theme_stylebox_override("hover", _play_style(UI_ACCENT_HOVER, 1))
+		_play_button.add_theme_stylebox_override("pressed", _play_style(UI_ACCENT_PRESSED, 0))
+		_play_button.add_theme_stylebox_override("disabled", _play_style(UI_DISABLED_FILL, 0))
 		_play_button.add_theme_color_override("font_color", UI_PRIMARY)
 		_play_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 		_play_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
@@ -269,17 +300,25 @@ func _apply_daily_unlock_visuals(unlocked: bool) -> void:
 			_card_streak.add_theme_color_override("font_color", UI_YELLOW)
 		return
 	_daily_card.add_theme_stylebox_override("panel", _daily_locked_card_style())
-	_play_button.add_theme_stylebox_override("disabled", _play_style(Color("c9c3d3"), 0))
-	_play_button.add_theme_color_override("font_disabled_color", Color("625779"))
+	var locked_play_style: StyleBoxFlat = _play_style(Color("c9c3d3"), 0)
+	locked_play_style.content_margin_left = 28.0
+	locked_play_style.content_margin_right = 28.0
+	_play_button.add_theme_stylebox_override("disabled", locked_play_style)
+	_play_button.add_theme_color_override("font_disabled_color", UI_DISABLED_TEXT)
 	if _date_pill != null:
-		_date_pill.add_theme_stylebox_override("normal", _round_style(Color("e5e1ea"), Color("c9c3d3"), 20))
-		_date_pill.add_theme_color_override("font_color", Color("625779"))
+		var locked_level_pill: StyleBoxFlat = _round_style(Color("e5e1ea"), Color("c9c3d3"), 20)
+		locked_level_pill.content_margin_left = 13.0
+		locked_level_pill.content_margin_right = 13.0
+		locked_level_pill.content_margin_top = 5.0
+		locked_level_pill.content_margin_bottom = 5.0
+		_date_pill.add_theme_stylebox_override("normal", locked_level_pill)
+		_date_pill.add_theme_color_override("font_color", UI_DISABLED_TEXT)
 	if _card_title != null:
 		_card_title.add_theme_color_override("font_color", Color("372e49"))
 	if _card_meta != null:
 		_card_meta.add_theme_color_override("font_color", Color("71677f"))
 	if _card_streak != null:
-		_card_streak.add_theme_color_override("font_color", Color("625779"))
+		_card_streak.add_theme_color_override("font_color", UI_DISABLED_TEXT)
 
 func _apply_unlimited_button_style() -> void:
 	_unlimited_card.add_theme_stylebox_override("panel", _infinity_card_style())
@@ -298,7 +337,7 @@ func _apply_unlimited_button_style() -> void:
 	_unlimited_button.add_theme_stylebox_override("normal", _play_style(UI_PRIMARY, 3))
 	_unlimited_button.add_theme_stylebox_override("hover", _play_style(UI_PRIMARY_HOVER, 4))
 	_unlimited_button.add_theme_stylebox_override("pressed", _play_style(UI_PRIMARY_PRESSED, 1))
-	_unlimited_button.add_theme_stylebox_override("disabled", _play_style(Color("d9d3ea"), 0))
+	_unlimited_button.add_theme_stylebox_override("disabled", _play_style(UI_DISABLED_FILL, 0))
 	_unlimited_button.add_theme_color_override("font_color", Color.WHITE)
 	_unlimited_button.add_theme_color_override("font_hover_color", Color.WHITE)
 	_unlimited_button.add_theme_color_override("font_pressed_color", Color.WHITE)
@@ -358,23 +397,6 @@ func _refresh_achievement_badge() -> void:
 	var old_badge: Node = _achievements_button.get_node_or_null("NewStarsBadge")
 	if old_badge != null:
 		old_badge.queue_free()
-	var unseen: int = SaveManager.get_unseen_achievement_stars()
-	if unseen <= 0:
-		return
-	var badge := Label.new()
-	badge.name = "NewStarsBadge"
-	badge.text = str(mini(unseen, 9)) if unseen < 10 else "9+"
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	badge.position = Vector2(25, -4)
-	badge.size = Vector2(20, 20)
-	badge.add_theme_font_override("font", _font_dm_sans_bold)
-	badge.add_theme_font_size_override("font_size", 10)
-	badge.add_theme_color_override("font_color", UI_PRIMARY)
-	badge.add_theme_stylebox_override("normal", _achievement_badge_style(UI_YELLOW, UI_PRIMARY, 10))
-	_achievements_button.add_child(badge)
 
 func _on_achievement_unlocked(unlock: Dictionary) -> void:
 	_achievement_unlock_queue.append(unlock.duplicate(true))
@@ -452,7 +474,7 @@ func _show_next_achievement_banner() -> void:
 	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	description.add_theme_font_override("font", FONT_DM_SANS)
 	description.add_theme_font_size_override("font_size", 9)
-	description.add_theme_color_override("font_color", Color("d9d1f3"))
+	description.add_theme_color_override("font_color", UI_MUTED_ON_PRIMARY)
 	text_stack.add_child(description)
 	var tier_stack := VBoxContainer.new()
 	tier_stack.custom_minimum_size.x = 34
@@ -475,6 +497,7 @@ func _show_next_achievement_banner() -> void:
 	tier.add_theme_color_override("font_color", Color.WHITE)
 	tier_stack.add_child(tier)
 
+	SoundManager.achievement_unlock()
 	var enter_tween := create_tween()
 	enter_tween.tween_property(banner, "position:y", target_y, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await enter_tween.finished
@@ -501,12 +524,13 @@ func _apply_home_texts() -> void:
 		_play_button.expand_icon = true
 		_play_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		_play_button.add_theme_constant_override("icon_max_width", 23)
+		_play_button.add_theme_constant_override("h_separation", 8)
 	elif SaveManager.is_daily_challenge_completed():
 		_play_button.disabled = false
 		_play_button.text = SaveManager.text("view_result")
 	else:
 		_play_button.disabled = false
-		_play_button.text = "Pelaa päivän haaste ->" if is_finnish else "Play Today's Challenge ->"
+		_play_button.text = "Pelaa päivän haaste →" if is_finnish else "Play Today's Challenge →"
 	if daily_unlocked:
 		_play_button.icon = null
 	_unlimited_title.text = "∞ %s" % SaveManager.text("unlimited_button")
@@ -538,17 +562,18 @@ func _apply_home_texts() -> void:
 	_reward_heart_button.disabled = not can_claim_heart
 	_reward_heart_button.text = SaveManager.text("endless_watch_ad") if can_claim_heart else SaveManager.text("endless_ad_claimed")
 	if _brand_title != null:
-		_brand_title.text = "Word Pyramid"
+		_brand_title.text = "[center][color=#17075D]WORD[/color] [color=#7040ED]ASCENT[/color][/center]"
 	if _brand_subtitle != null:
 		_brand_subtitle.text = SaveManager.text("home_subtitle")
 	if _date_pill != null:
-		_date_pill.text = SaveManager.text("daily_unlock_button") % SaveManager.DAILY_UNLOCK_LEVEL if not daily_unlocked else "📅  %s" % _home_date_text(is_finnish)
+		_date_pill.text = SaveManager.text("daily_unlock_button") % SaveManager.DAILY_UNLOCK_LEVEL if not daily_unlocked else "📅 %s" % _home_date_text(is_finnish)
 	if _card_title != null:
 		_card_title.text = SaveManager.text("daily_locked_title") if not daily_unlocked else str(daily_puzzle.get("title", SaveManager.text("home_daily_title")))
 	if _card_meta != null:
 		_card_meta.text = SaveManager.text("daily_locked_body") % SaveManager.DAILY_UNLOCK_LEVEL if not daily_unlocked else _daily_card_meta(daily_puzzle, is_finnish)
 	if _card_streak != null:
 		_card_streak.text = SaveManager.text("daily_locked_progress") % [SaveManager.get_player_level(), SaveManager.DAILY_UNLOCK_LEVEL] if not daily_unlocked else SaveManager.daily_streak_text()
+	_refresh_home_streak_calendar(daily_unlocked)
 	if _home_hint != null:
 		_home_hint.text = "[center]%s[/center]" % SaveManager.text("home_hint_markup")
 	if _achievements_button != null:
@@ -568,7 +593,215 @@ func _update_home_heart_icons(hearts: int) -> void:
 
 func _on_endless_countdown_tick() -> void:
 	if _home_layer.visible and not is_instance_valid(_active_view):
+		var heart_state_before: Dictionary = _capture_endless_heart_state()
 		_apply_home_texts()
+		var refill_amount: int = _daily_heart_refill_amount(heart_state_before)
+		if refill_amount > 0:
+			_play_heart_reward_event(refill_amount, true, int(heart_state_before.get("hearts", 0)))
+
+func _capture_endless_heart_state() -> Dictionary:
+	return {
+		"date": str(SaveManager.endless_state.get("date", "")),
+		"hearts": clampi(int(SaveManager.endless_state.get("hearts", SaveManager.ENDLESS_DAILY_HEARTS)), 0, SaveManager.ENDLESS_DAILY_HEARTS),
+	}
+
+func _daily_heart_refill_amount(previous_state: Dictionary) -> int:
+	var previous_date: String = str(previous_state.get("date", ""))
+	var current_date: String = Time.get_date_string_from_system()
+	if previous_date.is_empty() or previous_date == current_date:
+		return 0
+	if str(SaveManager.endless_state.get("date", "")) != current_date:
+		return 0
+	var previous_hearts: int = int(previous_state.get("hearts", SaveManager.ENDLESS_DAILY_HEARTS))
+	var current_hearts: int = int(SaveManager.endless_state.get("hearts", SaveManager.ENDLESS_DAILY_HEARTS))
+	return maxi(current_hearts - previous_hearts, 0)
+
+func _play_heart_reward_event(amount: int, daily_refill: bool = false, previous_hearts: int = -1) -> void:
+	if amount <= 0:
+		return
+	if daily_refill and (not _home_layer.visible or is_instance_valid(_active_view)):
+		return
+	if is_instance_valid(_heart_reward_overlay):
+		_heart_reward_overlay.queue_free()
+	SoundManager.heart_gain()
+	var overlay: Control = Control.new()
+	overlay.name = "HeartRewardOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 500
+	add_child(overlay)
+	_heart_reward_overlay = overlay
+
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(UI_PRIMARY, 0.0)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(dim)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var card: PanelContainer = PanelContainer.new()
+	card.name = "HeartRewardCard"
+	card.custom_minimum_size = Vector2(252, 214)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_theme_stylebox_override("panel", _heart_reward_card_style())
+	card.modulate.a = 0.0
+	card.scale = Vector2(0.68, 0.68)
+	center.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 4)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(content)
+	var heart: TextureRect = TextureRect.new()
+	heart.name = "HeartRewardIcon"
+	heart.texture = HEART_ICON
+	heart.custom_minimum_size = Vector2(92, 82)
+	heart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	heart.modulate = UI_RED
+	heart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(heart)
+	var title: Label = Label.new()
+	title.name = "HeartRewardTitle"
+	title.text = SaveManager.text("daily_hearts_refilled") if daily_refill else SaveManager.text("endless_heart_earned")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color.WHITE)
+	content.add_child(title)
+	var reward_amount: Label = Label.new()
+	reward_amount.name = "HeartRewardAmount"
+	reward_amount.text = "+%d" % amount
+	reward_amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_amount.add_theme_font_override("font", _font_fredoka_bold)
+	reward_amount.add_theme_font_size_override("font_size", 30)
+	reward_amount.add_theme_color_override("font_color", UI_YELLOW)
+	content.add_child(reward_amount)
+
+	await get_tree().process_frame
+	if not is_instance_valid(overlay) or overlay != _heart_reward_overlay:
+		return
+	card.pivot_offset = card.size * 0.5
+	heart.pivot_offset = heart.size * 0.5
+	reward_amount.pivot_offset = reward_amount.size * 0.5
+	heart.scale = Vector2(0.42, 0.42)
+	var entrance: Tween = overlay.create_tween().set_parallel(true)
+	entrance.tween_property(dim, "color:a", 0.13, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	entrance.tween_property(card, "modulate:a", 1.0, 0.14)
+	entrance.tween_property(card, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	entrance.tween_property(heart, "scale", Vector2(1.16, 1.16), 0.30).set_delay(0.06).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	entrance.tween_property(reward_amount, "scale", Vector2(1.10, 1.10), 0.24).set_delay(0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await entrance.finished
+	await get_tree().create_timer(0.32).timeout
+	if not is_instance_valid(overlay) or overlay != _heart_reward_overlay:
+		return
+	var target_hearts: Array[Control] = _heart_reward_targets(previous_hearts, amount)
+	if not target_hearts.is_empty():
+		await _fly_reward_hearts_to_row(overlay, card, dim, heart, target_hearts)
+	else:
+		var hold: Tween = overlay.create_tween()
+		hold.tween_interval(0.52)
+		hold.tween_property(overlay, "modulate:a", 0.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		await hold.finished
+	_finish_heart_reward_event(overlay)
+
+func _heart_reward_targets(previous_hearts: int, amount: int) -> Array[Control]:
+	var result: Array[Control] = []
+	if previous_hearts < 0:
+		return result
+	var row: Control = null
+	if _home_layer.visible and not is_instance_valid(_active_view):
+		row = _endless_hearts_row
+	elif is_instance_valid(_active_view):
+		row = _active_view.find_child("AftermathHearts", true, false) as Control
+	if row == null:
+		return result
+	var target_end: int = mini(previous_hearts + amount, SaveManager.ENDLESS_DAILY_HEARTS)
+	var heart_index: int = 0
+	for child: Node in row.get_children():
+		var target: Control = child as Control
+		if target == null:
+			continue
+		if heart_index >= previous_hearts and heart_index < target_end:
+			result.append(target)
+		heart_index += 1
+	return result
+
+func _fly_reward_hearts_to_row(overlay: Control, card: Control, dim: ColorRect, source_heart: TextureRect, targets: Array[Control]) -> void:
+	var source_rect: Rect2 = source_heart.get_global_rect()
+	var source_center: Vector2 = source_rect.get_center() - overlay.global_position
+	source_heart.visible = false
+	var dismiss_card: Tween = overlay.create_tween().set_parallel(true)
+	dismiss_card.tween_property(card, "modulate:a", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	dismiss_card.tween_property(card, "scale", Vector2(0.90, 0.90), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	dismiss_card.tween_property(dim, "color:a", 0.04, 0.24)
+	for index: int in range(targets.size()):
+		var target: Control = targets[index]
+		if not is_instance_valid(target):
+			continue
+		var target_modulate: Color = target.modulate
+		target.modulate = Color(target_modulate.r, target_modulate.g, target_modulate.b, 0.22)
+		var flyer: TextureRect = TextureRect.new()
+		flyer.name = "FlyingHeart%d" % index
+		flyer.texture = HEART_ICON
+		flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flyer.modulate = UI_RED
+		flyer.size = Vector2(72, 64)
+		flyer.position = source_center - flyer.size * 0.5
+		flyer.pivot_offset = flyer.size * 0.5
+		overlay.add_child(flyer)
+		var target_center: Vector2 = target.get_global_rect().get_center() - overlay.global_position
+		var target_position: Vector2 = target_center - flyer.size * 0.5
+		var flight: Tween = overlay.create_tween().set_parallel(true)
+		flight.tween_property(flyer, "position", target_position, 0.52).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)
+		flight.tween_property(flyer, "scale", Vector2(0.34, 0.34), 0.52).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		flight.tween_property(flyer, "rotation_degrees", 12.0 if index % 2 == 0 else -12.0, 0.52).set_trans(Tween.TRANS_SINE)
+		await flight.finished
+		if is_instance_valid(flyer):
+			flyer.queue_free()
+		if is_instance_valid(target):
+			target.modulate = target_modulate
+			target.pivot_offset = target.size * 0.5
+			target.scale = Vector2(0.72, 0.72)
+			var pulse: Tween = target.create_tween()
+			pulse.tween_property(target, "scale", Vector2(1.28, 1.28), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			pulse.tween_property(target, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			await pulse.finished
+		if index < targets.size() - 1:
+			await get_tree().create_timer(0.06).timeout
+	var finish: Tween = overlay.create_tween()
+	finish.tween_property(dim, "color:a", 0.0, 0.16)
+	await finish.finished
+
+func _finish_heart_reward_event(overlay: Control) -> void:
+	if _heart_reward_overlay == overlay:
+		_heart_reward_overlay = null
+	if is_instance_valid(overlay):
+		overlay.queue_free()
+
+func _heart_reward_card_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_PRIMARY
+	style.border_color = UI_YELLOW
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(30)
+	style.shadow_color = Color(0.04, 0.01, 0.17, 0.36)
+	style.shadow_size = 22
+	style.shadow_offset = Vector2(0, 10)
+	return style
 
 func _daily_card_meta(puzzle: Dictionary, is_finnish: bool) -> String:
 	var groups: Array = []
@@ -606,9 +839,13 @@ func _home_date_text(is_finnish: bool) -> String:
 func _apply_home_card_style() -> void:
 	_daily_card.add_theme_stylebox_override("panel", _daily_card_style())
 	if _brand_title != null:
-		_brand_title.add_theme_font_override("font", _font_fredoka_bold)
-		_brand_title.add_theme_font_size_override("font_size", 44)
-		_brand_title.add_theme_color_override("font_color", UI_PRIMARY)
+		_brand_title.bbcode_enabled = true
+		_brand_title.fit_content = true
+		_brand_title.scroll_active = false
+		_brand_title.add_theme_font_override("normal_font", _font_dm_sans_black)
+		_brand_title.add_theme_font_size_override("normal_font_size", 40)
+		_brand_title.add_theme_color_override("default_color", UI_PRIMARY)
+		_brand_title.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.20))
 		_brand_title.add_theme_constant_override("outline_size", 0)
 	if _brand_subtitle != null:
 		_brand_subtitle.add_theme_font_override("font", _font_dm_sans_spaced)
@@ -625,8 +862,8 @@ func _apply_home_card_style() -> void:
 	if _card_title != null:
 		_card_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_card_title.custom_minimum_size.x = 0
-		_card_title.add_theme_font_override("font", _font_fredoka_semibold)
-		_card_title.add_theme_font_size_override("font_size", 24)
+		_card_title.add_theme_font_override("font", _font_fredoka_bold)
+		_card_title.add_theme_font_size_override("font_size", 25)
 		_card_title.add_theme_color_override("font_color", Color.WHITE)
 		_card_title.add_theme_constant_override("outline_size", 0)
 	if _card_meta != null:
@@ -634,9 +871,9 @@ func _apply_home_card_style() -> void:
 		_card_meta.custom_minimum_size.x = 0
 		_card_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_card_meta.max_lines_visible = 2
-		_card_meta.add_theme_font_override("font", FONT_DM_SANS)
+		_card_meta.add_theme_font_override("font", _font_dm_sans_semibold)
 		_card_meta.add_theme_font_size_override("font_size", 13)
-		_card_meta.add_theme_color_override("font_color", Color("8b7dc8"))
+		_card_meta.add_theme_color_override("font_color", UI_MUTED_ON_PRIMARY)
 		_card_meta.add_theme_constant_override("outline_size", 0)
 	if _card_streak != null:
 		_card_streak.add_theme_font_override("font", _font_fredoka_semibold)
@@ -652,6 +889,120 @@ func _apply_home_card_style() -> void:
 		_home_hint.add_theme_font_size_override("normal_font_size", 12)
 		_home_hint.add_theme_font_size_override("bold_font_size", 12)
 		_home_hint.add_theme_color_override("default_color", UI_MUTED_TEXT)
+		_home_hint.add_theme_stylebox_override("normal", _home_hint_style())
+
+func _install_home_streak_calendar() -> void:
+	if _card_streak == null or is_instance_valid(_home_streak_calendar):
+		return
+	var card_content: VBoxContainer = _card_streak.get_parent() as VBoxContainer
+	if card_content == null:
+		return
+	_home_streak_calendar = VBoxContainer.new()
+	_home_streak_calendar.name = "HomeStreakCalendar"
+	_home_streak_calendar.add_theme_constant_override("separation", 3)
+	_home_streak_calendar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_content.add_child(_home_streak_calendar)
+	card_content.move_child(_home_streak_calendar, _card_streak.get_index() + 1)
+
+func _refresh_home_streak_calendar(daily_unlocked: bool) -> void:
+	if not is_instance_valid(_home_streak_calendar):
+		return
+	_card_streak.visible = not daily_unlocked
+	_home_streak_calendar.visible = daily_unlocked
+	for child: Node in _home_streak_calendar.get_children():
+		child.free()
+	if not daily_unlocked:
+		return
+	var today_key: String = Time.get_date_string_from_system()
+	var monday_key: String = _home_daily_week_monday(today_key)
+	var header: HBoxContainer = HBoxContainer.new()
+	header.name = "HomeStreakHeader"
+	header.add_theme_constant_override("separation", 6)
+	_home_streak_calendar.add_child(header)
+	var flame: TextureRect = TextureRect.new()
+	flame.name = "HomeStreakFlame"
+	flame.texture = STREAK_FLAME_ICON
+	flame.custom_minimum_size = Vector2(18, 22)
+	flame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(flame)
+	var streak: Label = Label.new()
+	streak.name = "HomeStreakCount"
+	streak.text = SaveManager.daily_streak_text(today_key)
+	streak.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	streak.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	streak.add_theme_font_override("font", _font_fredoka_semibold)
+	streak.add_theme_font_size_override("font_size", 14)
+	streak.add_theme_color_override("font_color", UI_YELLOW)
+	header.add_child(streak)
+	_home_streak_calendar.add_child(_build_home_streak_week(_home_date_key_offset(monday_key, -7), today_key, false))
+	_home_streak_calendar.add_child(_build_home_streak_week(monday_key, today_key, true))
+
+func _build_home_streak_week(monday_key: String, today_key: String, current_week: bool) -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.name = "HomeStreakCurrentWeek" if current_week else "HomeStreakPreviousWeek"
+	row.add_theme_constant_override("separation", 2)
+	var dates: Array[String] = []
+	var states: Array[String] = []
+	for day_offset: int in 7:
+		var date_key: String = _home_date_key_offset(monday_key, day_offset)
+		var result: Dictionary = SaveManager.get_daily_result(date_key)
+		var state: String = "empty"
+		if bool(result.get("completed", false)):
+			state = "correct" if bool(result.get("won", false)) else "wrong"
+		dates.append(date_key)
+		states.append(state)
+	for day_offset: int in 7:
+		var date_key: String = dates[day_offset]
+		var state: String = states[day_offset]
+		var fill: Color = STREAK_GREEN if state == "correct" else UI_RED if state == "wrong" else STREAK_EMPTY
+		var joins_left: bool = state == "correct" and day_offset > 0 and states[day_offset - 1] == "correct"
+		var joins_right: bool = state == "correct" and day_offset < states.size() - 1 and states[day_offset + 1] == "correct"
+		var cell: PanelContainer = PanelContainer.new()
+		cell.name = "HomeStreakDay%s" % date_key.replace("-", "")
+		cell.set_meta("date_key", date_key)
+		cell.set_meta("calendar_state", state)
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.custom_minimum_size = Vector2(26, 23)
+		cell.add_theme_stylebox_override("panel", _home_streak_day_style(fill, date_key == today_key, joins_left, joins_right))
+		var parts: PackedStringArray = date_key.split("-")
+		var date_label: Label = Label.new()
+		date_label.text = str(int(parts[2])) if parts.size() == 3 else date_key
+		date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		date_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		date_label.add_theme_font_override("font", _font_fredoka_bold)
+		date_label.add_theme_font_size_override("font_size", 9)
+		date_label.add_theme_color_override("font_color", Color.WHITE)
+		cell.add_child(date_label)
+		row.add_child(cell)
+	return row
+
+func _home_streak_day_style(fill: Color, today: bool, joins_left: bool, joins_right: bool) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = UI_YELLOW if today else Color("d6cfef")
+	style.set_border_width_all(2 if today else 1)
+	style.set_corner_radius_all(7)
+	if joins_left:
+		style.corner_radius_top_left = 0
+		style.corner_radius_bottom_left = 0
+		style.expand_margin_left = 1.0
+	if joins_right:
+		style.corner_radius_top_right = 0
+		style.corner_radius_bottom_right = 0
+		style.expand_margin_right = 1.0
+	return style
+
+func _home_daily_week_monday(day_key: String) -> String:
+	var unix_time: int = Time.get_unix_time_from_datetime_string("%sT00:00:00" % day_key)
+	var weekday: int = int(Time.get_date_dict_from_unix_time(unix_time).get("weekday", 1))
+	return _home_date_key_offset(day_key, -posmod(weekday - 1, 7))
+
+func _home_date_key_offset(day_key: String, offset_days: int) -> String:
+	var unix_time: int = Time.get_unix_time_from_datetime_string("%sT00:00:00" % day_key)
+	var date_data: Dictionary = Time.get_date_dict_from_unix_time(unix_time + offset_days * 86400)
+	return "%04d-%02d-%02d" % [int(date_data.get("year", 1970)), int(date_data.get("month", 1)), int(date_data.get("day", 1))]
 
 func _thicken_label(label: Label, color: Color, outline_size: int) -> void:
 	label.add_theme_color_override("font_outline_color", color)
@@ -660,19 +1011,6 @@ func _thicken_label(label: Label, color: Color, outline_size: int) -> void:
 func _thicken_button(button: Button, color: Color, outline_size: int) -> void:
 	button.add_theme_color_override("font_outline_color", color)
 	button.add_theme_constant_override("outline_size", outline_size)
-
-func _apply_mini_pyramid_style() -> void:
-	var colors: Array[Color] = [UI_MAGENTA, UI_RED, UI_TEAL, UI_YELLOW]
-	var pyramid: Node = get_node_or_null("HomeLayer/Content/BrandBlock/MiniPyramid")
-	if pyramid == null:
-		return
-	var row_index: int = 0
-	for row: Node in pyramid.get_children():
-		var fill: Color = colors[min(row_index, colors.size() - 1)]
-		for block: Node in row.get_children():
-			if block is Panel:
-				(block as Panel).add_theme_stylebox_override("panel", _mini_block_style(fill))
-		row_index += 1
 
 func _layout_home_layout() -> void:
 	_logo_spacer.custom_minimum_size = Vector2(0, clampf(size.y * 0.012, 8.0, 14.0))
@@ -748,6 +1086,11 @@ func show_achievements() -> void:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Keep the achievement list mobile-first: dragging anywhere over a card
+	# scrolls the content, while the platform scrollbar stays out of the layout.
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.scroll_deadzone = 6
+	scroll.gui_input.connect(_on_achievement_scroll_input.bind(scroll))
 	page.add_child(scroll)
 	var list_margin := MarginContainer.new()
 	list_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -783,7 +1126,7 @@ func _achievement_header() -> Control:
 	back.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	back.add_theme_stylebox_override("normal", _achievement_badge_style(UI_YELLOW, UI_PRIMARY, 13))
 	back.add_theme_stylebox_override("hover", _achievement_badge_style(Color("ffe33d"), UI_PRIMARY, 13))
-	back.add_theme_stylebox_override("pressed", _achievement_badge_style(Color("e9c400"), UI_PRIMARY, 13))
+	back.add_theme_stylebox_override("pressed", _achievement_badge_style(UI_ACCENT_PRESSED, UI_PRIMARY, 13))
 	back.pressed.connect(show_main_menu)
 	row.add_child(back)
 	var trophy_plate := PanelContainer.new()
@@ -971,7 +1314,30 @@ func _achievement_card(snapshot: Dictionary) -> Control:
 	progress_bar.add_theme_stylebox_override("background", _achievement_progress_style(Color("e9e4f5"), 4))
 	progress_bar.add_theme_stylebox_override("fill", _achievement_progress_style(UI_YELLOW if completed else accent, 4))
 	content.add_child(progress_bar)
+	_make_achievement_card_scroll_transparent(card)
 	return card
+
+func _make_achievement_card_scroll_transparent(root: Control) -> void:
+	# Achievement cards contain no actions. Ignoring pointer input throughout
+	# their visual tree lets the ScrollContainer receive the complete swipe even
+	# when it begins on a title, star, emblem, or progress bar.
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in root.get_children():
+		if child is Control:
+			_make_achievement_card_scroll_transparent(child as Control)
+
+func _on_achievement_scroll_input(event: InputEvent, scroll: ScrollContainer) -> void:
+	# ScrollContainer already handles native touch drags. Add matching mouse
+	# dragging for desktop testing without showing or depending on a scrollbar.
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_achievement_mouse_dragging = event.pressed
+		if event.pressed:
+			_achievement_mouse_drag_start_y = event.position.y
+			_achievement_mouse_drag_start_scroll = scroll.scroll_vertical
+	elif event is InputEventMouseMotion and _achievement_mouse_dragging and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		var drag_distance: float = event.position.y - _achievement_mouse_drag_start_y
+		scroll.scroll_vertical = _achievement_mouse_drag_start_scroll - roundi(drag_distance)
+		accept_event()
 
 func _start_next_game() -> void:
 	if GameState.game_mode == "unlimited" and not SaveManager.can_start_endless():
@@ -1074,6 +1440,37 @@ func show_settings() -> void:
 		SaveManager.save_data()
 	)
 	panel.add_child(music)
+	var reminder_block: VBoxContainer = VBoxContainer.new()
+	reminder_block.add_theme_constant_override("separation", 4)
+	panel.add_child(reminder_block)
+	var reminders: CheckButton = _settings_toggle(SaveManager.text("daily_reminders"))
+	reminders.button_pressed = bool(SaveManager.settings.get("daily_notifications_enabled", false))
+	reminders.toggled.connect(func(value: bool) -> void:
+		NotificationManager.set_daily_reminders_enabled(value)
+	)
+	reminder_block.add_child(reminders)
+	var reminder_note: Label = Label.new()
+	reminder_note.text = SaveManager.text("daily_reminders_note")
+	reminder_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reminder_note.add_theme_font_override("font", FONT_DM_SANS)
+	reminder_note.add_theme_font_size_override("font_size", 11)
+	reminder_note.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	reminder_block.add_child(reminder_note)
+	var privacy_button: Button = Button.new()
+	var analytics_status_key: String = "analytics_status_on" if bool(SaveManager.settings.get("analytics_enabled", false)) else "analytics_status_off"
+	privacy_button.text = "%s  ·  %s" % [SaveManager.text("privacy_and_data"), SaveManager.text(analytics_status_key)]
+	privacy_button.custom_minimum_size = Vector2(0, 38)
+	privacy_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	privacy_button.add_theme_font_override("font", _font_dm_sans_semibold)
+	privacy_button.add_theme_font_size_override("font_size", 13)
+	privacy_button.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	privacy_button.add_theme_color_override("font_hover_color", UI_TEXT)
+	privacy_button.add_theme_color_override("font_pressed_color", UI_TEXT)
+	privacy_button.add_theme_stylebox_override("normal", _mode_button_style(Color.TRANSPARENT, UI_BORDER, 1))
+	privacy_button.add_theme_stylebox_override("hover", _mode_button_style(UI_SURFACE_TINT, UI_BORDER, 1))
+	privacy_button.add_theme_stylebox_override("pressed", _mode_button_style(Color("e4dcf6"), UI_PRIMARY, 1))
+	privacy_button.pressed.connect(_show_analytics_consent.bind(true))
+	panel.add_child(privacy_button)
 	var language_block: VBoxContainer = VBoxContainer.new()
 	language_block.add_theme_constant_override("separation", 10)
 	panel.add_child(language_block)
@@ -1088,27 +1485,6 @@ func show_settings() -> void:
 	language_block.add_child(language_row)
 	_add_language_chip(language_row, "English", "en")
 	_add_language_chip(language_row, "Suomi", "fi")
-	var attempts_block: VBoxContainer = VBoxContainer.new()
-	attempts_block.add_theme_constant_override("separation", 10)
-	panel.add_child(attempts_block)
-	var attempts_label: Label = Label.new()
-	attempts_label.text = SaveManager.text("attempts_per_puzzle")
-	attempts_label.add_theme_font_override("font", _font_fredoka_semibold)
-	attempts_label.add_theme_font_size_override("font_size", 16)
-	attempts_label.add_theme_color_override("font_color", UI_TEXT)
-	attempts_block.add_child(attempts_label)
-	var attempts_row: HBoxContainer = HBoxContainer.new()
-	attempts_row.add_theme_constant_override("separation", 8)
-	attempts_block.add_child(attempts_row)
-	for value: int in [3, 4, 5]:
-		_add_attempt_chip(attempts_row, value)
-	var note: Label = Label.new()
-	note.text = SaveManager.text("settings_note")
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_override("font", FONT_DM_SANS)
-	note.add_theme_font_size_override("font_size", 12)
-	note.add_theme_color_override("font_color", UI_MUTED_TEXT)
-	panel.add_child(note)
 	var tutorial_button: Button = Button.new()
 	tutorial_button.text = SaveManager.text("replay_tutorial")
 	tutorial_button.custom_minimum_size = Vector2(0, 44)
@@ -1205,8 +1581,121 @@ func _continue_onboarding() -> void:
 		return
 	if SaveManager.needs_language_onboarding():
 		_show_language_onboarding()
+	elif not bool(SaveManager.settings.get("analytics_consent_answered", false)):
+		_show_analytics_consent(false)
 	elif SaveManager.needs_tutorial_onboarding():
 		_start_tutorial()
+
+func _maybe_offer_daily_notifications() -> void:
+	if _notification_prompt_queued or is_instance_valid(_active_view):
+		return
+	if not NotificationManager.is_supported() or SaveManager.needs_tutorial_onboarding():
+		return
+	if not SaveManager.is_daily_unlocked():
+		return
+	if bool(SaveManager.settings.get("notification_consent_answered", false)):
+		return
+	_notification_prompt_queued = true
+	_show_notification_consent()
+
+func _show_notification_consent() -> void:
+	_show_home()
+	_clear_content()
+	var overlay: Control = Control.new()
+	overlay.name = "NotificationConsent"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+	_active_view = overlay
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0.10, 0.04, 0.37, 0.64)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 20)
+	overlay.add_child(center)
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(clampf(size.x - 40.0, 300.0, 390.0), 0)
+	var card_style: StyleBoxFlat = _round_style(UI_SURFACE, UI_YELLOW, 26)
+	card_style.set_border_width_all(2)
+	card_style.shadow_color = Color(0.10, 0.04, 0.37, 0.24)
+	card_style.shadow_size = 14
+	card_style.shadow_offset = Vector2(0, 7)
+	card.add_theme_stylebox_override("panel", card_style)
+	center.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 26)
+	margin.add_theme_constant_override("margin_right", 26)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 13)
+	margin.add_child(content)
+	var bell: TextureRect = TextureRect.new()
+	bell.texture = STREAK_FLAME_ICON
+	bell.custom_minimum_size = Vector2(52, 52)
+	bell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bell.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(bell)
+	var eyebrow: Label = Label.new()
+	eyebrow.text = SaveManager.text("notification_consent_eyebrow")
+	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	eyebrow.add_theme_font_override("font", _font_dm_sans_spaced)
+	eyebrow.add_theme_font_size_override("font_size", 10)
+	eyebrow.add_theme_color_override("font_color", UI_MAGENTA)
+	content.add_child(eyebrow)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("notification_consent_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(title)
+	var body: Label = Label.new()
+	body.text = SaveManager.text("notification_consent_body")
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_override("font", _font_dm_sans_semibold)
+	body.add_theme_font_size_override("font_size", 15)
+	body.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(body)
+	var accept_button: Button = Button.new()
+	accept_button.text = SaveManager.text("notification_consent_accept")
+	accept_button.custom_minimum_size = Vector2(0, 54)
+	accept_button.add_theme_font_override("font", _font_fredoka_bold)
+	accept_button.add_theme_font_size_override("font_size", 17)
+	accept_button.add_theme_color_override("font_color", UI_PRIMARY)
+	accept_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	accept_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	accept_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 4))
+	accept_button.add_theme_stylebox_override("hover", _play_style(UI_ACCENT_HOVER, 3))
+	accept_button.add_theme_stylebox_override("pressed", _play_style(UI_ACCENT_PRESSED, 1))
+	accept_button.pressed.connect(_apply_notification_choice.bind(true))
+	content.add_child(accept_button)
+	var decline_button: Button = Button.new()
+	decline_button.text = SaveManager.text("notification_consent_decline")
+	decline_button.custom_minimum_size = Vector2(0, 40)
+	decline_button.add_theme_font_override("font", _font_dm_sans_semibold)
+	decline_button.add_theme_font_size_override("font_size", 14)
+	decline_button.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	decline_button.add_theme_color_override("font_hover_color", UI_TEXT)
+	decline_button.add_theme_stylebox_override("normal", _mode_button_style(Color.TRANSPARENT, Color.TRANSPARENT, 0))
+	decline_button.add_theme_stylebox_override("hover", _mode_button_style(UI_SURFACE_TINT, Color.TRANSPARENT, 0))
+	decline_button.pressed.connect(_apply_notification_choice.bind(false))
+	content.add_child(decline_button)
+	card.modulate.a = 0.0
+	card.scale = Vector2(0.96, 0.96)
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(card, "modulate:a", 1.0, 0.20)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _apply_notification_choice(enabled: bool) -> void:
+	_notification_prompt_queued = false
+	NotificationManager.set_daily_reminders_enabled(enabled, enabled)
+	show_main_menu()
 
 func _show_language_onboarding() -> void:
 	_show_home()
@@ -1272,22 +1761,154 @@ func _select_onboarding_language(language_code: String) -> void:
 		return
 	SaveManager.mark_onboarding_language_selected()
 	_apply_home_texts()
-	_start_tutorial()
+	_show_analytics_consent(false)
+
+func _show_analytics_consent(from_settings: bool = false) -> void:
+	_show_home()
+	_clear_content()
+	var overlay: Control = Control.new()
+	overlay.name = "AnalyticsConsent"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+	_active_view = overlay
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0.10, 0.04, 0.37, 0.64)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 20)
+	overlay.add_child(center)
+	var card: PanelContainer = PanelContainer.new()
+	card.name = "AnalyticsConsentCard"
+	card.custom_minimum_size = Vector2(clampf(size.x - 40.0, 300.0, 390.0), 0)
+	var card_style: StyleBoxFlat = _round_style(UI_SURFACE, UI_YELLOW, 26)
+	card_style.set_border_width_all(2)
+	card_style.shadow_color = Color(0.10, 0.04, 0.37, 0.24)
+	card_style.shadow_size = 14
+	card_style.shadow_offset = Vector2(0, 7)
+	card.add_theme_stylebox_override("panel", card_style)
+	center.add_child(card)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 26)
+	margin.add_theme_constant_override("margin_right", 26)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 13)
+	margin.add_child(content)
+	var eyebrow: Label = Label.new()
+	eyebrow.text = SaveManager.text("analytics_consent_eyebrow")
+	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	eyebrow.add_theme_font_override("font", _font_dm_sans_spaced)
+	eyebrow.add_theme_font_size_override("font_size", 10)
+	eyebrow.add_theme_color_override("font_color", UI_MAGENTA)
+	content.add_child(eyebrow)
+	var title: Label = Label.new()
+	title.text = SaveManager.text("analytics_consent_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 25)
+	title.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(title)
+	var benefit: Label = Label.new()
+	benefit.text = SaveManager.text("analytics_consent_body")
+	benefit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	benefit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	benefit.add_theme_font_override("font", _font_dm_sans_semibold)
+	benefit.add_theme_font_size_override("font_size", 15)
+	benefit.add_theme_color_override("font_color", UI_TEXT)
+	content.add_child(benefit)
+	var detail_panel: PanelContainer = PanelContainer.new()
+	detail_panel.add_theme_stylebox_override("panel", _mode_button_style(UI_SURFACE_TINT, UI_BORDER, 1))
+	content.add_child(detail_panel)
+	var detail: Label = Label.new()
+	detail.text = SaveManager.text("analytics_consent_detail")
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_override("font", FONT_DM_SANS)
+	detail.add_theme_font_size_override("font_size", 12)
+	detail.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	detail_panel.add_child(detail)
+	var accept_button: Button = Button.new()
+	accept_button.text = SaveManager.text("analytics_consent_accept")
+	accept_button.custom_minimum_size = Vector2(0, 54)
+	accept_button.add_theme_font_override("font", _font_fredoka_bold)
+	accept_button.add_theme_font_size_override("font_size", 17)
+	accept_button.add_theme_color_override("font_color", UI_PRIMARY)
+	accept_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	accept_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	accept_button.add_theme_stylebox_override("normal", _play_style(UI_YELLOW, 4))
+	accept_button.add_theme_stylebox_override("hover", _play_style(UI_ACCENT_HOVER, 3))
+	accept_button.add_theme_stylebox_override("pressed", _play_style(Color("f3ca00"), 1))
+	accept_button.pressed.connect(_apply_analytics_choice.bind(true, from_settings))
+	content.add_child(accept_button)
+	var decline_button: Button = Button.new()
+	decline_button.text = SaveManager.text("analytics_consent_decline")
+	decline_button.custom_minimum_size = Vector2(0, 40)
+	decline_button.add_theme_font_override("font", _font_dm_sans_semibold)
+	decline_button.add_theme_font_size_override("font_size", 14)
+	decline_button.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	decline_button.add_theme_color_override("font_hover_color", UI_TEXT)
+	decline_button.add_theme_stylebox_override("normal", _mode_button_style(Color.TRANSPARENT, Color.TRANSPARENT, 0))
+	decline_button.add_theme_stylebox_override("hover", _mode_button_style(UI_SURFACE_TINT, Color.TRANSPARENT, 0))
+	decline_button.pressed.connect(_apply_analytics_choice.bind(false, from_settings))
+	content.add_child(decline_button)
+	var policy_button: Button = Button.new()
+	policy_button.text = SaveManager.text("privacy_policy")
+	policy_button.flat = true
+	policy_button.add_theme_font_override("font", FONT_DM_SANS)
+	policy_button.add_theme_font_size_override("font_size", 12)
+	policy_button.add_theme_color_override("font_color", UI_MUTED_TEXT)
+	policy_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
+	policy_button.pressed.connect(func() -> void: OS.shell_open(PRIVACY_POLICY_URL))
+	content.add_child(policy_button)
+	card.modulate.a = 0.0
+	card.scale = Vector2(0.96, 0.96)
+	card.pivot_offset = card.size * 0.5
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(card, "modulate:a", 1.0, 0.20)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _apply_analytics_choice(enabled: bool, from_settings: bool) -> void:
+	SaveManager.settings["analytics_consent_answered"] = true
+	SaveManager.settings["analytics_enabled"] = enabled
+	SaveManager.save_data()
+	var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+	if analytics != null and analytics.has_method("set_collection_enabled"):
+		analytics.call("set_collection_enabled", enabled)
+	if from_settings:
+		show_settings()
+	elif SaveManager.needs_tutorial_onboarding():
+		_start_tutorial()
+	else:
+		show_main_menu()
 
 func _start_tutorial() -> void:
 	if _is_transitioning:
 		return
 	_clear_content()
 	if GameState.start_tutorial():
+		_log_analytics("tutorial_started", {"language": PuzzleLoader.get_language()})
 		show_game()
 
 func _on_tutorial_exit(completed: bool) -> void:
+	_log_analytics("tutorial_completed" if completed else "tutorial_skipped", {
+		"language": PuzzleLoader.get_language()
+	})
 	SaveManager.complete_onboarding()
 	if completed:
 		_transition_from_board_to_mode(GameState.UNLIMITED_MODE)
 		return
 	GameState.reset_debug_state()
 	show_main_menu()
+
+func _log_analytics(event_name: String, parameters: Dictionary = {}) -> void:
+	var analytics: Node = get_node_or_null("/root/AnalyticsManager")
+	if analytics != null and analytics.has_method("log_event"):
+		analytics.call("log_event", event_name, parameters)
 
 func _transition_from_board_to_mode(mode: String) -> void:
 	if _is_transitioning:
@@ -1361,36 +1982,6 @@ func _add_language_chip(row: HBoxContainer, label_text: String, language_code: S
 			show_settings()
 	)
 	row.add_child(button)
-
-func _add_attempt_chip(row: HBoxContainer, value: int) -> void:
-	var selected: bool = value == int(SaveManager.settings.get("attempts", 4))
-	var button: Button = _chip_button(str(value), selected)
-	button.pressed.connect(func() -> void:
-		SaveManager.settings["attempts"] = value
-		SaveManager.save_data()
-		show_settings()
-	)
-	row.add_child(button)
-
-func _on_debug_reset_pressed(button: Button) -> void:
-	if not bool(button.get_meta("reset_armed", false)):
-		button.set_meta("reset_armed", true)
-		button.text = SaveManager.text("debug_reset_confirm")
-		button.add_theme_color_override("font_color", Color.WHITE)
-		button.add_theme_stylebox_override("normal", _debug_reset_style(true))
-		return
-	SaveManager.reset_all_data()
-	GameState.reset_debug_state()
-	PuzzleLoader.load_puzzles()
-	SoundManager.enabled = bool(SaveManager.settings.get("sound_enabled", true))
-	SoundManager.set_music_enabled(bool(SaveManager.settings.get("music_enabled", true)))
-	_play_button.disabled = false
-	_unlimited_button.disabled = false
-	var pool_notice: Node = _home_layer.get_node_or_null("Content/PoolCompleteNotice")
-	if pool_notice != null:
-		pool_notice.queue_free()
-	show_main_menu()
-	call_deferred("_continue_onboarding")
 
 func _settings_toggle(label_text: String) -> CheckButton:
 	var button: CheckButton = CheckButton.new()
@@ -1498,18 +2089,136 @@ func _create_home_decor() -> Control:
 	layer.name = "HomeDecor"
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var base: ColorRect = ColorRect.new()
-	base.color = UI_BACKGROUND
+	var gradient: Gradient = Gradient.new()
+	gradient.set_color(0, Color("fffaf3"))
+	gradient.add_point(0.58, Color("fff7f1"))
+	gradient.set_color(2, Color("f6efff"))
+	var gradient_texture: GradientTexture2D = GradientTexture2D.new()
+	gradient_texture.gradient = gradient
+	gradient_texture.width = 64
+	gradient_texture.height = 256
+	gradient_texture.fill_from = Vector2(0.5, 0.0)
+	gradient_texture.fill_to = Vector2(0.5, 1.0)
+	var base: TextureRect = TextureRect.new()
+	base.texture = gradient_texture
+	base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	base.stretch_mode = TextureRect.STRETCH_SCALE
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(base)
-	_add_decor_shape(layer, Vector2(-40, -40), Vector2(160, 160), UI_YELLOW, 0.26, 80)
-	_add_decor_shape(layer, Vector2(size.x - 88, 12), Vector2(76, 76), UI_MAGENTA, 0.16, 0, 18.0)
-	_add_decor_shape(layer, Vector2(12, size.y - 132), Vector2(72, 56), UI_TEAL, 0.16, 0, -8.0)
-	_add_decor_shape(layer, Vector2(size.x - 104, size.y - 96), Vector2(120, 120), UI_RED, 0.18, 60)
-	_add_decor_shape(layer, Vector2(24, size.y * 0.46), Vector2(24, 24), UI_MAGENTA, 0.10, 12)
-	_add_decor_shape(layer, Vector2(size.x - 44, size.y * 0.34), Vector2(16, 16), UI_YELLOW, 0.28, 0)
+
+	# The home screen now shares the loading screen's soft alpine depth:
+	# three misty ridges, quiet edge decorations, and warm diffused light.
+	_add_home_mountain_range(layer, size.y + 8.0, size.y * 0.55, Color("ded1ff"), 0.34, 0.0)
+	_add_home_mountain_range(layer, size.y + 12.0, size.y * 0.66, Color("bca6f6"), 0.25, 0.12)
+	_add_home_mountain_range(layer, size.y + 18.0, size.y * 0.78, Color("7144d8"), 0.15, -0.08)
+	_add_home_pine(layer, Vector2(18, size.y - 48), 64.0, Color("2c1a91"), 0.30)
+	_add_home_pine(layer, Vector2(size.x - 24, size.y - 38), 76.0, Color("2c1a91"), 0.28)
+
+	_add_decor_shape(layer, Vector2(-76, -70), Vector2(184, 184), Color("ffd45c"), 0.38, 92)
+	_add_decor_shape(layer, Vector2(size.x - 52, 18), Vector2(82, 82), Color("8c66ea"), 0.13, 18, 13.0)
+	_add_decor_shape(layer, Vector2(-46, size.y * 0.42), Vector2(88, 88), Color("08b7b3"), 0.13, 44)
+	_add_decor_shape(layer, Vector2(size.x - 74, size.y - 56), Vector2(118, 118), Color("ff6257"), 0.12, 59)
+	_add_home_dot_cluster(layer, Vector2(size.x - 54, 106), 4, 5, 8.0, Color("7445dd"), 0.27)
+	_add_home_dot_cluster(layer, Vector2(8, size.y - 86), 4, 4, 8.0, Color("7445dd"), 0.16)
+	_add_home_sparkle(layer, Vector2(42, 176), 13.0, Color("ffd13d"), 0.75)
+	_add_home_sparkle(layer, Vector2(size.x - 36, size.y * 0.39), 8.0, Color("08b7b3"), 0.55)
 	return layer
+
+func _add_home_mountain_range(
+	parent: Control,
+	base_y: float,
+	peak_y: float,
+	color: Color,
+	alpha: float,
+	phase: float
+) -> void:
+	var mountain: Polygon2D = Polygon2D.new()
+	mountain.polygon = PackedVector2Array([
+		Vector2(-28, base_y),
+		Vector2(size.x * (0.10 + phase), base_y - 58),
+		Vector2(size.x * (0.23 + phase * 0.3), base_y - 26),
+		Vector2(size.x * 0.39, peak_y + 52),
+		Vector2(size.x * 0.53, peak_y),
+		Vector2(size.x * 0.68, peak_y + 78),
+		Vector2(size.x * (0.84 - phase * 0.2), base_y - 62),
+		Vector2(size.x + 28, base_y - 10),
+		Vector2(size.x + 28, base_y + 30),
+		Vector2(-28, base_y + 30),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	mountain.color = fill
+	parent.add_child(mountain)
+
+func _add_home_pine(parent: Control, base: Vector2, height: float, color: Color, alpha: float) -> void:
+	var half_width: float = height * 0.24
+	var pine: Polygon2D = Polygon2D.new()
+	pine.polygon = PackedVector2Array([
+		base + Vector2(0, -height),
+		base + Vector2(-half_width * 0.58, -height * 0.62),
+		base + Vector2(-half_width * 0.27, -height * 0.64),
+		base + Vector2(-half_width, -height * 0.28),
+		base + Vector2(-half_width * 0.38, -height * 0.34),
+		base + Vector2(-half_width * 1.18, -2),
+		base + Vector2(half_width * 1.18, -2),
+		base + Vector2(half_width * 0.38, -height * 0.34),
+		base + Vector2(half_width, -height * 0.28),
+		base + Vector2(half_width * 0.27, -height * 0.64),
+		base + Vector2(half_width * 0.58, -height * 0.62),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	pine.color = fill
+	parent.add_child(pine)
+
+func _add_home_mountain_silhouette(parent: Control, base_y: float, color: Color, alpha: float) -> void:
+	var mountain: Polygon2D = Polygon2D.new()
+	mountain.polygon = PackedVector2Array([
+		Vector2(-20, base_y),
+		Vector2(size.x * 0.15, base_y - 58),
+		Vector2(size.x * 0.30, base_y - 22),
+		Vector2(size.x * 0.48, base_y - 92),
+		Vector2(size.x * 0.66, base_y - 30),
+		Vector2(size.x * 0.82, base_y - 68),
+		Vector2(size.x + 20, base_y),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	mountain.color = fill
+	parent.add_child(mountain)
+
+func _add_home_dot_cluster(parent: Control, origin: Vector2, columns: int, rows: int, spacing: float, color: Color, alpha: float) -> void:
+	for row: int in rows:
+		for column: int in columns:
+			var dot: Panel = Panel.new()
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot.position = origin + Vector2(column * spacing, row * spacing)
+			dot.size = Vector2(3.5, 3.5)
+			var style: StyleBoxFlat = StyleBoxFlat.new()
+			var fill: Color = color
+			fill.a = alpha
+			style.bg_color = fill
+			style.set_corner_radius_all(2)
+			dot.add_theme_stylebox_override("panel", style)
+			parent.add_child(dot)
+
+func _add_home_sparkle(parent: Control, center: Vector2, radius: float, color: Color, alpha: float) -> void:
+	var sparkle: Polygon2D = Polygon2D.new()
+	sparkle.polygon = PackedVector2Array([
+		center + Vector2(0, -radius),
+		center + Vector2(radius * 0.24, -radius * 0.24),
+		center + Vector2(radius, 0),
+		center + Vector2(radius * 0.24, radius * 0.24),
+		center + Vector2(0, radius),
+		center + Vector2(-radius * 0.24, radius * 0.24),
+		center + Vector2(-radius, 0),
+		center + Vector2(-radius * 0.24, -radius * 0.24),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	sparkle.color = fill
+	parent.add_child(sparkle)
 
 func _add_decor_shape(parent: Control, position: Vector2, shape_size: Vector2, color: Color, alpha: float, radius: int, rotation_degrees_value: float = 0.0) -> void:
 	var panel: Panel = Panel.new()
@@ -1548,16 +2257,6 @@ func _settings_sheet_style() -> StyleBoxFlat:
 	style.shadow_offset = Vector2(0, -8)
 	return style
 
-func _debug_reset_style(armed: bool) -> StyleBoxFlat:
-	var fill: Color = UI_RED if armed else Color("fff1ee")
-	var style: StyleBoxFlat = _round_style(fill, UI_RED, 12)
-	style.set_border_width_all(2)
-	style.content_margin_left = 12.0
-	style.content_margin_right = 12.0
-	style.content_margin_top = 8.0
-	style.content_margin_bottom = 8.0
-	return style
-
 func _handle_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = _round_style(UI_BORDER, UI_BORDER, 2)
 	style.content_margin_left = 0.0
@@ -1577,13 +2276,6 @@ func _chip_style(selected: bool) -> StyleBoxFlat:
 	style.content_margin_bottom = 7.0
 	return style
 
-func _mini_block_style(fill: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, fill, 3)
-	style.shadow_color = Color(0, 0, 0, 0.14)
-	style.shadow_size = 2
-	style.shadow_offset = Vector2(0, 2)
-	return style
-
 func _date_pill_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = _round_style(UI_YELLOW, UI_YELLOW, 20)
 	style.content_margin_left = 9.0
@@ -1593,10 +2285,11 @@ func _date_pill_style() -> StyleBoxFlat:
 	return style
 
 func _daily_card_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(UI_PRIMARY, UI_PRIMARY, 22)
-	style.shadow_color = UI_MAGENTA
-	style.shadow_size = 1
-	style.shadow_offset = Vector2(7, 7)
+	var style: StyleBoxFlat = _round_style(Color("17075d"), Color("4c2da5"), 26)
+	style.set_border_width_all(2)
+	style.shadow_color = Color(0.20, 0.08, 0.50, 0.26)
+	style.shadow_size = 10
+	style.shadow_offset = Vector2(0, 7)
 	return style
 
 func _daily_locked_card_style() -> StyleBoxFlat:
@@ -1608,11 +2301,22 @@ func _daily_locked_card_style() -> StyleBoxFlat:
 	return style
 
 func _infinity_card_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(Color(1, 1, 1, 0.96), UI_BORDER, 18)
+	var style: StyleBoxFlat = _round_style(Color("fffaf3"), Color("c5b6ef"), 22)
 	style.set_border_width_all(2)
-	style.shadow_color = Color(0.10, 0.04, 0.37, 0.10)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.15)
+	style.shadow_size = 9
+	style.shadow_offset = Vector2(0, 5)
+	return style
+
+func _home_hint_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = _round_style(Color(1, 0.985, 0.96, 0.78), Color(0.77, 0.70, 0.93, 0.62), 16)
+	style.content_margin_left = 10.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 5.0
+	style.content_margin_bottom = 5.0
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.08)
 	style.shadow_size = 5
-	style.shadow_offset = Vector2(0, 3)
+	style.shadow_offset = Vector2(0, 2)
 	return style
 
 func _pill_style() -> StyleBoxFlat:
@@ -1636,11 +2340,11 @@ func _ground_shadow_style() -> StyleBoxFlat:
 	return style
 
 func _play_style(fill: Color, shadow_size: int) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, fill, 13)
+	var style: StyleBoxFlat = _round_style(fill, fill, 17)
 	style.set_border_width_all(0)
-	style.shadow_color = Color(0, 0, 0, 0.18)
-	style.shadow_size = shadow_size
-	style.shadow_offset = Vector2(3, 3)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.24)
+	style.shadow_size = maxi(shadow_size, 3)
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 func _mode_button_style(fill: Color, border: Color, border_width: int = 1) -> StyleBoxFlat:
@@ -1652,15 +2356,15 @@ func _mode_button_style(fill: Color, border: Color, border_width: int = 1) -> St
 	return style
 
 func _settings_icon_style(fill: Color, border: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = _round_style(fill, border, 12)
+	var style: StyleBoxFlat = _round_style(fill, border, 14)
 	style.set_border_width_all(2)
 	style.content_margin_left = 0.0
 	style.content_margin_right = 0.0
 	style.content_margin_top = 0.0
 	style.content_margin_bottom = 1.0
-	style.shadow_color = Color(0, 0, 0, 0.07)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(0, 2)
+	style.shadow_color = Color(0.10, 0.04, 0.37, 0.14)
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 func _achievement_accent(accent_name: String) -> Color:

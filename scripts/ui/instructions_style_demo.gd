@@ -5,17 +5,18 @@ signal dismiss_requested
 const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const ICON_LIGHTBULB: Texture2D = preload("res://assets/icons/lightbulb.svg")
+const PALETTE = preload("res://scripts/ui/ui_palette.gd")
 
-const PURPLE := Color("1a0a5e")
+const PURPLE: Color = PALETTE.PRIMARY
 const PURPLE_LIGHT := Color("382181")
-const PURPLE_SOFT := Color("eee9fa")
-const CREAM := Color("fffaf0")
-const WHITE := Color("ffffff")
-const YELLOW := Color("ffd600")
-const CORAL := Color("ff6f61")
-const TEAL := Color("39c6b4")
+const PURPLE_SOFT: Color = PALETTE.SURFACE_TINT
+const CREAM: Color = PALETTE.BACKGROUND
+const WHITE: Color = PALETTE.SURFACE
+const YELLOW: Color = PALETTE.ACCENT
+const CORAL: Color = PALETTE.ERROR
+const TEAL: Color = PALETTE.SUCCESS
 const LAVENDER := Color("cdb9ff")
-const MUTED := Color("8b80b6")
+const MUTED: Color = PALETTE.MUTED_TEXT
 const DARK_MUTED := Color("5d5286")
 
 var _fredoka_semibold: FontVariation
@@ -93,9 +94,6 @@ func _build_three_step_variant(style_index: int) -> Control:
 	mistake.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lesson_stack.add_child(mistake)
 	page.add_child(_back_button())
-	var concept_keys: Array[String] = ["instructions_concept_a", "instructions_concept_b", "instructions_concept_c"]
-	var concept_key: String = concept_keys[style_index]
-	page.add_child(_concept_note(_t(concept_key), Color(1, 1, 1, 0.58)))
 	return root
 
 func _word_pool_example(compact: bool = false, dark_background: bool = true) -> VBoxContainer:

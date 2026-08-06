@@ -13,35 +13,53 @@ const FONT_FREDOKA: Font = preload("res://assets/fonts/Fredoka.ttf")
 const FONT_DM_SANS: Font = preload("res://assets/fonts/DMSans.ttf")
 const ICON_HOME: Texture2D = preload("res://assets/icons/home.svg")
 const ICON_SHARE: Texture2D = preload("res://assets/icons/share.svg")
-const ICON_FLAME: Texture2D = preload("res://assets/icons/flame.svg")
+const ICON_EYE: Texture2D = preload("res://assets/icons/eye.svg")
+const ICON_BACK: Texture2D = preload("res://assets/icons/back.svg")
+const ICON_FLAME: Texture2D = preload("res://assets/icons/flame_streak.svg")
 const ICON_LIGHTBULB: Texture2D = preload("res://assets/icons/lightbulb.svg")
 const ICON_HEART: Texture2D = preload("res://assets/heart.svg")
+const BRAND_SUMMIT_MARK: Texture2D = preload("res://assets/branding/summit_mark.svg")
 const INSTRUCTIONS_STYLE_DEMO_SCENE: PackedScene = preload("res://scenes/instructions_style_demo.tscn")
-const UI_BACKGROUND: Color = Color("fffdf5")
-const UI_SURFACE: Color = Color.WHITE
-const UI_TEXT: Color = Color("1a0a5e")
-const UI_MUTED_TEXT: Color = Color("9b8cd4")
-const UI_BORDER: Color = Color("d6cfef")
-const UI_SURFACE_TINT: Color = Color("eee9fa")
-const UI_PRIMARY: Color = Color("1a0a5e")
-const UI_PRIMARY_HOVER: Color = Color("2a167c")
-const UI_PRIMARY_PRESSED: Color = Color("120742")
-const UI_YELLOW: Color = Color("ffd600")
-const UI_MAGENTA: Color = Color("b939ff")
-const UI_RED: Color = Color("ff5533")
-const UI_TEAL: Color = Color("00bfa5")
-const SELECTED_FILL: Color = Color("ff9a76")
-const SELECTED_BORDER: Color = UI_YELLOW
-const WRONG_TILE_FILL: Color = Color("fff2ee")
+const PALETTE = preload("res://scripts/ui/ui_palette.gd")
+const UI_BACKGROUND: Color = PALETTE.BACKGROUND
+const UI_SURFACE: Color = PALETTE.SURFACE
+const UI_TEXT: Color = PALETTE.TEXT
+const UI_MUTED_TEXT: Color = PALETTE.MUTED_TEXT
+const UI_MUTED_ON_PRIMARY: Color = PALETTE.MUTED_ON_PRIMARY
+const UI_BORDER: Color = PALETTE.BORDER
+const UI_SURFACE_TINT: Color = PALETTE.SURFACE_TINT
+const UI_PRIMARY: Color = PALETTE.PRIMARY
+const UI_PRIMARY_HOVER: Color = PALETTE.PRIMARY_HOVER
+const UI_PRIMARY_PRESSED: Color = PALETTE.PRIMARY_PRESSED
+const UI_YELLOW: Color = PALETTE.ACCENT
+const UI_ACCENT_HOVER: Color = PALETTE.ACCENT_HOVER
+const UI_ACCENT_PRESSED: Color = PALETTE.ACCENT_PRESSED
+const UI_MAGENTA: Color = PALETTE.HINT
+const UI_RED: Color = PALETTE.ERROR
+const UI_TEAL: Color = PALETTE.SUCCESS
+const UI_DISABLED_FILL: Color = PALETTE.DISABLED_FILL
+const UI_DISABLED_TEXT: Color = PALETTE.DISABLED_TEXT
+const STREAK_GREEN: Color = PALETTE.STREAK_SUCCESS
+const STREAK_EMPTY: Color = PALETTE.STREAK_EMPTY
+const SELECTED_FILL: Color = UI_PRIMARY
+const SELECTED_BORDER: Color = UI_PRIMARY
+const SELECTED_TEXT: Color = Color.WHITE
+const WRONG_TILE_FILL: Color = PALETTE.ERROR_BACKGROUND
 const SELECTION_LIFT: float = 4.0
 const SELECTION_MOTION_DURATION: float = 0.14
 const WRONG_SHAKE_DURATION: float = 0.58
 const WRONG_SHAKE_PEAK: float = 6.0
 const WRONG_SHAKE_SETTLE: float = 3.0
+const ROW_SWAP_MOTION_DURATION: float = 0.42
 const AFTERMATH_REVEAL_DELAY: float = 2.0
 const STREAK_POP_DELAY: float = 0.70
-const XP_REWARD_ANIMATION_DELAY: float = 0.38
-const XP_REWARD_ANIMATION_DURATION: float = 1.20
+const XP_REWARD_ANIMATION_DELAY: float = 0.65
+const XP_FULL_BAR_ANIMATION_DURATION: float = 1.55
+const MIN_XP_AUDIO_REWARD: int = 10
+const XP_COMPLETE_SOUND_DELAY: float = 0.14
+const LEVEL_UP_AFTER_XP_COMPLETE_DELAY: float = 0.46
+const LEVEL_UP_POPUP_DURATION: float = 2.25
+const GAMEPLAY_STATUS_HEIGHT: float = 42.0
 const TUTORIAL_HINT_BREAK: float = 1.65
 const TUTORIAL_CHECK_BREAK: float = 1.30
 const TUTORIAL_FINISH_BREAK: float = 2.00
@@ -50,6 +68,7 @@ const FONT_AXIS_WIDTH: int = 2003072104 # wdth
 var _card: PanelContainer
 var _message: Label
 var _selection: Label
+var _gameplay_status_slot: Control
 var _mistakes: Label
 var _lives_row: HBoxContainer
 var _endless_header_hearts: HBoxContainer
@@ -59,18 +78,20 @@ var _pyramid: VBoxContainer
 var _check: Button
 var _clear: Button
 var _hint: Button
-var _debug_auto_solve: Button
 var _result: Button
 var _share: Button
 var _aftermath_layer: Control
 var _aftermath_sheet: PanelContainer
 var _aftermath_stack: VBoxContainer
-var _aftermath_drag_start_y: float = 0.0
-var _aftermath_dragging: bool = false
 var _aftermath_dismissing: bool = false
 var _aftermath_open_tween: Tween
-var _aftermath_snap_tween: Tween
 var _aftermath_xp_tween: Tween
+var _solution_preview_layer: Control
+var _solution_pyramid_parent: Node
+var _solution_pyramid_index: int = -1
+var _solution_pyramid_z_index: int = 0
+var _solution_gameplay_root: CanvasItem
+var _solution_gameplay_root_was_visible: bool = true
 var _level_up_overlay: Control
 var _game_was_running: bool = false
 var _aftermath_scheduled: bool = false
@@ -108,8 +129,10 @@ var _tutorial_help_level: int = 0
 var _tutorial_target_words: Array[String] = []
 var _tutorial_focus_words: Array[String] = []
 var _tutorial_independent_intro_pending: bool = false
+var _tutorial_forced_hint_pending: bool = false
 var _tutorial_focus_tweens: Dictionary = {}
 var _tutorial_guide_button: Button
+var _tutorial_guide_banner: PanelContainer
 var _tutorial_intro_layer: Control
 var _tutorial_feature_layer: Control
 var _tutorial_feature_card: Control
@@ -117,6 +140,9 @@ var _tutorial_feature_tween: Tween
 var _tutorial_restart_layer: ColorRect
 var _tutorial_completion_layer: Control
 var _instructions_layer: Control
+var _last_chance_layer: Control
+var _last_chance_action: Button
+var _last_chance_status: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -130,6 +156,8 @@ func _ready() -> void:
 	GameState.repeated_guess_attempted.connect(_on_repeated_guess_attempted)
 	GameState.guess_feedback.connect(_on_guess_feedback)
 	GameState.guess_failed.connect(_on_guess_failed)
+	GameState.last_chance_required.connect(_on_last_chance_required)
+	GameState.attempt_restored.connect(_on_attempt_restored)
 	GameState.game_finished.connect(_on_game_finished)
 	GameState.hint_placed.connect(_on_hint_placed)
 	GameState.hint_provided.connect(_on_hint_provided)
@@ -139,16 +167,21 @@ func _ready() -> void:
 	# Reopening the board must not connect the same callable a second time.
 	if not AdManager.rewarded_hint_earned.is_connected(GameState.grant_rewarded_hint):
 		AdManager.rewarded_hint_earned.connect(GameState.grant_rewarded_hint)
+	if not AdManager.rewarded_attempt_earned.is_connected(GameState.grant_last_chance):
+		AdManager.rewarded_attempt_earned.connect(GameState.grant_last_chance)
 	if not AdManager.rewarded_heart_earned.is_connected(_on_rewarded_heart_earned):
 		AdManager.rewarded_heart_earned.connect(_on_rewarded_heart_earned)
 	AdManager.rewarded_ad_unavailable.connect(_on_rewarded_ad_unavailable)
+	AdManager.rewarded_attempt_dismissed.connect(_on_rewarded_attempt_dismissed)
 	GameState.puzzle_pool_completed.connect(_on_puzzle_pool_completed)
 	if not GameState.tutorial_completed.is_connected(_on_tutorial_completed):
 		GameState.tutorial_completed.connect(_on_tutorial_completed)
+	if GameState.last_chance_pending:
+		_show_last_chance_offer.call_deferred()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER):
-		GameState.check_selection()
+		_on_check_pressed()
 		get_viewport().set_input_as_handled()
 
 func _setup_font_variations() -> void:
@@ -203,8 +236,8 @@ func _build() -> void:
 	back.add_theme_font_override("font", _font_dm_sans_semibold)
 	back.add_theme_font_size_override("font_size", 13)
 	back.add_theme_stylebox_override("normal", _header_button_style(UI_YELLOW))
-	back.add_theme_stylebox_override("hover", _header_button_style(Color("ffe23d")))
-	back.add_theme_stylebox_override("pressed", _header_button_style(Color("e9c400")))
+	back.add_theme_stylebox_override("hover", _header_button_style(UI_ACCENT_HOVER))
+	back.add_theme_stylebox_override("pressed", _header_button_style(UI_ACCENT_PRESSED))
 	back.add_theme_color_override("font_color", UI_PRIMARY)
 	back.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	back.add_theme_color_override("font_pressed_color", UI_PRIMARY)
@@ -219,13 +252,24 @@ func _build() -> void:
 	title_stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(title_stack)
+	var brand_row: HBoxContainer = HBoxContainer.new()
+	brand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	brand_row.add_theme_constant_override("separation", 5)
+	title_stack.add_child(brand_row)
+	var summit_mark: TextureRect = TextureRect.new()
+	summit_mark.custom_minimum_size = Vector2(25, 25)
+	summit_mark.texture = BRAND_SUMMIT_MARK
+	summit_mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	summit_mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	summit_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	brand_row.add_child(summit_mark)
 	var game_title: Label = Label.new()
-	game_title.text = "▲  Word Pyramid"
+	game_title.text = "Word Ascent"
 	game_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	game_title.add_theme_font_override("font", _font_fredoka_bold)
 	game_title.add_theme_font_size_override("font_size", 21)
 	game_title.add_theme_color_override("font_color", Color.WHITE)
-	title_stack.add_child(game_title)
+	brand_row.add_child(game_title)
 	_mode_label = Label.new()
 	_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mode_label.add_theme_font_override("font", FONT_DM_SANS)
@@ -260,19 +304,6 @@ func _build() -> void:
 	margin.add_child(content)
 	var top: HBoxContainer = HBoxContainer.new()
 	content.add_child(top)
-	_debug_auto_solve = Button.new()
-	_debug_auto_solve.text = SaveManager.text("debug_auto_solve")
-	_debug_auto_solve.add_theme_font_override("font", _font_dm_sans_semibold)
-	_debug_auto_solve.add_theme_font_size_override("font_size", 11)
-	_debug_auto_solve.add_theme_color_override("font_color", UI_PRIMARY)
-	_debug_auto_solve.add_theme_color_override("font_hover_color", UI_PRIMARY)
-	_debug_auto_solve.add_theme_color_override("font_pressed_color", UI_PRIMARY)
-	_debug_auto_solve.add_theme_stylebox_override("normal", _small_pill_style(Color("fff3bd"), UI_YELLOW))
-	_debug_auto_solve.add_theme_stylebox_override("hover", _small_pill_style(UI_YELLOW, UI_PRIMARY))
-	_debug_auto_solve.add_theme_stylebox_override("pressed", _small_pill_style(Color("e9c400"), UI_PRIMARY))
-	_debug_auto_solve.pressed.connect(_on_debug_auto_solve_pressed)
-	_debug_auto_solve.visible = false
-	top.add_child(_debug_auto_solve)
 	var spacer: Control = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
@@ -302,61 +333,92 @@ func _build() -> void:
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_message.add_theme_font_override("font", _font_dm_sans_semibold)
 	_message.add_theme_font_size_override("font_size", 14)
-	_message.add_theme_color_override("font_color", Color("d9d1f3"))
+	_message.add_theme_color_override("font_color", UI_MUTED_ON_PRIMARY)
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		# A plain Control isolates the VBox from the Label's changing wrapped-text
-		# minimum height, so every tutorial instruction occupies the same space.
+		# A fixed slot isolates the board from changing wrapped-text height. The
+		# prompt and its acknowledgement action live inside one banner so a long
+		# translated instruction can never push Continue below the visible card.
 		var message_slot: Control = Control.new()
-		message_slot.custom_minimum_size = Vector2(0, 96)
+		message_slot.name = "TutorialGuideSlot"
+		message_slot.custom_minimum_size = Vector2(0, 124)
 		message_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		message_slot.clip_contents = true
+		message_slot.clip_contents = false
 		content.add_child(message_slot)
-		message_slot.add_child(_message)
-		_message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_message.offset_bottom = -32.0
+		_tutorial_guide_banner = PanelContainer.new()
+		_tutorial_guide_banner.name = "TutorialGuideBanner"
+		_tutorial_guide_banner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_tutorial_guide_banner.add_theme_stylebox_override("panel", _tutorial_guide_style())
+		message_slot.add_child(_tutorial_guide_banner)
+		var guide_margin: MarginContainer = MarginContainer.new()
+		guide_margin.add_theme_constant_override("margin_left", 14)
+		guide_margin.add_theme_constant_override("margin_right", 14)
+		guide_margin.add_theme_constant_override("margin_top", 8)
+		guide_margin.add_theme_constant_override("margin_bottom", 8)
+		_tutorial_guide_banner.add_child(guide_margin)
+		var guide_content: VBoxContainer = VBoxContainer.new()
+		guide_content.alignment = BoxContainer.ALIGNMENT_CENTER
+		guide_content.add_theme_constant_override("separation", 6)
+		guide_margin.add_child(guide_content)
+		guide_content.add_child(_message)
+		_message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_message.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_message.add_theme_font_override("font", _font_fredoka_semibold)
 		_message.add_theme_font_size_override("font_size", 18)
 		_message.add_theme_color_override("font_color", UI_TEXT)
-		_message.add_theme_stylebox_override("normal", _tutorial_guide_style())
-		_message.z_index = 22
+		_message.z_index = 1
 		_tutorial_guide_button = Button.new()
 		_tutorial_guide_button.name = "TutorialGuideContinue"
 		_tutorial_guide_button.text = SaveManager.text("tutorial_continue")
-		_tutorial_guide_button.custom_minimum_size = Vector2(104, 28)
-		_tutorial_guide_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-		_tutorial_guide_button.position = Vector2(-52, -30)
+		_tutorial_guide_button.custom_minimum_size = Vector2(116, 32)
+		_tutorial_guide_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_tutorial_guide_button.add_theme_font_override("font", _font_fredoka_semibold)
 		_tutorial_guide_button.add_theme_font_size_override("font_size", 13)
 		_tutorial_guide_button.add_theme_color_override("font_color", UI_PRIMARY)
 		_tutorial_guide_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 		_tutorial_guide_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 		_tutorial_guide_button.add_theme_stylebox_override("normal", _small_pill_style(UI_YELLOW, UI_PRIMARY))
-		_tutorial_guide_button.add_theme_stylebox_override("hover", _small_pill_style(Color("ffe23d"), UI_PRIMARY))
-		_tutorial_guide_button.add_theme_stylebox_override("pressed", _small_pill_style(Color("e9c400"), UI_PRIMARY))
+		_tutorial_guide_button.add_theme_stylebox_override("hover", _small_pill_style(UI_ACCENT_HOVER, UI_PRIMARY))
+		_tutorial_guide_button.add_theme_stylebox_override("pressed", _small_pill_style(UI_ACCENT_PRESSED, UI_PRIMARY))
 		_tutorial_guide_button.visible = false
 		_tutorial_guide_button.z_index = 22
 		_tutorial_guide_button.pressed.connect(_on_tutorial_guide_continue)
-		message_slot.add_child(_tutorial_guide_button)
+		guide_content.add_child(_tutorial_guide_button)
 	else:
-		content.add_child(_message)
+		# Feedback and selection copy share one fixed-height overlay slot. Their
+		# text can wrap or change without participating in the VBox measurement,
+		# so hints and errors never move the pyramid below them.
+		_gameplay_status_slot = Control.new()
+		_gameplay_status_slot.name = "GameplayStatusSlot"
+		_gameplay_status_slot.custom_minimum_size = Vector2(0, GAMEPLAY_STATUS_HEIGHT)
+		_gameplay_status_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_gameplay_status_slot.clip_contents = true
+		content.add_child(_gameplay_status_slot)
+		_gameplay_status_slot.add_child(_message)
+		_message.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_selection = Label.new()
 	_selection.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_selection.add_theme_font_override("font", _font_dm_sans_semibold)
-	_selection.add_theme_color_override("font_color", Color("d9d1f3"))
+	_selection.add_theme_color_override("font_color", UI_MUTED_ON_PRIMARY)
 	_selection.add_theme_font_size_override("font_size", 12)
-	content.add_child(_selection)
+	if GameState.game_mode == GameState.TUTORIAL_MODE:
+		content.add_child(_selection)
+	else:
+		_gameplay_status_slot.add_child(_selection)
+		_selection.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_selection.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_pyramid = VBoxContainer.new()
 	_pyramid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_pyramid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_pyramid.add_theme_constant_override("separation", TILE_GAP)
 	content.add_child(_pyramid)
 	_lives_row = HBoxContainer.new()
-	_lives_row.custom_minimum_size = Vector2(0, 14)
+	_lives_row.custom_minimum_size = Vector2(0, 16)
 	_lives_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_lives_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_lives_row.add_theme_constant_override("separation", 7)
+	_lives_row.add_theme_constant_override("separation", 6)
 	content.add_child(_lives_row)
 	var action_dock: PanelContainer = PanelContainer.new()
 	action_dock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -440,8 +502,6 @@ func refresh() -> void:
 		return
 	var is_daily: bool = GameState.game_mode == "daily"
 	var is_tutorial: bool = GameState.game_mode == GameState.TUTORIAL_MODE
-	_debug_auto_solve.visible = false
-	_debug_auto_solve.disabled = GameState.is_auto_solving
 	_selection.visible = not is_tutorial
 	if is_tutorial:
 		_message.visible = true
@@ -453,6 +513,11 @@ func refresh() -> void:
 	_build_pyramid()
 	_update_mistakes()
 	_update_selection(GameState.selected_words)
+	# A board can be created after GameState emitted its initial hint signal
+	# (notably when the tutorial starts before the scene transition). Rebuild
+	# the label from the current state so it never shows the default count.
+	var current_hint_limit: int = GameState.hints_used + GameState.get_remaining_hint_count()
+	_on_hint_count_changed(GameState.hints_used, current_hint_limit)
 	if GameState.is_finished:
 		_on_game_finished(GameState.completed_won, str(GameState.puzzle.get("top_word", "")))
 	else:
@@ -461,6 +526,7 @@ func refresh() -> void:
 		if is_tutorial:
 			_tutorial_stage = 0
 			_tutorial_independent_intro_pending = false
+			_tutorial_forced_hint_pending = false
 			_show_tutorial_intro()
 
 func _build_pyramid() -> void:
@@ -700,10 +766,10 @@ func _layout_for_width() -> void:
 	var tile_size: float = clampf((card_width - TILE_GAP * 4.0) / 5.0, 48.0, 104.0)
 	# Match the 1.0.2 Android build: blocks use the five-word row for width and
 	# the available phone height separately, producing the slightly taller shape.
-	# The tutorial reserves a stable 76 px guide slot in place of the normal
-	# single-line message. Deduct the extra space here so its board and controls
-	# fit the same phone viewport instead of extending below the screen.
-	var tutorial_guide_reservation: float = 60.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 0.0
+	# The tutorial reserves a stable 124 px banner in place of the normal
+	# single-line message. Deduct its extra space here so the board and controls
+	# still fit the same phone viewport instead of extending below the screen.
+	var tutorial_guide_reservation: float = 88.0 if GameState.game_mode == GameState.TUTORIAL_MODE else 0.0
 	var pyramid_height: float = clampf(layout_height - 365.0 - tutorial_guide_reservation, 290.0, 480.0)
 	var tile_height: float = clampf((pyramid_height - TILE_GAP * 4.0) / 5.0, 54.0, 92.0)
 	var shared_font_size: int = _uniform_tile_font_size(tile_size)
@@ -780,13 +846,13 @@ func _update_mistakes() -> void:
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
 		_mistakes.visible = true
 		_lives_row.visible = true
-		var maximum: int = int(SaveManager.settings.get("attempts", 4))
+		var maximum: int = SaveManager.MAX_ATTEMPTS
 		_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
 		_update_lives(maximum - GameState.attempts_left, maximum)
 		return
 	_mistakes.visible = true
 	_lives_row.visible = true
-	var maximum: int = int(SaveManager.settings.get("attempts", 4))
+	var maximum: int = SaveManager.MAX_ATTEMPTS
 	_mistakes.text = SaveManager.text("mistakes_left") % [GameState.attempts_left, maximum]
 	_update_lives(maximum - GameState.attempts_left, maximum)
 	_update_endless_header_hearts()
@@ -796,20 +862,11 @@ func _update_endless_header_hearts() -> void:
 		return
 	for child: Node in _endless_header_hearts.get_children():
 		child.queue_free()
-	if GameState.game_mode != "unlimited":
+	# Infinity hearts control whether another puzzle can be started; they do not
+	# affect the current puzzle. Keep them on the home and aftermath screens so
+	# they cannot be confused with the three in-puzzle Stamina segments.
+	if GameState.game_mode != GameState.UNLIMITED_MODE:
 		_add_header_confetti()
-		return
-	var hearts: int = SaveManager.get_endless_hearts()
-	for index: int in range(SaveManager.ENDLESS_DAILY_HEARTS):
-		var heart: Label = Label.new()
-		heart.text = "♥"
-		heart.add_theme_font_override("font", _font_fredoka_bold)
-		heart.add_theme_font_size_override("font_size", 18)
-		heart.add_theme_color_override("font_color", UI_RED if index < hearts else Color("c9c3da"))
-		heart.add_theme_color_override("font_outline_color", UI_PRIMARY)
-		heart.add_theme_constant_override("outline_size", 1)
-		heart.modulate.a = 1.0 if index < hearts else 0.42
-		_endless_header_hearts.add_child(heart)
 
 func _add_header_confetti() -> void:
 	var symbols: Array[String] = ["✦", "●", "▲"]
@@ -830,7 +887,7 @@ func _update_lives(used: int, maximum: int) -> void:
 		child.queue_free()
 	for index: int in range(maximum):
 		var dot: Panel = Panel.new()
-		dot.custom_minimum_size = Vector2(12, 12)
+		dot.custom_minimum_size = Vector2(44, 12)
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var is_used: bool = index < used
 		dot.add_theme_stylebox_override("panel", _life_dot_style(is_used))
@@ -866,7 +923,7 @@ func _on_selection_changed(selection: Array[String]) -> void:
 		_set_tile_lift(tile, false if showing_wrong else selected, was_selected != selected and not _is_placing)
 	_displayed_selection.assign(selection)
 	_clear.disabled = selection.is_empty() or GameState.is_finished
-	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
+	_check.disabled = not _tutorial_can_check_selection()
 	_update_selection(selection)
 	if GameState.game_mode != GameState.TUTORIAL_MODE and selection_actually_changed and not _wrong_guess_active and not _is_placing and selection != _message_selection_snapshot:
 		_clear_board_message()
@@ -1026,6 +1083,7 @@ func _animate_row_swap(swap: Dictionary) -> void:
 	var targets: Array = swap.get("targets", [])
 	if targets.is_empty():
 		return
+	SoundManager.word_move()
 	var row_length: int = int(targets[0].get("row_length", 0))
 	var correct_fill: Color = _row_fill(row_length)
 	var correct_border: Color = _row_border(row_length)
@@ -1073,7 +1131,7 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	ghost.focus_mode = Control.FOCUS_NONE
 	ghost.add_theme_font_size_override("font_size", _uniform_tile_font_size(block_size.x) if font_size < 0 else font_size)
 	var style: StyleBoxFlat = _selected_tile_style() if preserve_selected_visual else _tile_style(fill_color, border_color)
-	var text_color: Color = UI_PRIMARY if preserve_selected_visual else UI_TEXT
+	var text_color: Color = SELECTED_TEXT if preserve_selected_visual else UI_TEXT
 	_apply_static_tile_visual(ghost, style, text_color)
 	ghost.z_index = 10
 	add_child(ghost)
@@ -1083,8 +1141,8 @@ func _fly_ghost(word: String, start: Vector2, destination: Vector2, block_size: 
 	# the newly rebuilt board.
 	var tween: Tween = ghost.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(ghost, "position", destination - block_size * 0.5, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(ghost, "modulate:a", 0.0, 0.12).set_delay(0.40)
+	tween.tween_property(ghost, "position", destination - block_size * 0.5, ROW_SWAP_MOTION_DURATION).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(ghost, "modulate:a", 0.0, 0.12).set_delay(ROW_SWAP_MOTION_DURATION + 0.02)
 	tween.set_parallel(false)
 	tween.tween_callback(_finish_fly_ghost.bind(ghost))
 
@@ -1099,11 +1157,15 @@ func _to_board_point(global_point: Vector2) -> Vector2:
 func _show_board_message(text: String) -> void:
 	_message.text = text
 	_message.visible = not text.is_empty()
+	if GameState.game_mode != GameState.TUTORIAL_MODE:
+		_selection.visible = text.is_empty()
 	_message_selection_snapshot.assign(GameState.selected_words)
 
 func _clear_board_message() -> void:
 	_message.text = ""
 	_message.visible = GameState.game_mode == GameState.TUTORIAL_MODE
+	if GameState.game_mode != GameState.TUTORIAL_MODE:
+		_selection.visible = true
 	_message_selection_snapshot.assign(GameState.selected_words)
 
 func _on_guess_failed(left: int) -> void:
@@ -1112,6 +1174,171 @@ func _on_guess_failed(left: int) -> void:
 	_highlight_incorrect_selection()
 	if GameState.game_mode == GameState.TUTORIAL_MODE and _tutorial_stage >= 5 and left > 0:
 		_show_tutorial_wrong_answer_help.call_deferred(_tutorial_stage)
+
+func _on_last_chance_required() -> void:
+	# Let the Stamina-depleting wrong-answer animation land before the decision.
+	await get_tree().create_timer(WRONG_SHAKE_DURATION + 0.12).timeout
+	if is_inside_tree() and GameState.last_chance_pending:
+		_show_last_chance_offer()
+
+func _show_last_chance_offer() -> void:
+	if is_instance_valid(_last_chance_layer) or not GameState.last_chance_pending:
+		return
+	_last_chance_layer = Control.new()
+	_last_chance_layer.name = "LastChanceLayer"
+	_last_chance_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_last_chance_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_last_chance_layer.z_index = 80
+	_last_chance_layer.modulate.a = 0.0
+	add_child(_last_chance_layer)
+
+	var dim: ColorRect = ColorRect.new()
+	dim.color = Color(0.045, 0.018, 0.16, 0.78)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_last_chance_layer.add_child(dim)
+
+	var center: CenterContainer = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_last_chance_layer.add_child(center)
+
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size.x = minf(360.0, maxf(size.x - 28.0, 280.0))
+	var card_style: StyleBoxFlat = StyleBoxFlat.new()
+	card_style.bg_color = UI_SURFACE
+	card_style.border_color = UI_YELLOW
+	card_style.set_border_width_all(3)
+	card_style.set_corner_radius_all(28)
+	card_style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
+	card_style.shadow_size = 16
+	card_style.shadow_offset = Vector2(0, 9)
+	card.add_theme_stylebox_override("panel", card_style)
+	center.add_child(card)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 23)
+	margin.add_theme_constant_override("margin_bottom", 22)
+	card.add_child(margin)
+	var stack: VBoxContainer = VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 12)
+	margin.add_child(stack)
+
+	var eyebrow: Label = Label.new()
+	eyebrow.text = SaveManager.text("last_chance_eyebrow")
+	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	eyebrow.add_theme_font_override("font", _font_dm_sans_semibold)
+	eyebrow.add_theme_font_size_override("font_size", 12)
+	eyebrow.add_theme_color_override("font_color", UI_MAGENTA)
+	stack.add_child(eyebrow)
+
+	var title: Label = Label.new()
+	title.text = SaveManager.text("last_chance_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", UI_PRIMARY)
+	stack.add_child(title)
+
+	var mistake_row: HBoxContainer = HBoxContainer.new()
+	mistake_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mistake_row.add_theme_constant_override("separation", 8)
+	stack.add_child(mistake_row)
+	for index: int in SaveManager.MAX_ATTEMPTS:
+		var segment: Panel = Panel.new()
+		segment.custom_minimum_size = Vector2(62, 16)
+		segment.add_theme_stylebox_override("panel", _life_dot_style(true))
+		mistake_row.add_child(segment)
+
+	var body: Label = Label.new()
+	body.text = SaveManager.text("last_chance_body") if OS.get_name() == "Android" else SaveManager.text("last_chance_body_free")
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_override("font", FONT_DM_SANS)
+	body.add_theme_font_size_override("font_size", 15)
+	body.add_theme_color_override("font_color", UI_TEXT)
+	stack.add_child(body)
+
+	_last_chance_status = Label.new()
+	_last_chance_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_last_chance_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_last_chance_status.add_theme_font_override("font", FONT_DM_SANS)
+	_last_chance_status.add_theme_font_size_override("font_size", 13)
+	_last_chance_status.add_theme_color_override("font_color", UI_RED)
+	_last_chance_status.visible = false
+	stack.add_child(_last_chance_status)
+
+	_last_chance_action = _action_button(
+		SaveManager.text("last_chance_watch") if OS.get_name() == "Android" else SaveManager.text("last_chance_continue"),
+		true
+	)
+	_last_chance_action.custom_minimum_size = Vector2(0, 56)
+	_last_chance_action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_last_chance_action.pressed.connect(_on_last_chance_continue_pressed)
+	stack.add_child(_last_chance_action)
+
+	var give_up: Button = _action_button(SaveManager.text("last_chance_give_up"))
+	give_up.custom_minimum_size = Vector2(0, 50)
+	give_up.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	give_up.pressed.connect(_on_last_chance_give_up_pressed)
+	stack.add_child(give_up)
+
+	await get_tree().process_frame
+	if not is_instance_valid(card):
+		return
+	card.pivot_offset = card.size * 0.5
+	card.scale = Vector2(0.93, 0.93)
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(_last_chance_layer, "modulate:a", 1.0, 0.22)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _on_last_chance_continue_pressed() -> void:
+	if not GameState.last_chance_pending or not is_instance_valid(_last_chance_action):
+		return
+	if OS.get_name() == "Android":
+		_last_chance_action.disabled = true
+		_last_chance_action.text = SaveManager.text("last_chance_loading")
+		_last_chance_status.text = SaveManager.text("rewarded_ad_loading")
+		_last_chance_status.visible = true
+	AdManager.request_rewarded_attempt()
+
+func _on_last_chance_give_up_pressed() -> void:
+	if not GameState.last_chance_pending:
+		return
+	AdManager.cancel_rewarded_attempt_request()
+	_close_last_chance_offer()
+	_hint.disabled = true
+	_check.disabled = true
+	GameState.decline_last_chance()
+
+func _on_attempt_restored(_attempts_left: int) -> void:
+	_close_last_chance_offer()
+	_update_mistakes()
+	_show_board_message(SaveManager.text("last_chance_restored"))
+	_show_play_actions()
+
+func _on_rewarded_attempt_dismissed() -> void:
+	if not is_instance_valid(_last_chance_layer) or not GameState.last_chance_pending:
+		return
+	_last_chance_status.text = SaveManager.text("last_chance_cancelled")
+	_last_chance_status.visible = true
+	_last_chance_action.text = SaveManager.text("last_chance_watch")
+	_last_chance_action.disabled = false
+
+func _close_last_chance_offer() -> void:
+	if not is_instance_valid(_last_chance_layer):
+		return
+	var layer: Control = _last_chance_layer
+	_last_chance_layer = null
+	_last_chance_action = null
+	_last_chance_status = null
+	var tween: Tween = create_tween()
+	tween.tween_property(layer, "modulate:a", 0.0, 0.16)
+	tween.tween_callback(layer.queue_free)
 
 func _show_tutorial_wrong_answer_help(stage: int) -> void:
 	await get_tree().create_timer(WRONG_SHAKE_DURATION + 0.12).timeout
@@ -1193,7 +1420,7 @@ func _apply_word_tile_visual(tile: Button, selected: bool, wrong: bool = false) 
 		text_color = UI_RED
 	elif selected:
 		style = _selected_tile_style()
-		text_color = UI_PRIMARY
+		text_color = SELECTED_TEXT
 	else:
 		style = _tile_style(UI_SURFACE, UI_BORDER)
 		text_color = UI_TEXT
@@ -1212,9 +1439,9 @@ func _apply_static_tile_visual(tile: Button, style: StyleBoxFlat, text_color: Co
 func _selected_tile_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = _tile_style(SELECTED_FILL, SELECTED_BORDER)
 	style.set_border_width_all(2)
-	style.shadow_color = Color(1.0, 0.84, 0.0, 0.30)
-	style.shadow_size = 9
-	style.shadow_offset = Vector2(0, 6)
+	style.shadow_color = Color(UI_MAGENTA, 0.28)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 5)
 	return style
 
 func _tutorial_tile_style() -> StyleBoxFlat:
@@ -1231,10 +1458,10 @@ func _tutorial_guide_style() -> StyleBoxFlat:
 	style.border_color = Color("eadb89")
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(16)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
 	style.shadow_color = Color(0.10, 0.04, 0.37, 0.12)
 	style.shadow_size = 6
 	style.shadow_offset = Vector2(0, 3)
@@ -1252,6 +1479,7 @@ func _tutorial_completion_style() -> StyleBoxFlat:
 	return style
 
 func _on_game_finished(won: bool, _top_word: String) -> void:
+	_close_last_chance_offer()
 	if _aftermath_scheduled or is_instance_valid(_aftermath_layer):
 		return
 	var should_wait_for_board: bool = _game_was_running
@@ -1260,7 +1488,6 @@ func _on_game_finished(won: bool, _top_word: String) -> void:
 	_aftermath_scheduled = true
 	for tile: Button in _word_buttons.values():
 		tile.disabled = true
-	_debug_auto_solve.visible = false
 	_hint.visible = false
 	_check.visible = false
 	_result.visible = false
@@ -1289,18 +1516,6 @@ func _show_play_actions() -> void:
 	_share.visible = false
 	_hint.disabled = false
 	_check.disabled = not GameState.can_check_selection()
-	_debug_auto_solve.visible = false
-	_debug_auto_solve.disabled = GameState.is_auto_solving
-
-func _on_debug_auto_solve_pressed() -> void:
-	if GameState.is_finished or GameState.is_auto_solving:
-		return
-	_debug_auto_solve.disabled = true
-	_debug_auto_solve.visible = false
-	_hint.disabled = true
-	_check.disabled = true
-	GameState.debug_auto_solve()
-
 func _show_result_actions() -> void:
 	_hint.visible = false
 	_check.visible = false
@@ -1336,7 +1551,7 @@ func _show_aftermath(won: bool) -> void:
 	var is_endless: bool = GameState.game_mode == GameState.UNLIMITED_MODE
 	var unlimited_pool_complete: bool = is_endless and GameState.is_puzzle_pool_completed(GameState.UNLIMITED_MODE)
 	var is_endless_loss: bool = is_endless and not won
-	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
+	var max_attempts: int = SaveManager.MAX_ATTEMPTS
 	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
 	var solved_row_count: int = 5 if won else clampi(GameState.result_solved_groups.size() + (1 if GameState.result_top_solved else 0), 0, 5)
 
@@ -1365,19 +1580,18 @@ func _show_aftermath(won: bool) -> void:
 	sheet.add_theme_stylebox_override("panel", _aftermath_fullscreen_style())
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sheet.gui_input.connect(_on_aftermath_drag_input)
 	stack.add_child(sheet)
 
 	var margin: MarginContainer = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 16)
+	margin.add_theme_constant_override("margin_top", 18 if is_endless else 8)
+	margin.add_theme_constant_override("margin_bottom", 16 if is_endless else 8)
 	sheet.add_child(margin)
 	var page: VBoxContainer = VBoxContainer.new()
 	page.name = "AftermathPage"
-	page.alignment = BoxContainer.ALIGNMENT_CENTER
-	page.add_theme_constant_override("separation", 10)
+	page.alignment = BoxContainer.ALIGNMENT_CENTER if is_endless else BoxContainer.ALIGNMENT_BEGIN
+	page.add_theme_constant_override("separation", 10 if is_endless else 8)
 	margin.add_child(page)
 
 	var eyebrow_row: HBoxContainer = HBoxContainer.new()
@@ -1397,23 +1611,19 @@ func _show_aftermath(won: bool) -> void:
 	var eyebrow_spacer: Control = Control.new()
 	eyebrow_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	eyebrow_row.add_child(eyebrow_spacer)
-	var brand: Label = _aftermath_label("WORD PYRAMID", 11, UI_MUTED_TEXT, _font_dm_sans_semibold)
+	var brand: Label = _aftermath_label("WORD ASCENT", 11, UI_MUTED_TEXT, _font_dm_sans_semibold)
 	brand.size_flags_horizontal = Control.SIZE_SHRINK_END
 	eyebrow_row.add_child(brand)
 
 	var title: Label = _aftermath_label(SaveManager.text("aftermath_win_title") if won else SaveManager.text("aftermath_loss_title"), 31, UI_PRIMARY, _font_fredoka_bold)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	page.add_child(title)
-	var subtitle_text: String
-	if won:
-		subtitle_text = SaveManager.text("aftermath_flawless") if mistakes == 0 else SaveManager.text("aftermath_solved_mistakes") % mistakes
-	elif is_endless_loss:
-		subtitle_text = SaveManager.text("aftermath_endless_better_luck")
-	else:
-		subtitle_text = SaveManager.text("aftermath_loss_subtitle") % [correct, total]
-	var subtitle: Label = _aftermath_label(subtitle_text, 13, Color("5d5286"), FONT_DM_SANS)
-	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	page.add_child(subtitle)
+	var subtitle_text: String = _aftermath_subtitle_text(won, is_endless, mistakes, correct, total)
+	if not subtitle_text.is_empty():
+		var subtitle: Label = _aftermath_label(subtitle_text, 13, Color("5d5286"), FONT_DM_SANS)
+		subtitle.name = "AftermathSubtitle"
+		subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		page.add_child(subtitle)
 
 	var result_card: PanelContainer = PanelContainer.new()
 	result_card.name = "ResultCard"
@@ -1424,12 +1634,12 @@ func _show_aftermath(won: bool) -> void:
 	var card_margin: MarginContainer = MarginContainer.new()
 	card_margin.add_theme_constant_override("margin_left", 16)
 	card_margin.add_theme_constant_override("margin_right", 16)
-	card_margin.add_theme_constant_override("margin_top", 16)
-	card_margin.add_theme_constant_override("margin_bottom", 16)
+	card_margin.add_theme_constant_override("margin_top", 16 if is_endless else 12)
+	card_margin.add_theme_constant_override("margin_bottom", 16 if is_endless else 12)
 	result_card.add_child(card_margin)
 	var card: VBoxContainer = VBoxContainer.new()
 	card.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.add_theme_constant_override("separation", 10)
+	card.add_theme_constant_override("separation", 10 if is_endless else 8)
 	card_margin.add_child(card)
 
 	var score_badge: PanelContainer = PanelContainer.new()
@@ -1458,36 +1668,47 @@ func _show_aftermath(won: bool) -> void:
 	var final_xp_copy: String = SaveManager.text("level_up") % level_after if level_after > level_before else SaveManager.text("level_short") % level_after
 	if xp_gained > 0:
 		final_xp_copy = "%s · %s" % [SaveManager.text("xp_earned") % xp_gained, final_xp_copy]
-	var xp_reward_label: Label = _aftermath_label(final_xp_copy, 11, Color("67569e"), _font_dm_sans_semibold)
+	var xp_reward_label: Label = _aftermath_label(final_xp_copy, 12, Color("67569e"), _font_dm_sans_semibold)
 	xp_reward_label.name = "XpRewardLabel"
 	score_stack.add_child(xp_reward_label)
 	var level_progress: Dictionary = SaveManager.get_level_progress(total_xp_before if xp_gained > 0 else total_xp_after)
 	var xp_progress: ProgressBar = ProgressBar.new()
 	xp_progress.name = "XpProgress"
-	xp_progress.custom_minimum_size = Vector2(180, 6)
+	xp_progress.custom_minimum_size = Vector2(246, 12)
+	xp_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	xp_progress.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	xp_progress.max_value = float(level_progress.get("required", 1))
 	xp_progress.value = float(level_progress.get("current", 0))
 	xp_progress.show_percentage = false
 	var xp_background: StyleBoxFlat = StyleBoxFlat.new()
-	xp_background.bg_color = Color("ded5f1")
-	xp_background.corner_radius_top_left = 3
-	xp_background.corner_radius_top_right = 3
-	xp_background.corner_radius_bottom_left = 3
-	xp_background.corner_radius_bottom_right = 3
+	xp_background.bg_color = Color.TRANSPARENT
+	xp_background.corner_radius_top_left = 5
+	xp_background.corner_radius_top_right = 5
+	xp_background.corner_radius_bottom_left = 5
+	xp_background.corner_radius_bottom_right = 5
 	var xp_fill: StyleBoxFlat = xp_background.duplicate()
 	xp_fill.bg_color = UI_MAGENTA
 	xp_progress.add_theme_stylebox_override("background", xp_background)
 	xp_progress.add_theme_stylebox_override("fill", xp_fill)
 	xp_progress.set_meta("animation_from_total_xp", total_xp_before)
 	xp_progress.set_meta("animation_to_total_xp", total_xp_after)
-	score_stack.add_child(xp_progress)
+	var xp_track: Control = _build_aftermath_xp_track(xp_progress)
+	score_stack.add_child(xp_track)
 	if xp_gained > 0:
 		_update_aftermath_xp_display(total_xp_before, xp_reward_label, xp_progress, total_xp_before, xp_gained)
 
 	card.add_child(_build_aftermath_result_pyramid())
+	var solution_button: Button = _aftermath_button(SaveManager.text("view_solution"), false)
+	solution_button.name = "SolutionButton"
+	solution_button.custom_minimum_size.y = 44.0
+	solution_button.add_theme_font_size_override("font_size", 15)
+	_set_aftermath_button_icon(solution_button, ICON_EYE)
+	solution_button.pressed.connect(_show_solution_preview)
+	card.add_child(solution_button)
 
 	var streak_panel: PanelContainer = PanelContainer.new()
-	streak_panel.add_theme_stylebox_override("panel", _aftermath_streak_style())
+	streak_panel.name = "DailyStreakCalendar" if not is_endless else "EndlessHeartPanel"
+	streak_panel.add_theme_stylebox_override("panel", _aftermath_daily_calendar_style() if not is_endless else _aftermath_streak_style())
 	streak_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(streak_panel)
 	var streak_margin: MarginContainer = MarginContainer.new()
@@ -1496,23 +1717,30 @@ func _show_aftermath(won: bool) -> void:
 	streak_margin.add_theme_constant_override("margin_top", 10)
 	streak_margin.add_theme_constant_override("margin_bottom", 10)
 	streak_panel.add_child(streak_margin)
-	var streak_box: BoxContainer = VBoxContainer.new() if is_endless else HBoxContainer.new()
+	var streak_box: VBoxContainer = VBoxContainer.new()
 	streak_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	streak_box.add_theme_constant_override("separation", 10)
+	streak_box.add_theme_constant_override("separation", 6)
 	streak_margin.add_child(streak_box)
 	var has_daily_streak: bool = not is_endless
 	var play_streak_animation: bool = has_daily_streak and not GameState.is_debug_completion and SaveManager.consume_daily_streak_animation(GameState.daily_date)
-	var flame: TextureRect = TextureRect.new()
-	flame.name = "StreakFlame"
-	flame.texture = ICON_FLAME
-	flame.custom_minimum_size = Vector2(32, 40)
-	flame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	flame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	flame.visible = has_daily_streak
-	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	streak_box.add_child(flame)
+	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
+	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
+	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
+	var flame: TextureRect
+	var streak_number: Label
+	var streak_caption: Label
 	var losing_heart: Control = null
-	if is_endless:
+	if has_daily_streak:
+		var calendar_refs: Dictionary = _build_aftermath_daily_calendar(streak_box, visible_streak, won)
+		flame = calendar_refs.get("flame") as TextureRect
+		streak_number = calendar_refs.get("number") as Label
+		streak_caption = calendar_refs.get("caption") as Label
+	else:
+		flame = TextureRect.new()
+		flame.name = "StreakFlame"
+		flame.texture = ICON_FLAME
+		flame.visible = false
+		streak_box.add_child(flame)
 		var aftermath_hearts: HBoxContainer = HBoxContainer.new()
 		aftermath_hearts.name = "AftermathHearts"
 		aftermath_hearts.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1526,27 +1754,19 @@ func _show_aftermath(won: bool) -> void:
 				heart.modulate = UI_RED
 				losing_heart = heart
 			aftermath_hearts.add_child(heart)
-	var streak_copy: VBoxContainer = VBoxContainer.new()
-	streak_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	streak_copy.add_theme_constant_override("separation", 0)
-	streak_box.add_child(streak_copy)
-	var streak_to: int = SaveManager.get_daily_streak(GameState.daily_date) if has_daily_streak else 0
-	var streak_from: int = max(streak_to - 1, 0) if won and has_daily_streak else SaveManager.get_daily_streak_before(GameState.daily_date) if has_daily_streak else 0
-	var visible_streak: int = streak_from if play_streak_animation or not won else streak_to
+		var streak_copy: VBoxContainer = VBoxContainer.new()
+		streak_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		streak_copy.add_theme_constant_override("separation", 0)
+		streak_box.add_child(streak_copy)
+		var heart_count_copy: int = SaveManager.get_endless_hearts()
+		var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count_copy if heart_count_copy > 0 else SaveManager.text("endless_out_of_hearts")
+		streak_number = _aftermath_label(endless_count_text, 16, Color.WHITE, _font_fredoka_bold)
+		streak_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		streak_copy.add_child(streak_number)
+		streak_caption = _aftermath_label(SaveManager.endless_reset_countdown_text(), 12, Color(1, 1, 1, 0.70), _font_fredoka_semibold)
+		streak_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		streak_copy.add_child(streak_caption)
 	var heart_count: int = SaveManager.get_endless_hearts() if is_endless else 0
-	var endless_count_text: String = SaveManager.text("endless_hearts_remaining") % heart_count if heart_count > 0 else SaveManager.text("endless_out_of_hearts")
-	var streak_number: Label = _aftermath_label(str(visible_streak) if has_daily_streak else endless_count_text, 36 if has_daily_streak else 16, UI_YELLOW if has_daily_streak else Color.WHITE, _font_fredoka_bold)
-	streak_number.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	streak_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	streak_copy.add_child(streak_number)
-	var streak_caption_text: String = SaveManager.endless_reset_countdown_text()
-	if has_daily_streak:
-		var visible_caption_streak: int = streak_from if play_streak_animation else streak_to
-		streak_caption_text = SaveManager.text("aftermath_streak_current") % visible_caption_streak if won else SaveManager.text("aftermath_streak_lost")
-	var streak_caption: Label = _aftermath_label(streak_caption_text, 12, Color(1, 1, 1, 0.70), _font_fredoka_semibold)
-	streak_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	streak_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	streak_copy.add_child(streak_caption)
 	var crack_overlay: Control = Control.new()
 	crack_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crack_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1646,7 +1866,7 @@ func _show_aftermath(won: bool) -> void:
 	_aftermath_open_tween = create_tween().set_parallel(true)
 	_aftermath_open_tween.tween_property(layer, "modulate:a", 1.0, 0.24)
 	_aftermath_open_tween.tween_property(stack, "position:y", 0.0, 0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	var play_xp_sound: bool = _fresh_result_reveal
+	var play_xp_sound: bool = _fresh_result_reveal and xp_gained >= MIN_XP_AUDIO_REWARD
 	var play_level_up_sound: bool = _fresh_result_reveal and level_after > level_before
 	_fresh_result_reveal = false
 	_animate_aftermath_xp(
@@ -1670,6 +1890,174 @@ func _show_aftermath(won: bool) -> void:
 	elif is_endless_loss and is_instance_valid(losing_heart):
 		_animate_endless_heart_loss(layer, losing_heart)
 
+func _aftermath_subtitle_text(won: bool, is_endless: bool, mistakes: int, correct: int, total: int) -> String:
+	if won:
+		if not is_endless and mistakes > 0:
+			return ""
+		return SaveManager.text("aftermath_flawless") if mistakes == 0 else SaveManager.text("aftermath_solved_mistakes") % mistakes
+	if is_endless:
+		return SaveManager.text("aftermath_endless_better_luck")
+	return SaveManager.text("aftermath_loss_subtitle") % [correct, total]
+
+func _show_solution_preview() -> void:
+	if is_instance_valid(_solution_preview_layer) or not is_instance_valid(_aftermath_layer):
+		return
+	var aftermath: Control = _aftermath_layer
+	var layer: Control = Control.new()
+	layer.name = "SolutionPreviewLayer"
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.modulate.a = 0.0
+	layer.z_index = 260
+	layer.set_meta("result_was_visible", is_instance_valid(_result) and _result.visible)
+	layer.set_meta("share_was_visible", is_instance_valid(_share) and _share.visible)
+	add_child(layer)
+	_solution_preview_layer = layer
+	var backdrop: ColorRect = ColorRect.new()
+	backdrop.name = "SolutionPreviewBackground"
+	backdrop.color = UI_PRIMARY
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(backdrop)
+	_move_gameplay_pyramid_to_solution(layer)
+
+	var header: HBoxContainer = HBoxContainer.new()
+	header.name = "SolutionPreviewControls"
+	header.anchor_right = 1.0
+	header.offset_left = 14.0
+	header.offset_top = 16.0
+	header.offset_right = -14.0
+	header.offset_bottom = 60.0
+	header.custom_minimum_size.y = 44.0
+	header.add_theme_constant_override("separation", 10)
+	layer.add_child(header)
+	var header_back: Button = Button.new()
+	header_back.name = "SolutionHeaderBack"
+	header_back.custom_minimum_size = Vector2(44, 44)
+	header_back.icon = ICON_BACK
+	header_back.expand_icon = true
+	header_back.add_theme_constant_override("icon_max_width", 22)
+	header_back.tooltip_text = SaveManager.text("back_to_results")
+	header_back.add_theme_stylebox_override("normal", _aftermath_button_style(UI_YELLOW, UI_YELLOW))
+	header_back.add_theme_stylebox_override("hover", _aftermath_button_style(UI_ACCENT_HOVER, UI_ACCENT_HOVER))
+	header_back.add_theme_stylebox_override("pressed", _aftermath_button_style(UI_ACCENT_PRESSED, UI_ACCENT_PRESSED))
+	header_back.pressed.connect(_close_solution_preview)
+	header.add_child(header_back)
+	var header_title: Label = _aftermath_label(SaveManager.text("solution_title"), 18, Color.WHITE, _font_fredoka_bold)
+	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_title.add_theme_color_override("font_outline_color", UI_PRIMARY)
+	header_title.add_theme_constant_override("outline_size", 5)
+	header.add_child(header_title)
+	var share_icon: Button = Button.new()
+	share_icon.name = "SolutionHeaderShare"
+	share_icon.custom_minimum_size = Vector2(44, 44)
+	share_icon.icon = ICON_SHARE
+	share_icon.expand_icon = true
+	share_icon.add_theme_constant_override("icon_max_width", 21)
+	share_icon.tooltip_text = SaveManager.text("share_result")
+	share_icon.add_theme_stylebox_override("normal", _aftermath_button_style(UI_BACKGROUND, UI_BORDER))
+	share_icon.add_theme_stylebox_override("hover", _aftermath_button_style(UI_SURFACE_TINT, UI_BORDER))
+	share_icon.add_theme_stylebox_override("pressed", _aftermath_button_style(Color("e3dcf3"), UI_BORDER))
+	share_icon.pressed.connect(_on_share_pressed)
+	header.add_child(share_icon)
+
+	var actions: HBoxContainer = HBoxContainer.new()
+	actions.name = "SolutionActions"
+	actions.anchor_left = 0.0
+	actions.anchor_top = 1.0
+	actions.anchor_right = 1.0
+	actions.anchor_bottom = 1.0
+	actions.offset_left = 14.0
+	actions.offset_top = -68.0
+	actions.offset_right = -14.0
+	actions.offset_bottom = -16.0
+	actions.add_theme_constant_override("separation", 8)
+	layer.add_child(actions)
+	var share_button: Button = _aftermath_button(SaveManager.text("share_result"), false)
+	share_button.name = "SolutionShareButton"
+	share_button.add_theme_font_size_override("font_size", 15)
+	_set_aftermath_button_icon(share_button, ICON_SHARE)
+	share_button.pressed.connect(func() -> void:
+		_on_share_pressed()
+		share_button.text = SaveManager.text("result_copied")
+	)
+	actions.add_child(share_button)
+	var back_button: Button = _aftermath_button(SaveManager.text("back_to_results"), true, true)
+	back_button.name = "SolutionBackButton"
+	back_button.add_theme_font_size_override("font_size", 15)
+	_set_aftermath_button_icon(back_button, ICON_BACK)
+	back_button.pressed.connect(_close_solution_preview)
+	actions.add_child(back_button)
+
+	if is_instance_valid(_result):
+		_result.visible = false
+	if is_instance_valid(_share):
+		_share.visible = false
+	aftermath.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(aftermath, "modulate:a", 0.0, 0.20)
+	tween.tween_property(layer, "modulate:a", 1.0, 0.24).set_delay(0.08)
+	await tween.finished
+	if is_instance_valid(aftermath) and layer == _solution_preview_layer:
+		aftermath.visible = false
+
+func _close_solution_preview() -> void:
+	if not is_instance_valid(_solution_preview_layer):
+		return
+	var layer: Control = _solution_preview_layer
+	if bool(layer.get_meta("closing", false)):
+		return
+	layer.set_meta("closing", true)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var aftermath: Control = _aftermath_layer
+	if is_instance_valid(aftermath):
+		aftermath.visible = true
+		aftermath.modulate.a = 0.0
+	var tween: Tween = create_tween().set_parallel(true)
+	tween.tween_property(layer, "modulate:a", 0.0, 0.18)
+	if is_instance_valid(aftermath):
+		tween.tween_property(aftermath, "modulate:a", 1.0, 0.24).set_delay(0.06)
+	await tween.finished
+	_restore_gameplay_pyramid_from_solution()
+	if is_instance_valid(aftermath):
+		aftermath.mouse_filter = Control.MOUSE_FILTER_STOP
+	if is_instance_valid(_result):
+		_result.visible = bool(layer.get_meta("result_was_visible", true))
+	if is_instance_valid(_share):
+		_share.visible = bool(layer.get_meta("share_was_visible", true))
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if _solution_preview_layer == layer:
+		_solution_preview_layer = null
+
+func _move_gameplay_pyramid_to_solution(layer: Control) -> void:
+	if not is_instance_valid(_pyramid) or not is_instance_valid(layer):
+		return
+	_solution_pyramid_parent = _pyramid.get_parent()
+	_solution_pyramid_index = _pyramid.get_index()
+	_solution_pyramid_z_index = _pyramid.z_index
+	var gameplay_root: CanvasItem = _pyramid
+	while gameplay_root.get_parent() != self and gameplay_root.get_parent() is CanvasItem:
+		gameplay_root = gameplay_root.get_parent() as CanvasItem
+	_solution_gameplay_root = gameplay_root
+	_solution_gameplay_root_was_visible = gameplay_root.visible
+	_pyramid.reparent(layer, true)
+	_pyramid.z_index = 1
+	gameplay_root.visible = false
+
+func _restore_gameplay_pyramid_from_solution() -> void:
+	if is_instance_valid(_pyramid) and is_instance_valid(_solution_pyramid_parent):
+		_pyramid.reparent(_solution_pyramid_parent, false)
+		var last_index: int = maxi(_solution_pyramid_parent.get_child_count() - 1, 0)
+		_solution_pyramid_parent.move_child(_pyramid, mini(_solution_pyramid_index, last_index))
+		_pyramid.z_index = _solution_pyramid_z_index
+	if is_instance_valid(_solution_gameplay_root):
+		_solution_gameplay_root.visible = _solution_gameplay_root_was_visible
+	_solution_pyramid_parent = null
+	_solution_pyramid_index = -1
+	_solution_gameplay_root = null
+
 func _show_aftermath_legacy(won: bool) -> void:
 	if is_instance_valid(_aftermath_layer):
 		# Recover an existing overlay if an interrupted gesture or animation left
@@ -1683,7 +2071,7 @@ func _show_aftermath_legacy(won: bool) -> void:
 	var total: int = max(GameState.result_total_count(), correct)
 	var is_endless: bool = GameState.game_mode == "unlimited"
 	var is_endless_loss: bool = is_endless and not won
-	var max_attempts: int = int(SaveManager.settings.get("attempts", 4))
+	var max_attempts: int = SaveManager.MAX_ATTEMPTS
 	var mistakes: int = clampi(max_attempts - GameState.attempts_left, 0, max_attempts)
 	var layer: Control = Control.new()
 	layer.name = "AftermathLayer"
@@ -1710,7 +2098,6 @@ func _show_aftermath_legacy(won: bool) -> void:
 	_aftermath_sheet = sheet
 	sheet.add_theme_stylebox_override("panel", _aftermath_sheet_style(won))
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sheet.gui_input.connect(_on_aftermath_drag_input)
 	stack.add_child(sheet)
 	var sheet_content: VBoxContainer = VBoxContainer.new()
 	sheet_content.add_theme_constant_override("separation", 0)
@@ -1726,12 +2113,6 @@ func _show_aftermath_legacy(won: bool) -> void:
 	content.alignment = BoxContainer.ALIGNMENT_CENTER
 	content.add_theme_constant_override("separation", 12)
 	margin.add_child(content)
-
-	var handle: Panel = Panel.new()
-	handle.custom_minimum_size = Vector2(40, 4)
-	handle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	handle.add_theme_stylebox_override("panel", _aftermath_handle_style())
-	content.add_child(handle)
 
 	var emoji_text: String = "🎉" if won else ("💀" if is_endless_loss else "✕")
 	var emoji: Label = _aftermath_label(emoji_text, 34, UI_YELLOW if won else UI_RED)
@@ -1892,6 +2273,132 @@ func _create_aftermath_heart(index: int, filled: bool) -> TextureRect:
 	heart.modulate = UI_RED if filled else Color(0.79, 0.76, 0.85, 0.42)
 	return heart
 
+func _build_aftermath_daily_calendar(parent: VBoxContainer, visible_streak: int, won: bool) -> Dictionary:
+	var header: HBoxContainer = HBoxContainer.new()
+	header.name = "DailyStreakHeader"
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 8)
+	parent.add_child(header)
+	var flame: TextureRect = TextureRect.new()
+	flame.name = "StreakFlame"
+	flame.texture = ICON_FLAME
+	flame.custom_minimum_size = Vector2(28, 34)
+	flame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(flame)
+	var title_copy: VBoxContainer = VBoxContainer.new()
+	title_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_copy.add_theme_constant_override("separation", 0)
+	header.add_child(title_copy)
+	var title: Label = _aftermath_label(SaveManager.text("streak_calendar_title"), 15, UI_PRIMARY, _font_fredoka_bold)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title_copy.add_child(title)
+	var caption: Label = _aftermath_label(
+		SaveManager.text("aftermath_streak_current") % visible_streak if won else SaveManager.text("aftermath_streak_lost"),
+		9,
+		Color("67569e"),
+		_font_dm_sans_semibold
+	)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title_copy.add_child(caption)
+	var streak_badge: PanelContainer = PanelContainer.new()
+	streak_badge.add_theme_stylebox_override("panel", _aftermath_calendar_badge_style())
+	streak_badge.custom_minimum_size = Vector2(48, 30)
+	header.add_child(streak_badge)
+	var streak_number: Label = _aftermath_label(str(visible_streak), 16, UI_YELLOW, _font_fredoka_bold)
+	streak_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	streak_number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	streak_badge.add_child(streak_number)
+
+	var day_key: String = GameState.daily_date if not GameState.daily_date.is_empty() else Time.get_date_string_from_system()
+	var monday_key: String = _daily_week_monday(day_key)
+	if _should_show_previous_daily_week(day_key, monday_key):
+		parent.add_child(_build_aftermath_calendar_week(_date_key_offset(monday_key, -7), SaveManager.text("streak_previous_week"), day_key, false))
+	parent.add_child(_build_aftermath_calendar_week(monday_key, SaveManager.text("streak_current_week"), day_key, true))
+	parent.add_child(_build_aftermath_calendar_legend())
+	return {"flame": flame, "number": streak_number, "caption": caption}
+
+func _build_aftermath_calendar_week(monday_key: String, title_text: String, today_key: String, current_week: bool) -> VBoxContainer:
+	var week: VBoxContainer = VBoxContainer.new()
+	week.name = "DailyStreakCurrentWeek" if current_week else "DailyStreakPreviousWeek"
+	week.add_theme_constant_override("separation", 2)
+	var heading: Label = _aftermath_label(title_text.to_upper(), 8, Color("67569e"), _font_dm_sans_semibold)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	week.add_child(heading)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	week.add_child(row)
+	for day_offset: int in 7:
+		var date_key: String = _date_key_offset(monday_key, day_offset)
+		row.add_child(_build_aftermath_calendar_day(date_key, today_key, current_week))
+	return week
+
+func _build_aftermath_calendar_day(date_key: String, today_key: String, current_week: bool) -> PanelContainer:
+	var result: Dictionary = SaveManager.get_daily_result(date_key)
+	var state: String = "empty"
+	if bool(result.get("completed", false)):
+		state = "correct" if bool(result.get("won", false)) else "wrong"
+	var fill: Color = STREAK_GREEN if state == "correct" else UI_RED if state == "wrong" else STREAK_EMPTY
+	var cell: PanelContainer = PanelContainer.new()
+	cell.name = "DailyStreakDay%s" % date_key.replace("-", "")
+	cell.set_meta("date_key", date_key)
+	cell.set_meta("calendar_state", state)
+	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.custom_minimum_size = Vector2(28, 30 if current_week else 26)
+	cell.add_theme_stylebox_override("panel", _aftermath_calendar_day_style(fill, date_key == today_key))
+	var date_parts: PackedStringArray = date_key.split("-")
+	var day_number: String = str(int(date_parts[2])) if date_parts.size() == 3 else date_key
+	var label: Label = _aftermath_label(day_number, 10, Color.WHITE, _font_fredoka_bold)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cell.add_child(label)
+	return cell
+
+func _build_aftermath_calendar_legend() -> HBoxContainer:
+	var legend: HBoxContainer = HBoxContainer.new()
+	legend.name = "DailyStreakLegend"
+	legend.alignment = BoxContainer.ALIGNMENT_CENTER
+	legend.add_theme_constant_override("separation", 8)
+	legend.add_child(_aftermath_calendar_legend_item(STREAK_GREEN, SaveManager.text("streak_correct")))
+	legend.add_child(_aftermath_calendar_legend_item(UI_RED, SaveManager.text("streak_wrong")))
+	legend.add_child(_aftermath_calendar_legend_item(STREAK_EMPTY, SaveManager.text("streak_empty")))
+	return legend
+
+func _aftermath_calendar_legend_item(color: Color, text_value: String) -> HBoxContainer:
+	var item: HBoxContainer = HBoxContainer.new()
+	item.add_theme_constant_override("separation", 3)
+	var swatch: Panel = Panel.new()
+	swatch.custom_minimum_size = Vector2(9, 9)
+	swatch.add_theme_stylebox_override("panel", _aftermath_calendar_day_style(color, false, 3))
+	item.add_child(swatch)
+	item.add_child(_aftermath_label(text_value, 8, Color("67569e"), _font_dm_sans_semibold))
+	return item
+
+func _daily_week_monday(day_key: String) -> String:
+	var unix_time: int = Time.get_unix_time_from_datetime_string("%sT00:00:00" % day_key)
+	var date_data: Dictionary = Time.get_date_dict_from_unix_time(unix_time)
+	var weekday: int = int(date_data.get("weekday", 1))
+	return _date_key_offset(day_key, -posmod(weekday - 1, 7))
+
+func _date_key_offset(day_key: String, offset_days: int) -> String:
+	var unix_time: int = Time.get_unix_time_from_datetime_string("%sT00:00:00" % day_key)
+	var date_data: Dictionary = Time.get_date_dict_from_unix_time(unix_time + offset_days * 86400)
+	return "%04d-%02d-%02d" % [int(date_data.get("year", 1970)), int(date_data.get("month", 1)), int(date_data.get("day", 1))]
+
+func _should_show_previous_daily_week(today_key: String, current_monday: String) -> bool:
+	var previous_has_history: bool = false
+	for day_offset: int in range(-7, 0):
+		if not SaveManager.get_daily_result(_date_key_offset(current_monday, day_offset)).is_empty():
+			previous_has_history = true
+			break
+	if not previous_has_history:
+		return false
+	var unix_time: int = Time.get_unix_time_from_datetime_string("%sT00:00:00" % today_key)
+	var weekday: int = int(Time.get_date_dict_from_unix_time(unix_time).get("weekday", 1))
+	var current_week_day_count: int = posmod(weekday - 1, 7) + 1
+	return current_week_day_count <= 3 or SaveManager.get_daily_streak(today_key) > current_week_day_count
+
 func _animate_endless_heart_loss(layer: Control, heart: Control) -> void:
 	await get_tree().create_timer(0.42).timeout
 	if not is_instance_valid(layer) or layer != _aftermath_layer or not is_instance_valid(heart):
@@ -1965,55 +2472,13 @@ func _on_aftermath_backdrop_input(event: InputEvent) -> void:
 	elif event is InputEventScreenTouch and not event.pressed:
 		_dismiss_aftermath()
 
-func _on_aftermath_drag_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			_start_aftermath_drag(event.position.y)
-		elif _aftermath_dragging:
-			_finish_aftermath_drag(event.position.y)
-	elif event is InputEventScreenDrag and _aftermath_dragging:
-		_update_aftermath_drag(event.position.y)
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_start_aftermath_drag(event.global_position.y)
-		elif _aftermath_dragging:
-			_finish_aftermath_drag(event.global_position.y)
-	elif event is InputEventMouseMotion and _aftermath_dragging and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-		_update_aftermath_drag(event.global_position.y)
-
-func _start_aftermath_drag(pointer_y: float) -> void:
-	if not is_instance_valid(_aftermath_sheet) or _aftermath_dismissing:
-		return
-	_stop_aftermath_motion()
-	_aftermath_layer.modulate.a = 1.0
-	_aftermath_stack.position.y = 0.0
-	_aftermath_dragging = true
-	_aftermath_drag_start_y = pointer_y
-
-func _update_aftermath_drag(pointer_y: float) -> void:
-	if not is_instance_valid(_aftermath_stack):
-		return
-	var offset: float = max(pointer_y - _aftermath_drag_start_y, 0.0)
-	_aftermath_stack.position.y = offset
-	if offset > 8.0:
-		accept_event()
-
-func _finish_aftermath_drag(pointer_y: float) -> void:
-	_aftermath_dragging = false
-	var offset: float = max(pointer_y - _aftermath_drag_start_y, 0.0)
-	if offset >= 72.0:
-		_dismiss_aftermath()
-	elif is_instance_valid(_aftermath_stack):
-		_aftermath_snap_tween = create_tween()
-		_aftermath_snap_tween.tween_property(_aftermath_stack, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
 func _stop_aftermath_motion(stop_xp: bool = false) -> void:
 	if _aftermath_open_tween != null and _aftermath_open_tween.is_running():
 		_aftermath_open_tween.kill()
-	if _aftermath_snap_tween != null and _aftermath_snap_tween.is_running():
-		_aftermath_snap_tween.kill()
 	if stop_xp and _aftermath_xp_tween != null and _aftermath_xp_tween.is_running():
 		_aftermath_xp_tween.kill()
+	if stop_xp:
+		SoundManager.stop_xp_gain(0.08)
 
 func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, total_before: int, total_after: int, xp_gained: int, final_text: String, level_after: int, play_xp_sound: bool, play_level_up_sound: bool) -> void:
 	if xp_gained <= 0 or total_after <= total_before:
@@ -2024,20 +2489,104 @@ func _animate_aftermath_xp(layer: Control, label: Label, progress: ProgressBar, 
 		if play_xp_sound and is_instance_valid(layer) and layer == _aftermath_layer:
 			SoundManager.xp_gain()
 	)
-	_aftermath_xp_tween.tween_method(
-		func(animated_total: float) -> void:
-			if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label) and is_instance_valid(progress):
-				_update_aftermath_xp_display(roundi(animated_total), label, progress, total_before, xp_gained),
-		float(total_before),
-		float(total_after),
-		XP_REWARD_ANIMATION_DURATION
-	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var animation_cursor: int = total_before
+	while animation_cursor < total_after:
+		var level_progress: Dictionary = SaveManager.get_level_progress(animation_cursor)
+		var required: int = maxi(int(level_progress.get("required", 1)), 1)
+		var current: int = clampi(int(level_progress.get("current", 0)), 0, required)
+		var segment_end: int = mini(total_after, animation_cursor + maxi(required - current, 1))
+		var segment_duration: float = XP_FULL_BAR_ANIMATION_DURATION * float(segment_end - animation_cursor) / float(required)
+		_aftermath_xp_tween.tween_method(
+			func(animated_total: float) -> void:
+				if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label) and is_instance_valid(progress):
+					_update_aftermath_xp_display(roundi(animated_total), label, progress, total_before, xp_gained),
+			float(animation_cursor),
+			float(segment_end),
+			segment_duration
+		).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+		animation_cursor = segment_end
 	_aftermath_xp_tween.tween_callback(func() -> void:
 		if is_instance_valid(layer) and layer == _aftermath_layer and is_instance_valid(label):
 			label.text = final_text
-			if play_level_up_sound:
-				_play_level_up_celebration(layer, progress, level_after)
+			if play_xp_sound:
+				SoundManager.stop_xp_gain()
 	)
+	if play_xp_sound:
+		_aftermath_xp_tween.tween_interval(XP_COMPLETE_SOUND_DELAY)
+		_aftermath_xp_tween.tween_callback(func() -> void:
+			if is_instance_valid(layer) and layer == _aftermath_layer:
+				SoundManager.xp_complete()
+		)
+	if play_level_up_sound:
+		_aftermath_xp_tween.tween_interval(LEVEL_UP_AFTER_XP_COMPLETE_DELAY if play_xp_sound else 0.12)
+		_aftermath_xp_tween.tween_callback(func() -> void:
+			if is_instance_valid(layer) and layer == _aftermath_layer:
+				_play_level_up_celebration(layer, progress, level_after)
+		)
+
+func _xp_reward_animation_duration(total_before: int, total_after: int) -> float:
+	if total_after <= total_before:
+		return 0.0
+	var cursor: int = total_before
+	var filled_bar_portions: float = 0.0
+	while cursor < total_after:
+		var level_progress: Dictionary = SaveManager.get_level_progress(cursor)
+		var required: int = maxi(int(level_progress.get("required", 1)), 1)
+		var current: int = clampi(int(level_progress.get("current", 0)), 0, required)
+		var xp_until_next_level: int = maxi(required - current, 1)
+		var segment_xp: int = mini(total_after - cursor, xp_until_next_level)
+		filled_bar_portions += float(segment_xp) / float(required)
+		cursor += segment_xp
+	return XP_FULL_BAR_ANIMATION_DURATION * filled_bar_portions
+
+func _build_aftermath_xp_track(progress: ProgressBar) -> Control:
+	var track: Control = Control.new()
+	track.name = "XpTrack"
+	track.custom_minimum_size = Vector2(250, 16)
+	track.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var outline: Panel = Panel.new()
+	outline.name = "XpTrackOutline"
+	outline.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var outline_style: StyleBoxFlat = StyleBoxFlat.new()
+	outline_style.bg_color = Color("ded5f1")
+	outline_style.border_color = UI_PRIMARY
+	outline_style.set_border_width_all(2)
+	outline_style.corner_radius_top_left = 8
+	outline_style.corner_radius_top_right = 8
+	outline_style.corner_radius_bottom_left = 8
+	outline_style.corner_radius_bottom_right = 8
+	outline.add_theme_stylebox_override("panel", outline_style)
+	track.add_child(outline)
+
+	var inset: MarginContainer = MarginContainer.new()
+	inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inset.add_theme_constant_override("margin_left", 2)
+	inset.add_theme_constant_override("margin_right", 2)
+	inset.add_theme_constant_override("margin_top", 2)
+	inset.add_theme_constant_override("margin_bottom", 2)
+	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.add_child(inset)
+	inset.add_child(progress)
+
+	for milestone_index: int in range(1, 5):
+		var marker: ColorRect = ColorRect.new()
+		marker.name = "XpMilestone%d" % milestone_index
+		marker.color = Color(1.0, 1.0, 1.0, 0.72)
+		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var anchor: float = float(milestone_index) / 5.0
+		marker.anchor_left = anchor
+		marker.anchor_right = anchor
+		marker.anchor_top = 0.0
+		marker.anchor_bottom = 1.0
+		marker.offset_left = -1.0
+		marker.offset_right = 1.0
+		marker.offset_top = 4.0
+		marker.offset_bottom = -4.0
+		track.add_child(marker)
+	return track
 
 func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: int) -> void:
 	if not is_instance_valid(layer) or layer != _aftermath_layer:
@@ -2062,7 +2611,7 @@ func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: in
 	overlay.add_child(focus_dim)
 	var focus_tween: Tween = overlay.create_tween()
 	focus_tween.tween_property(focus_dim, "color:a", 0.13, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	focus_tween.tween_interval(0.86)
+	focus_tween.tween_interval(1.65)
 	focus_tween.tween_property(focus_dim, "color:a", 0.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 	var flash: ColorRect = ColorRect.new()
@@ -2094,12 +2643,14 @@ func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: in
 
 	_spawn_level_up_confetti(overlay, center)
 	var badge: PanelContainer = _build_level_up_badge(level)
+	var has_level_unlock: bool = not _level_unlock_text(level).is_empty()
+	var badge_half_height: float = 106.0 if has_level_unlock else 82.0
 	badge.set_anchors_preset(Control.PRESET_CENTER)
 	badge.offset_left = -116.0
-	badge.offset_top = -82.0
+	badge.offset_top = -badge_half_height
 	badge.offset_right = 116.0
-	badge.offset_bottom = 82.0
-	badge.pivot_offset = Vector2(116.0, 82.0)
+	badge.offset_bottom = badge_half_height
+	badge.pivot_offset = Vector2(116.0, badge_half_height)
 	badge.scale = Vector2(0.62, 0.62)
 	badge.rotation = deg_to_rad(-4.0)
 	badge.modulate.a = 0.0
@@ -2110,14 +2661,14 @@ func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: in
 	badge_scale_tween.tween_property(badge, "scale", Vector2(1.13, 1.13), 0.31).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	badge_scale_tween.tween_property(badge, "scale", Vector2(0.985, 0.985), 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	badge_scale_tween.tween_property(badge, "scale", Vector2.ONE, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	badge_scale_tween.tween_interval(0.48)
+	badge_scale_tween.tween_interval(1.22)
 	badge_scale_tween.tween_property(badge, "scale", Vector2(1.035, 1.035), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 	var badge_visual_tween: Tween = overlay.create_tween().set_parallel(true)
 	badge_visual_tween.tween_property(badge, "modulate:a", 1.0, 0.12)
 	badge_visual_tween.tween_property(badge, "rotation", deg_to_rad(1.4), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	badge_visual_tween.tween_property(badge, "rotation", 0.0, 0.18).set_delay(0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	badge_visual_tween.tween_property(badge, "modulate:a", 0.0, 0.25).set_delay(1.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	badge_visual_tween.tween_property(badge, "modulate:a", 0.0, 0.25).set_delay(1.92).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_animate_level_up_number.call_deferred(overlay, level_number)
 
 	if is_instance_valid(progress):
@@ -2127,7 +2678,7 @@ func _play_level_up_celebration(layer: Control, progress: ProgressBar, level: in
 		progress_tween.tween_property(progress, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	var cleanup_tween: Tween = overlay.create_tween()
-	cleanup_tween.tween_interval(1.38)
+	cleanup_tween.tween_interval(LEVEL_UP_POPUP_DURATION)
 	cleanup_tween.tween_callback(_finish_level_up_celebration.bind(overlay))
 
 func _build_level_up_badge(level: int) -> PanelContainer:
@@ -2164,12 +2715,49 @@ func _build_level_up_badge(level: int) -> PanelContainer:
 	level_number.add_theme_constant_override("outline_size", 5)
 	level_number.add_theme_color_override("font_outline_color", Color(0.06, 0.02, 0.24, 0.72))
 	content.add_child(level_number)
-	var caption_text: String = SaveManager.text("daily_unlocked_reward") if level == SaveManager.DAILY_UNLOCK_LEVEL else SaveManager.text("level_up_new_level")
-	var caption: Label = _aftermath_label(caption_text, 11, UI_YELLOW if level == SaveManager.DAILY_UNLOCK_LEVEL else Color(1, 1, 1, 0.70), _font_dm_sans_semibold)
+	var caption: Label = _aftermath_label(SaveManager.text("level_up_new_level"), 11, Color(1, 1, 1, 0.70), _font_dm_sans_semibold)
 	caption.name = "LevelReward"
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(caption)
+	var unlock_text: String = _level_unlock_text(level)
+	if not unlock_text.is_empty():
+		var unlock_spacer: Control = Control.new()
+		unlock_spacer.custom_minimum_size.y = 8.0
+		content.add_child(unlock_spacer)
+		var unlock_panel: PanelContainer = PanelContainer.new()
+		unlock_panel.name = "LevelUnlockReward"
+		unlock_panel.add_theme_stylebox_override("panel", _level_unlock_reward_style())
+		content.add_child(unlock_panel)
+		var unlock_margin: MarginContainer = MarginContainer.new()
+		unlock_margin.add_theme_constant_override("margin_left", 12)
+		unlock_margin.add_theme_constant_override("margin_right", 12)
+		unlock_margin.add_theme_constant_override("margin_top", 7)
+		unlock_margin.add_theme_constant_override("margin_bottom", 7)
+		unlock_panel.add_child(unlock_margin)
+		var unlock_label: Label = _aftermath_label(unlock_text, 12, UI_PRIMARY, _font_fredoka_bold)
+		unlock_label.name = "LevelUnlockText"
+		unlock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		unlock_margin.add_child(unlock_label)
 	return badge
+
+func _level_unlock_text(level: int) -> String:
+	match level:
+		SaveManager.DAILY_UNLOCK_LEVEL:
+			return SaveManager.text("daily_unlocked_reward")
+		_:
+			return ""
+
+func _level_unlock_reward_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_YELLOW
+	style.border_color = Color.WHITE
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(13)
+	style.shadow_color = Color(0.02, 0.01, 0.12, 0.28)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3)
+	return style
 
 func _animate_level_up_number(overlay: Control, level_number: Label) -> void:
 	if not is_instance_valid(overlay) or not is_instance_valid(level_number):
@@ -2243,7 +2831,8 @@ func _dismiss_aftermath() -> void:
 	if _aftermath_dismissing or not is_instance_valid(_aftermath_layer):
 		return
 	_aftermath_dismissing = true
-	_aftermath_dragging = false
+	if is_instance_valid(_solution_preview_layer):
+		await _close_solution_preview()
 	_stop_aftermath_motion(true)
 	var layer: Control = _aftermath_layer
 	var sheet: PanelContainer = _aftermath_sheet
@@ -2261,7 +2850,6 @@ func _dismiss_aftermath() -> void:
 	_aftermath_sheet = null
 	_aftermath_stack = null
 	_aftermath_open_tween = null
-	_aftermath_snap_tween = null
 	_aftermath_xp_tween = null
 	_aftermath_dismissing = false
 
@@ -2354,9 +2942,10 @@ func _animate_hint_to_locked_slot(word: String, source_point: Vector2, source_si
 		var destination: Vector2 = _to_board_point(target_rect.get_center())
 		var target_row: Node = hinted_tile.get_parent()
 		var row_length: int = int(target_row.get_meta("row_length", 0))
+		SoundManager.word_move()
 		_fly_ghost(word, source_point, destination, source_size, _row_fill(row_length), _row_border(row_length))
 		var reveal_tween: Tween = create_tween()
-		reveal_tween.tween_interval(0.52)
+		reveal_tween.tween_interval(0.58)
 		reveal_tween.tween_callback(func() -> void:
 			if _hinted_tiles.has(word):
 				var locked_tile: Button = _hinted_tiles[word]
@@ -2366,7 +2955,7 @@ func _animate_hint_to_locked_slot(word: String, source_point: Vector2, source_si
 			_fly_ghost(displaced_word, displaced_point, source_point, displaced_size, UI_SURFACE, UI_BORDER)
 			if _word_buttons.has(displaced_word):
 				var displaced_reveal_tween: Tween = create_tween()
-				displaced_reveal_tween.tween_interval(0.52)
+				displaced_reveal_tween.tween_interval(0.58)
 				displaced_reveal_tween.tween_callback(func() -> void:
 					if _word_buttons.has(displaced_word):
 						var reflowed_tile: Button = _word_buttons[displaced_word]
@@ -2378,73 +2967,74 @@ func _on_hint_count_changed(used: int, limit: int) -> void:
 	if remaining > 0:
 		_set_hint_button_text(SaveManager.text("hint_count") % remaining)
 		_hint.disabled = false
-	elif GameState.game_mode == "unlimited" or GameState.rewarded_hint_claimed:
+	elif GameState.rewarded_hint_claimed:
 		_set_hint_button_text(SaveManager.text("hint_zero"))
 		_hint.disabled = true
 	else:
 		_set_hint_button_text(SaveManager.text("bonus_hint"))
 		_hint.disabled = false
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
-		_hint.disabled = _tutorial_stage != 2
+		var tutorial_stage_allows_hint: bool = _tutorial_stage == 2 or _tutorial_stage >= 5
+		_hint.disabled = _tutorial_paused or not tutorial_stage_allows_hint or remaining <= 0
 
 func _apply_tutorial_stage() -> void:
 	if GameState.game_mode != GameState.TUTORIAL_MODE or GameState.is_finished:
 		return
-	_tutorial_help_level = 0
 	_tutorial_target_words.clear()
 	_tutorial_focus_words.clear()
 	var allowed: Array[String] = []
 	var guide_text: String = SaveManager.text("tutorial_first_group")
 	if is_instance_valid(_tutorial_guide_button):
 		_tutorial_guide_button.visible = false
-	match _tutorial_stage:
-		0:
-			_tutorial_target_words = _tutorial_selectable_words(2)
-			allowed.assign(_tutorial_target_words)
-			_tutorial_focus_words.assign(_tutorial_target_words)
-		1:
-			guide_text = SaveManager.text("tutorial_mistakes_body")
-		2:
-			guide_text = SaveManager.text("tutorial_use_hint")
-		3:
-			_tutorial_target_words = _tutorial_selectable_words(5)
-			allowed.assign(_tutorial_target_words)
-			_tutorial_focus_words.assign(_tutorial_target_words)
-			guide_text = SaveManager.text("tutorial_finish_hint_row")
-		4:
-			_tutorial_target_words = _tutorial_selectable_words(1)
-			allowed.assign(_tutorial_target_words)
-			_tutorial_focus_words.assign(_tutorial_target_words)
-			guide_text = SaveManager.text("tutorial_top_any_order")
-		5:
-			_tutorial_target_words = _tutorial_selectable_words(3)
-			if _tutorial_independent_intro_pending:
-				guide_text = SaveManager.text("tutorial_independent_three_intro")
-				if is_instance_valid(_tutorial_guide_button):
-					_tutorial_guide_button.visible = true
-			else:
+	if _tutorial_forced_hint_pending:
+		guide_text = SaveManager.text("tutorial_forced_hint")
+	else:
+		match _tutorial_stage:
+			0:
+				_tutorial_target_words = _tutorial_selectable_words(2)
+				allowed.assign(_tutorial_target_words)
+				_tutorial_focus_words.assign(_tutorial_target_words)
+			1:
+				guide_text = SaveManager.text("tutorial_mistakes_body")
+			2:
+				guide_text = SaveManager.text("tutorial_use_hint")
+			3:
+				_tutorial_target_words = _tutorial_selectable_words(5)
+				allowed.assign(_tutorial_target_words)
+				_tutorial_focus_words.assign(_tutorial_target_words)
+				guide_text = SaveManager.text("tutorial_finish_hint_row")
+			4:
+				_tutorial_target_words = _tutorial_selectable_words(1)
+				allowed.assign(_tutorial_target_words)
+				_tutorial_focus_words.assign(_tutorial_target_words)
+				guide_text = SaveManager.text("tutorial_top_any_order")
+			5:
 				allowed = _tutorial_all_selectable_words()
-				guide_text = SaveManager.text("tutorial_find_three")
-		6:
-			_tutorial_target_words = _tutorial_selectable_words(4)
-			if _tutorial_independent_intro_pending:
-				guide_text = SaveManager.text("tutorial_independent_last_intro")
-				if is_instance_valid(_tutorial_guide_button):
-					_tutorial_guide_button.visible = true
-			else:
+				guide_text = SaveManager.text("tutorial_open_order")
+			6:
+				var remaining_size: int = _tutorial_remaining_open_group_size()
+				_tutorial_target_words = _tutorial_selectable_words(remaining_size)
 				allowed = _tutorial_all_selectable_words()
-				guide_text = SaveManager.text("tutorial_find_last")
+				_tutorial_focus_words.assign(_tutorial_target_words)
+				guide_text = SaveManager.text("tutorial_one_group_left") % remaining_size
 	GameState.set_tutorial_allowed_words(allowed)
-	_hint.disabled = _tutorial_paused or _tutorial_stage != 2
-	_check.disabled = _tutorial_paused or not GameState.can_check_selection()
+	var tutorial_stage_allows_hint: bool = _tutorial_stage == 2 or _tutorial_stage >= 5
+	_hint.disabled = _tutorial_paused or not tutorial_stage_allows_hint or GameState.get_remaining_hint_count() <= 0
+	_check.disabled = not _tutorial_can_check_selection()
 	_update_mistakes()
 	if not _tutorial_paused:
 		_message.text = guide_text
 	_update_tutorial_spotlight()
 	if not _tutorial_paused and _tutorial_stage == 1:
 		call_deferred("_show_tutorial_mistakes_feature")
-	elif not _tutorial_paused and _tutorial_stage == 2:
+	elif not _tutorial_paused and (_tutorial_stage == 2 or _tutorial_forced_hint_pending):
 		call_deferred("_show_tutorial_hint_feature")
+
+func _tutorial_remaining_open_group_size() -> int:
+	for row_length: int in [3, 4]:
+		if not _tutorial_selectable_words(row_length).is_empty():
+			return row_length
+	return 4
 
 func _tutorial_selectable_words(row_length: int) -> Array[String]:
 	var result: Array[String] = []
@@ -2460,21 +3050,38 @@ func _tutorial_all_selectable_words() -> Array[String]:
 			result.append(word)
 	return result
 
+func _tutorial_can_check_selection() -> bool:
+	if GameState.game_mode != GameState.TUTORIAL_MODE:
+		return GameState.can_check_selection()
+	if _tutorial_paused or _tutorial_forced_hint_pending or _tutorial_stage in [1, 2]:
+		return false
+	if _tutorial_target_words.is_empty():
+		return _tutorial_selection_matches_unsolved_row_size() and GameState.can_check_selection()
+	if GameState.selected_words.size() != _tutorial_target_words.size():
+		return false
+	for word: String in GameState.selected_words:
+		if not _tutorial_target_words.has(word):
+			return false
+	return GameState.can_check_selection()
+
+func _tutorial_selection_matches_unsolved_row_size() -> bool:
+	var selection_size: int = GameState.selected_words.size()
+	for row_length: int in [2, 3, 4, 5]:
+		var remaining_words: Array[String] = _tutorial_selectable_words(row_length)
+		if not remaining_words.is_empty() and selection_size == remaining_words.size():
+			return true
+	return selection_size == 1 and not GameState.is_top_solved
+
 func _apply_tutorial_wrong_answer_help() -> void:
-	if _tutorial_stage < 5 or _tutorial_target_words.is_empty():
+	if _tutorial_stage < 5 or _tutorial_forced_hint_pending:
 		return
-	_tutorial_help_level = mini(_tutorial_help_level + 1, 3)
+	_tutorial_help_level += 1
 	_tutorial_focus_words.clear()
-	if _tutorial_help_level >= 3:
-		_tutorial_focus_words.assign(_tutorial_target_words)
-		_message.text = SaveManager.text("tutorial_wrong_help_group")
-	elif _tutorial_help_level == 2 and _tutorial_target_words.size() > 1:
-		_tutorial_focus_words = _tutorial_target_words.slice(0, 2)
-		_message.text = SaveManager.text("tutorial_wrong_help_more")
-	else:
-		_tutorial_focus_words = [_tutorial_target_words[0]]
-		_message.text = SaveManager.text("tutorial_wrong_help_one")
-	_update_tutorial_spotlight()
+	if _tutorial_help_level < 2:
+		return
+	_tutorial_forced_hint_pending = true
+	GameState.clear_selection()
+	_apply_tutorial_stage()
 
 func _on_tutorial_guide_continue() -> void:
 	if _tutorial_stage < 5 or not _tutorial_independent_intro_pending or _tutorial_paused:
@@ -2491,7 +3098,7 @@ func _show_tutorial_mistakes_feature() -> void:
 	_create_tutorial_feature_layer(1)
 	var card: PanelContainer = PanelContainer.new()
 	card.name = "TutorialMistakesFeature"
-	card.size = Vector2(304, 178)
+	card.size = Vector2(304, 210)
 	card.add_theme_stylebox_override("panel", _tutorial_completion_style())
 	_tutorial_feature_layer.add_child(card)
 	_tutorial_feature_card = card
@@ -2516,12 +3123,12 @@ func _show_tutorial_mistakes_feature() -> void:
 	dots.alignment = BoxContainer.ALIGNMENT_CENTER
 	dots.add_theme_constant_override("separation", 12)
 	content.add_child(dots)
-	var maximum: int = int(SaveManager.settings.get("attempts", 4))
+	var maximum: int = SaveManager.MAX_ATTEMPTS
 	for _index: int in range(maximum):
-		var dot: Panel = Panel.new()
-		dot.custom_minimum_size = Vector2(18, 18)
-		dot.add_theme_stylebox_override("panel", _life_dot_style(false))
-		dots.add_child(dot)
+		var segment: Panel = Panel.new()
+		segment.custom_minimum_size = Vector2(62, 16)
+		segment.add_theme_stylebox_override("panel", _life_dot_style(false))
+		dots.add_child(segment)
 	var action: Button = Button.new()
 	action.name = "TutorialMistakesContinue"
 	action.text = SaveManager.text("tutorial_continue")
@@ -2533,13 +3140,15 @@ func _show_tutorial_mistakes_feature() -> void:
 	action.add_theme_color_override("font_color", UI_PRIMARY)
 	action.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	action.add_theme_color_override("font_pressed_color", UI_PRIMARY)
+	action.add_theme_color_override("font_disabled_color", UI_PRIMARY.lightened(0.35))
 	action.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
-	action.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
-	action.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	action.add_theme_stylebox_override("hover", _button_style(UI_ACCENT_HOVER, UI_PRIMARY))
+	action.add_theme_stylebox_override("pressed", _button_style(UI_ACCENT_PRESSED, UI_PRIMARY))
+	action.add_theme_stylebox_override("disabled", _button_style(UI_YELLOW.darkened(0.12), UI_PRIMARY.lightened(0.35)))
 	action.pressed.connect(_on_tutorial_mistakes_feature_pressed.bind(action))
 	content.add_child(action)
 	_lives_row.modulate.a = 0.0
-	await _animate_tutorial_feature_in(card, _lives_row, Vector2(304, 178))
+	await _animate_tutorial_feature_in(card, _lives_row, Vector2(304, 210))
 	if is_instance_valid(action) and _tutorial_stage == 1:
 		action.disabled = false
 
@@ -2554,40 +3163,73 @@ func _on_tutorial_mistakes_feature_pressed(action: Button) -> void:
 	_apply_tutorial_stage()
 
 func _show_tutorial_hint_feature() -> void:
-	if _tutorial_stage != 2 or _tutorial_paused or is_instance_valid(_tutorial_feature_layer):
+	var valid_hint_step: bool = _tutorial_stage == 2 or (_tutorial_stage >= 5 and _tutorial_forced_hint_pending)
+	if not valid_hint_step or _tutorial_paused or is_instance_valid(_tutorial_feature_layer):
 		return
 	await get_tree().process_frame
-	if _tutorial_stage != 2 or _tutorial_paused or not is_instance_valid(_hint):
+	valid_hint_step = _tutorial_stage == 2 or (_tutorial_stage >= 5 and _tutorial_forced_hint_pending)
+	if not valid_hint_step or _tutorial_paused or not is_instance_valid(_hint):
 		return
 	_create_tutorial_feature_layer(2)
+	var card: PanelContainer = PanelContainer.new()
+	card.name = "TutorialHintCard"
+	card.size = Vector2(304, 210)
+	card.add_theme_stylebox_override("panel", _tutorial_completion_style())
+	_tutorial_feature_layer.add_child(card)
+	_tutorial_feature_card = card
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	card.add_child(margin)
+	var content: VBoxContainer = VBoxContainer.new()
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 16)
+	margin.add_child(content)
+	var title: Label = Label.new()
+	title.name = "TutorialHintTitle"
+	title.text = SaveManager.text("tutorial_hint_title")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", _font_fredoka_bold)
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", UI_PRIMARY)
+	content.add_child(title)
 	var action: Button = _action_button(_hint.text)
 	action.name = "TutorialHintFeature"
 	action.icon = ICON_LIGHTBULB
 	action.expand_icon = true
 	action.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	action.add_theme_constant_override("icon_max_width", 24)
-	action.custom_minimum_size = Vector2(230, 72)
-	action.size = Vector2(230, 72)
+	action.add_theme_constant_override("icon_max_width", 20)
+	var source_hint_size: Vector2 = _hint.size
+	if source_hint_size.x <= 0.0 or source_hint_size.y <= 0.0:
+		source_hint_size = _hint.custom_minimum_size
+	action.custom_minimum_size = source_hint_size
+	action.size = source_hint_size
+	action.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	action.disabled = true
-	action.add_theme_font_size_override("font_size", 18)
+	action.add_theme_font_size_override("font_size", _hint.get_theme_font_size("font_size"))
 	action.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
-	action.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
-	action.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	action.add_theme_stylebox_override("hover", _button_style(UI_ACCENT_HOVER, UI_PRIMARY))
+	action.add_theme_stylebox_override("pressed", _button_style(UI_ACCENT_PRESSED, UI_PRIMARY))
 	action.pressed.connect(_on_tutorial_hint_feature_pressed.bind(action))
-	_tutorial_feature_layer.add_child(action)
-	_tutorial_feature_card = action
+	content.add_child(action)
 	_hint.modulate.a = 0.0
-	await _animate_tutorial_feature_in(action, _hint, Vector2(230, 72))
-	if is_instance_valid(action) and _tutorial_stage == 2:
+	await _animate_tutorial_feature_in(card, _hint, Vector2(304, 210), false)
+	if is_instance_valid(action) and (_tutorial_stage == 2 or _tutorial_forced_hint_pending):
 		action.disabled = false
 
 func _on_tutorial_hint_feature_pressed(action: Button) -> void:
-	if action.disabled or _tutorial_stage != 2 or not is_instance_valid(_tutorial_feature_card):
+	var forced_late_hint: bool = _tutorial_stage >= 5 and _tutorial_forced_hint_pending
+	if action.disabled or (_tutorial_stage != 2 and not forced_late_hint) or not is_instance_valid(_tutorial_feature_card):
 		return
 	action.disabled = true
-	await _animate_tutorial_feature_back(_tutorial_feature_card, _hint)
+	await _animate_tutorial_feature_back(_tutorial_feature_card, _hint, false)
 	_hint.modulate.a = 1.0
 	_clear_tutorial_feature_layer()
+	if forced_late_hint:
+		_tutorial_forced_hint_pending = false
+		_tutorial_help_level = 0
 	_on_hint_pressed()
 
 func _create_tutorial_feature_layer(stage: int) -> void:
@@ -2599,7 +3241,7 @@ func _create_tutorial_feature_layer(stage: int) -> void:
 	_tutorial_feature_layer.z_index = 31
 	add_child(_tutorial_feature_layer)
 
-func _animate_tutorial_feature_in(feature: Control, source: Control, feature_size: Vector2) -> void:
+func _animate_tutorial_feature_in(feature: Control, source: Control, feature_size: Vector2, animate_scale: bool = true) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(feature) or not is_instance_valid(source):
 		return
@@ -2608,17 +3250,18 @@ func _animate_tutorial_feature_in(feature: Control, source: Control, feature_siz
 	feature.size = feature_size
 	feature.position = source_center - feature_size * 0.5
 	feature.pivot_offset = feature_size * 0.5
-	feature.scale = Vector2(0.68, 0.68)
+	feature.scale = Vector2(0.68, 0.68) if animate_scale else Vector2.ONE
 	feature.modulate.a = 0.35
 	if _tutorial_feature_tween != null and _tutorial_feature_tween.is_running():
 		_tutorial_feature_tween.kill()
 	_tutorial_feature_tween = create_tween().set_parallel(true)
 	_tutorial_feature_tween.tween_property(feature, "position", target_center - feature_size * 0.5, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_tutorial_feature_tween.tween_property(feature, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if animate_scale:
+		_tutorial_feature_tween.tween_property(feature, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_tutorial_feature_tween.tween_property(feature, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await _tutorial_feature_tween.finished
 
-func _animate_tutorial_feature_back(feature: Control, source: Control) -> void:
+func _animate_tutorial_feature_back(feature: Control, source: Control, animate_scale: bool = true) -> void:
 	if not is_instance_valid(feature) or not is_instance_valid(source):
 		return
 	var source_center: Vector2 = source.get_global_rect().get_center() - get_global_rect().position
@@ -2627,7 +3270,8 @@ func _animate_tutorial_feature_back(feature: Control, source: Control) -> void:
 		_tutorial_feature_tween.kill()
 	_tutorial_feature_tween = create_tween().set_parallel(true)
 	_tutorial_feature_tween.tween_property(feature, "position", target_position, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	_tutorial_feature_tween.tween_property(feature, "scale", Vector2(0.68, 0.68), 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if animate_scale:
+		_tutorial_feature_tween.tween_property(feature, "scale", Vector2(0.68, 0.68), 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_tutorial_feature_tween.tween_property(feature, "modulate:a", 0.25, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await _tutorial_feature_tween.finished
 
@@ -2737,8 +3381,8 @@ func _show_tutorial_intro() -> void:
 	start_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	start_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	start_button.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
-	start_button.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
-	start_button.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	start_button.add_theme_stylebox_override("hover", _button_style(UI_ACCENT_HOVER, UI_PRIMARY))
+	start_button.add_theme_stylebox_override("pressed", _button_style(UI_ACCENT_PRESSED, UI_PRIMARY))
 	start_button.pressed.connect(_on_tutorial_intro_start.bind(start_button))
 	content.add_child(start_button)
 	await get_tree().process_frame
@@ -2765,6 +3409,7 @@ func _on_tutorial_intro_start(button: Button) -> void:
 	_tutorial_paused = false
 	_tutorial_stage = 0
 	_tutorial_independent_intro_pending = false
+	_tutorial_forced_hint_pending = false
 	_apply_tutorial_stage()
 
 func _update_tutorial_selection_message() -> void:
@@ -2779,9 +3424,17 @@ func _update_tutorial_selection_message() -> void:
 		_check.disabled = true
 		_update_tutorial_spotlight()
 		return
-	if _tutorial_stage >= 5 and _tutorial_independent_intro_pending:
-		_message.text = SaveManager.text("tutorial_independent_three_intro") if _tutorial_stage == 5 else SaveManager.text("tutorial_independent_last_intro")
+	if _tutorial_forced_hint_pending:
+		_message.text = SaveManager.text("tutorial_forced_hint")
 		_check.disabled = true
+		_update_tutorial_spotlight()
+		return
+	if _tutorial_stage == 5:
+		_message.text = SaveManager.text("tutorial_open_order")
+		_update_tutorial_spotlight()
+		return
+	if _tutorial_stage == 6:
+		_message.text = SaveManager.text("tutorial_one_group_left") % _tutorial_remaining_open_group_size()
 		_update_tutorial_spotlight()
 		return
 	var target_size_reached: bool = not _tutorial_target_words.is_empty() and GameState.selected_words.size() == _tutorial_target_words.size()
@@ -2806,7 +3459,7 @@ func _update_tutorial_spotlight() -> void:
 		_tutorial_spotlight.visible = false
 		_clear_tutorial_focus()
 		return
-	var full_guidance: bool = _tutorial_stage <= 4
+	var full_guidance: bool = _tutorial_stage <= 4 or _tutorial_forced_hint_pending
 	_tutorial_spotlight.visible = full_guidance
 	if full_guidance:
 		_tutorial_spotlight.color = Color(0.08, 0.035, 0.22, 0.35)
@@ -2815,18 +3468,25 @@ func _update_tutorial_spotlight() -> void:
 		var focused: bool = _tutorial_focus_words.has(word)
 		tile.z_index = 21 if focused else 0
 		_set_tutorial_focus(tile, focused)
-	_hint.z_index = 21 if _tutorial_stage == 2 else 0
-	_set_tutorial_focus(_hint, _tutorial_stage == 2)
-	var selection_ready: bool = not GameState.selected_words.is_empty() and GameState.can_check_selection()
-	_check.z_index = 21 if selection_ready and GameState.can_check_selection() else 0
-	_set_tutorial_focus(_check, selection_ready and GameState.can_check_selection())
+	var hint_focused: bool = _tutorial_stage == 2 or _tutorial_forced_hint_pending
+	_hint.z_index = 21 if hint_focused else 0
+	_set_tutorial_focus(_hint, hint_focused)
+	var selection_ready: bool = not GameState.selected_words.is_empty() and _tutorial_can_check_selection()
+	_check.z_index = 21 if selection_ready else 0
+	_set_tutorial_focus(_check, selection_ready)
 	if is_instance_valid(_tutorial_guide_button):
 		var guide_focused: bool = _tutorial_stage >= 5 and _tutorial_independent_intro_pending
-		_tutorial_guide_button.z_index = 21 if guide_focused else 0
-		_set_tutorial_focus(_tutorial_guide_button, guide_focused)
+		_tutorial_guide_button.z_index = 1 if guide_focused else 0
+		_set_tutorial_focus(_tutorial_guide_button, false)
+		if is_instance_valid(_tutorial_guide_banner):
+			# The whole banner must sit above the dim layer. Raising only its Label
+			# left the panel below the translucent overlay and made the instruction
+			# appear muted even while the target controls were highlighted.
+			_tutorial_guide_banner.z_index = 21 if full_guidance or guide_focused else 0
+			_set_tutorial_focus(_tutorial_guide_banner, guide_focused)
 	_lives_row.z_index = 21 if _tutorial_stage == 1 else 0
 	_set_tutorial_focus(_lives_row, _tutorial_stage == 1)
-	_message.z_index = 22
+	_message.z_index = 1
 
 func _set_tutorial_focus(control: Control, focused: bool, animate: bool = true) -> void:
 	if not is_instance_valid(control):
@@ -2874,6 +3534,9 @@ func _clear_tutorial_focus() -> void:
 	if is_instance_valid(_tutorial_guide_button):
 		_tutorial_guide_button.z_index = 0
 		_set_tutorial_focus(_tutorial_guide_button, false)
+	if is_instance_valid(_tutorial_guide_banner):
+		_tutorial_guide_banner.z_index = 0
+		_set_tutorial_focus(_tutorial_guide_banner, false)
 	_lives_row.z_index = 0
 	_set_tutorial_focus(_lives_row, false)
 
@@ -2913,10 +3576,11 @@ func _advance_tutorial_after_group(row_length: int) -> void:
 		_tutorial_stage = 4
 	elif _tutorial_stage == 4 and row_length == 1:
 		_tutorial_stage = 5
-		_tutorial_independent_intro_pending = true
-	elif _tutorial_stage == 5 and row_length == 3:
+		_tutorial_independent_intro_pending = false
+	elif _tutorial_stage == 5 and row_length in [3, 4]:
 		_tutorial_stage = 6
-		_tutorial_independent_intro_pending = true
+		_tutorial_independent_intro_pending = false
+	_tutorial_help_level = 0
 	_apply_tutorial_stage()
 
 func _advance_tutorial_after_hint() -> void:
@@ -2953,7 +3617,7 @@ func _restart_tutorial_after_failure() -> void:
 	_update_tutorial_spotlight()
 	_update_mistakes()
 	_message.text = SaveManager.text("tutorial_restart_message")
-	# Let the fourth error, its used attempt marker and the shake finish before
+	# Let the final Stamina loss, its segment update and the shake finish before
 	# covering the old board. The new practice then appears beneath one short
 	# full-screen fade, so no half-reset layout is ever visible.
 	await get_tree().create_timer(0.85).timeout
@@ -2976,6 +3640,7 @@ func _restart_tutorial_after_failure() -> void:
 	_tutorial_paused = false
 	_tutorial_stage = 0
 	_tutorial_independent_intro_pending = false
+	_tutorial_forced_hint_pending = false
 	GameState.start_tutorial()
 	await get_tree().process_frame
 	if not is_instance_valid(_tutorial_restart_layer):
@@ -3049,8 +3714,8 @@ func _show_tutorial_completion_screen() -> void:
 	continue_button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	continue_button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	continue_button.add_theme_stylebox_override("normal", _button_style(UI_YELLOW, UI_PRIMARY))
-	continue_button.add_theme_stylebox_override("hover", _button_style(Color("ffe23d"), UI_PRIMARY))
-	continue_button.add_theme_stylebox_override("pressed", _button_style(Color("e9c400"), UI_PRIMARY))
+	continue_button.add_theme_stylebox_override("hover", _button_style(UI_ACCENT_HOVER, UI_PRIMARY))
+	continue_button.add_theme_stylebox_override("pressed", _button_style(UI_ACCENT_PRESSED, UI_PRIMARY))
 	continue_button.pressed.connect(_on_tutorial_continue_pressed.bind(continue_button))
 	content.add_child(continue_button)
 	await get_tree().process_frame
@@ -3078,6 +3743,15 @@ func _on_rewarded_hint_required() -> void:
 	_hint.disabled = false
 
 func _on_rewarded_ad_unavailable(message: String) -> void:
+	if is_instance_valid(_last_chance_layer) and GameState.last_chance_pending:
+		_last_chance_status.text = message
+		_last_chance_status.visible = true
+		# A loading request is queued and opens automatically. A real failure
+		# restores the button so the player can retry instead of becoming stuck.
+		if message != SaveManager.text("rewarded_ad_loading"):
+			_last_chance_action.text = SaveManager.text("last_chance_watch")
+			_last_chance_action.disabled = false
+		return
 	_show_board_message(message)
 	_set_hint_button_text(SaveManager.text("ad_hint"), true)
 	_hint.disabled = false
@@ -3091,7 +3765,7 @@ func _on_hint_pressed() -> void:
 		GameState.request_hint()
 
 func _on_check_pressed() -> void:
-	if not GameState.can_check_selection():
+	if not _tutorial_can_check_selection():
 		return
 	if GameState.game_mode == GameState.TUTORIAL_MODE:
 		_start_tutorial_break(TUTORIAL_CHECK_BREAK)
@@ -3110,6 +3784,8 @@ func _on_instructions_dismissed() -> void:
 		return
 	_instructions_layer.queue_free()
 	_instructions_layer = null
+	var current_hint_limit: int = GameState.hints_used + GameState.get_remaining_hint_count()
+	_on_hint_count_changed(GameState.hints_used, current_hint_limit)
 
 func _action_button(label_text: String, filled: bool = false) -> Button:
 	var button: Button = Button.new()
@@ -3120,14 +3796,14 @@ func _action_button(label_text: String, filled: bool = false) -> Button:
 	var normal_color: Color = UI_YELLOW if filled else Color.WHITE
 	var normal_border: Color = UI_YELLOW if filled else Color(1, 1, 1, 0.32)
 	button.add_theme_stylebox_override("normal", _button_style(normal_color, normal_border))
-	button.add_theme_stylebox_override("hover", _button_style(Color("ffe23d") if filled else Color("f5f1ff"), UI_YELLOW if filled else Color.WHITE))
-	button.add_theme_stylebox_override("pressed", _button_style(Color("e9c400") if filled else Color("e7e0f7"), Color("e9c400") if filled else Color("d8cff0")))
-	button.add_theme_stylebox_override("disabled", _button_style(Color("d8d1e8"), Color("d8d1e8")))
+	button.add_theme_stylebox_override("hover", _button_style(UI_ACCENT_HOVER if filled else Color("f5f1ff"), UI_YELLOW if filled else Color.WHITE))
+	button.add_theme_stylebox_override("pressed", _button_style(UI_ACCENT_PRESSED if filled else Color("e7e0f7"), UI_ACCENT_PRESSED if filled else Color("d8cff0")))
+	button.add_theme_stylebox_override("disabled", _button_style(UI_DISABLED_FILL, UI_DISABLED_FILL))
 	button.add_theme_color_override("font_color", UI_PRIMARY)
 	button.add_theme_color_override("font_hover_color", UI_PRIMARY)
 	button.add_theme_color_override("font_pressed_color", UI_PRIMARY)
 	button.add_theme_color_override("font_hover_pressed_color", UI_PRIMARY)
-	button.add_theme_color_override("font_disabled_color", Color("81759f"))
+	button.add_theme_color_override("font_disabled_color", UI_DISABLED_TEXT)
 	return button
 
 func _hint_button_label(label_text: String) -> String:
@@ -3157,9 +3833,12 @@ func _add_aftermath_background_decor(parent: Control) -> void:
 	decor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	decor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(decor)
+	_add_mountain_silhouette(decor, size.y - 46.0, Color("d9ccff"), 0.24)
 	_add_game_decor_shape(decor, Vector2(-50, 78), Vector2(118, 118), UI_YELLOW, 0.30, 59)
 	_add_game_decor_shape(decor, Vector2(size.x - 70, 122), Vector2(112, 150), Color("c9b8ff"), 0.34, 26, 12.0)
 	_add_game_decor_shape(decor, Vector2(-24, size.y - 110), Vector2(74, 62), UI_TEAL, 0.16, 20, -10.0)
+	_add_game_dot_cluster(decor, Vector2(size.x - 58, 44), 4, 4, 8.0, UI_MAGENTA, 0.22)
+	_add_game_sparkle(decor, Vector2(34, size.y * 0.34), 13.0, UI_YELLOW, 0.34)
 
 func _build_aftermath_result_pyramid() -> VBoxContainer:
 	var component: VBoxContainer = VBoxContainer.new()
@@ -3305,16 +3984,133 @@ func _create_game_decor() -> Control:
 	layer.name = "GameDecor"
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var base: ColorRect = ColorRect.new()
-	base.color = UI_PRIMARY
+	var gradient: Gradient = Gradient.new()
+	gradient.set_color(0, Color("17075d"))
+	gradient.add_point(0.56, Color("21106f"))
+	gradient.set_color(2, Color("311783"))
+	var gradient_texture: GradientTexture2D = GradientTexture2D.new()
+	gradient_texture.gradient = gradient
+	gradient_texture.width = 64
+	gradient_texture.height = 256
+	gradient_texture.fill_from = Vector2(0.5, 0.0)
+	gradient_texture.fill_to = Vector2(0.5, 1.0)
+	var base: TextureRect = TextureRect.new()
+	base.texture = gradient_texture
+	base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	base.stretch_mode = TextureRect.STRETCH_SCALE
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(base)
-	# Half of the circle sits outside the left edge, slightly above the screen's
-	# midpoint. The opposite rectangle is clipped by the right edge.
-	_add_game_decor_shape(layer, Vector2(-62, size.y * 0.36), Vector2(124, 124), UI_YELLOW, 0.92, 62)
-	_add_game_decor_shape(layer, Vector2(size.x - 58, size.y * 0.52), Vector2(156, 84), Color("c9b8ff"), 0.78, 20, 12.0)
+	# Background-only alpine depth matching the loading screen. Board geometry,
+	# controls, buttons, and input behavior are intentionally untouched.
+	_add_game_mountain_range(layer, size.y + 12.0, size.y * 0.48, Color("a78cf3"), 0.13, -0.06)
+	_add_game_mountain_range(layer, size.y + 18.0, size.y * 0.63, Color("7b57dc"), 0.16, 0.08)
+	_add_game_mountain_range(layer, size.y + 24.0, size.y * 0.78, Color("4c2cae"), 0.24, -0.03)
+	_add_game_pine(layer, Vector2(16, size.y - 18), 74.0, Color("13054d"), 0.34)
+	_add_game_pine(layer, Vector2(size.x - 20, size.y - 12), 86.0, Color("13054d"), 0.32)
+	_add_game_decor_shape(layer, Vector2(-74, size.y * 0.325), Vector2(144, 144), Color("ffe08a"), 0.16, 72)
+	_add_game_decor_shape(layer, Vector2(-58, size.y * 0.34), Vector2(112, 112), Color("ffd45c"), 0.74, 56)
+	_add_game_decor_shape(layer, Vector2(size.x - 64, size.y * 0.50), Vector2(152, 88), Color("c5b3f6"), 0.38, 22, 12.0)
+	_add_game_dot_cluster(layer, Vector2(size.x - 54, 72), 4, 5, 8.0, Color("d6c8ff"), 0.32)
+	_add_game_dot_cluster(layer, Vector2(10, size.y - 112), 4, 4, 8.0, Color("9e7cf0"), 0.18)
+	_add_game_sparkle(layer, Vector2(34, 122), 14.0, Color("ffd45c"), 0.56)
+	_add_game_sparkle(layer, Vector2(size.x - 34, size.y * 0.36), 9.0, Color("1bc8bd"), 0.50)
 	return layer
+
+func _add_game_mountain_range(
+	parent: Control,
+	base_y: float,
+	peak_y: float,
+	color: Color,
+	alpha: float,
+	phase: float
+) -> void:
+	var mountain: Polygon2D = Polygon2D.new()
+	mountain.polygon = PackedVector2Array([
+		Vector2(-28, base_y),
+		Vector2(size.x * (0.10 + phase), base_y - 68),
+		Vector2(size.x * 0.25, base_y - 30),
+		Vector2(size.x * 0.42, peak_y + 58),
+		Vector2(size.x * 0.55, peak_y),
+		Vector2(size.x * 0.70, peak_y + 92),
+		Vector2(size.x * (0.86 - phase * 0.25), base_y - 72),
+		Vector2(size.x + 28, base_y - 12),
+		Vector2(size.x + 28, base_y + 34),
+		Vector2(-28, base_y + 34),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	mountain.color = fill
+	parent.add_child(mountain)
+
+func _add_game_pine(parent: Control, base: Vector2, height: float, color: Color, alpha: float) -> void:
+	var half_width: float = height * 0.22
+	var pine: Polygon2D = Polygon2D.new()
+	pine.polygon = PackedVector2Array([
+		base + Vector2(0, -height),
+		base + Vector2(-half_width * 0.56, -height * 0.62),
+		base + Vector2(-half_width * 0.26, -height * 0.64),
+		base + Vector2(-half_width, -height * 0.28),
+		base + Vector2(-half_width * 0.36, -height * 0.34),
+		base + Vector2(-half_width * 1.15, -2),
+		base + Vector2(half_width * 1.15, -2),
+		base + Vector2(half_width * 0.36, -height * 0.34),
+		base + Vector2(half_width, -height * 0.28),
+		base + Vector2(half_width * 0.26, -height * 0.64),
+		base + Vector2(half_width * 0.56, -height * 0.62),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	pine.color = fill
+	parent.add_child(pine)
+
+func _add_mountain_silhouette(parent: Control, base_y: float, color: Color, alpha: float) -> void:
+	var mountain: Polygon2D = Polygon2D.new()
+	mountain.polygon = PackedVector2Array([
+		Vector2(-24, base_y),
+		Vector2(size.x * 0.16, base_y - 72),
+		Vector2(size.x * 0.30, base_y - 28),
+		Vector2(size.x * 0.48, base_y - 104),
+		Vector2(size.x * 0.67, base_y - 34),
+		Vector2(size.x * 0.82, base_y - 82),
+		Vector2(size.x + 24, base_y),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	mountain.color = fill
+	parent.add_child(mountain)
+
+func _add_game_dot_cluster(parent: Control, origin: Vector2, columns: int, rows: int, spacing: float, color: Color, alpha: float) -> void:
+	for row: int in rows:
+		for column: int in columns:
+			var dot: Panel = Panel.new()
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot.position = origin + Vector2(column * spacing, row * spacing)
+			dot.size = Vector2(3.5, 3.5)
+			var style: StyleBoxFlat = StyleBoxFlat.new()
+			var fill: Color = color
+			fill.a = alpha
+			style.bg_color = fill
+			style.set_corner_radius_all(2)
+			dot.add_theme_stylebox_override("panel", style)
+			parent.add_child(dot)
+
+func _add_game_sparkle(parent: Control, center: Vector2, radius: float, color: Color, alpha: float) -> void:
+	var sparkle: Polygon2D = Polygon2D.new()
+	sparkle.polygon = PackedVector2Array([
+		center + Vector2(0, -radius),
+		center + Vector2(radius * 0.24, -radius * 0.24),
+		center + Vector2(radius, 0),
+		center + Vector2(radius * 0.24, radius * 0.24),
+		center + Vector2(0, radius),
+		center + Vector2(-radius * 0.24, radius * 0.24),
+		center + Vector2(-radius, 0),
+		center + Vector2(-radius * 0.24, -radius * 0.24),
+	])
+	var fill: Color = color
+	fill.a = alpha
+	sparkle.color = fill
+	parent.add_child(sparkle)
 
 func _add_game_decor_shape(parent: Control, position: Vector2, shape_size: Vector2, color: Color, alpha: float, radius: int, rotation_value: float = 0.0) -> void:
 	var shape: Panel = Panel.new()
@@ -3397,10 +4193,10 @@ func _outline_button_style(fill: Color) -> StyleBoxFlat:
 
 func _life_dot_style(used: bool) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = UI_RED if used else Color("e8e4f4")
-	style.border_color = UI_RED if used else UI_BORDER
+	style.bg_color = UI_RED if used else UI_YELLOW
+	style.border_color = UI_PRIMARY
 	style.set_border_width_all(2)
-	style.set_corner_radius_all(7)
+	style.set_corner_radius_all(6)
 	style.shadow_color = Color(0.102, 0.039, 0.369, 0.12)
 	style.shadow_size = 2
 	style.shadow_offset = Vector2(0, 1)
@@ -3431,10 +4227,12 @@ func _tile_style(color: Color, border_color: Color) -> StyleBoxFlat:
 	style.corner_radius_bottom_left = 14
 	style.corner_radius_bottom_right = 14
 	style.border_color = border_color
-	style.set_border_width_all(1)
-	style.shadow_color = Color(0.102, 0.039, 0.369, 0.13)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(0, 3)
+	style.set_border_width_all(2)
+	# A short, restrained offset keeps the tiles connected to the outlined app
+	# icon while remaining crisp enough for long words.
+	style.shadow_color = Color(0.102, 0.039, 0.369, 0.18)
+	style.shadow_size = 2
+	style.shadow_offset = Vector2(3, 3)
 	# Button's theme default margins are intended for wide UI buttons. Keeping
 	# them here would make ordinary words such as MUSHROOM truncate early.
 	style.content_margin_left = 3.0
@@ -3464,8 +4262,8 @@ func _row_border(row_length: int) -> Color:
 func _row_text(row_length: int) -> Color:
 	match row_length:
 		1: return Color.WHITE
-		2: return Color.WHITE
-		3: return Color.WHITE
+		2: return UI_TEXT
+		3: return UI_TEXT
 		4: return UI_TEXT
 		5: return UI_TEXT
 		_: return UI_TEXT
@@ -3509,7 +4307,7 @@ func _aftermath_result_card_style(won: bool) -> StyleBoxFlat:
 	style.bg_color = UI_PRIMARY
 	style.border_color = UI_PRIMARY
 	style.set_corner_radius_all(28)
-	style.shadow_color = UI_MAGENTA if won else UI_RED
+	style.shadow_color = UI_TEAL if won else UI_RED
 	style.shadow_size = 2
 	style.shadow_offset = Vector2(7, 7)
 	return style
@@ -3532,6 +4330,31 @@ func _aftermath_streak_style() -> StyleBoxFlat:
 	style.border_color = Color("523a9c")
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(20)
+	return style
+
+func _aftermath_daily_calendar_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_BACKGROUND
+	style.border_color = UI_PRIMARY
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(20)
+	style.shadow_color = Color(0.03, 0.01, 0.14, 0.22)
+	style.shadow_size = 2
+	style.shadow_offset = Vector2(0, 3)
+	return style
+
+func _aftermath_calendar_badge_style() -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = UI_PRIMARY
+	style.set_corner_radius_all(12)
+	return style
+
+func _aftermath_calendar_day_style(fill: Color, today: bool, radius: int = 8) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = UI_YELLOW if today else fill
+	style.set_border_width_all(2 if today else 1)
+	style.set_corner_radius_all(radius)
 	return style
 
 func _aftermath_pyramid_tile_style(fill: Color, border: Color, outlined: bool) -> StyleBoxFlat:
@@ -3588,12 +4411,6 @@ func _aftermath_inner_style(radius: int = 20) -> StyleBoxFlat:
 	style.border_color = Color(1, 1, 1, 0.08)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(radius)
-	return style
-
-func _aftermath_handle_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0.22)
-	style.set_corner_radius_all(2)
 	return style
 
 func _aftermath_button_style(fill: Color, border: Color) -> StyleBoxFlat:

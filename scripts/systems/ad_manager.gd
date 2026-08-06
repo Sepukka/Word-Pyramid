@@ -2,6 +2,8 @@ extends Node
 
 signal rewarded_hint_earned
 signal rewarded_heart_earned
+signal rewarded_attempt_earned
+signal rewarded_attempt_dismissed
 signal rewarded_ad_unavailable(message: String)
 
 # Google's official Android rewarded test unit. Replace this only for a
@@ -15,6 +17,7 @@ var _content_callback: FullScreenContentCallback = FullScreenContentCallback.new
 var _is_loading: bool = false
 var _show_when_loaded: bool = false
 var _reward_context: String = ""
+var _reward_was_earned: bool = false
 
 func _ready() -> void:
 	if not _is_mobile_platform():
@@ -34,11 +37,27 @@ func request_rewarded_hint() -> void:
 func request_rewarded_heart() -> void:
 	_request_rewarded_ad("heart")
 
+func request_rewarded_attempt() -> void:
+	# The gameplay requirement is Android-only advertising. Editor, desktop and
+	# iOS builds still exercise the complete continue flow without opening an ad.
+	if OS.get_name() != "Android":
+		rewarded_attempt_earned.emit()
+		return
+	_request_rewarded_ad("attempt")
+
+func cancel_rewarded_attempt_request() -> void:
+	if _reward_context != "attempt" or _rewarded_ad != null:
+		return
+	_show_when_loaded = false
+	_reward_context = ""
+	_reward_was_earned = false
+
 func _request_rewarded_ad(context: String) -> void:
 	if not _is_mobile_platform():
 		rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_unavailable"))
 		return
 	_reward_context = context
+	_reward_was_earned = false
 	if _rewarded_ad == null:
 		_show_when_loaded = true
 		if not _is_loading:
@@ -67,17 +86,24 @@ func _on_ad_failed_to_load(error: LoadAdError) -> void:
 	rewarded_ad_unavailable.emit(SaveManager.text("rewarded_ad_failed") % error.message)
 
 func _on_user_earned_reward(_item: RewardedItem) -> void:
+	_reward_was_earned = true
 	if _reward_context == "heart":
 		rewarded_heart_earned.emit()
+	elif _reward_context == "attempt":
+		rewarded_attempt_earned.emit()
 	else:
 		rewarded_hint_earned.emit()
-	_reward_context = ""
 
 func _discard_rewarded_ad() -> void:
+	var dismissed_context: String = _reward_context
+	var reward_was_earned: bool = _reward_was_earned
 	if _rewarded_ad != null:
 		_rewarded_ad.destroy()
 		_rewarded_ad = null
 	_reward_context = ""
+	_reward_was_earned = false
+	if dismissed_context == "attempt" and not reward_was_earned:
+		rewarded_attempt_dismissed.emit()
 	_load_rewarded_ad()
 
 func _show_rewarded_ad() -> void:

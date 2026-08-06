@@ -1,6 +1,6 @@
 # Puzzle Workshop
 
-Puzzle Workshop is a developer-only content editor for the four Word Pyramid
+Puzzle Workshop is a developer-only content editor for the four Word Ascent
 puzzle pools. It is not linked from the game and is not intended for exported
 Android builds.
 

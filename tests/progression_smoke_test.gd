@@ -33,14 +33,24 @@ func _ready() -> void:
 
 	var initial_skill: float = SaveManager.get_player_skill_rating()
 	var win_reward: Dictionary = SaveManager.record_progression_result(first_puzzle, GameState.UNLIMITED_MODE, true, 5, 0, 0)
-	assert(int(win_reward.get("xp_gained", 0)) > 0, "A completed puzzle must award XP")
+	var expected_win_xp: int = roundi(
+		SaveManager.XP_WIN_BASE
+		+ SaveManager.XP_DIFFICULTY_BONUS * float(PuzzleLoader.get_difficulty_tier(first_puzzle))
+		+ SaveManager.XP_PERFORMANCE_BONUS
+	)
+	assert(int(win_reward.get("xp_gained", 0)) == expected_win_xp, "A perfect first completion must receive the full increased XP reward")
+	assert(expected_win_xp >= 100, "Even an easy perfect first completion must award at least 100 XP")
 	assert(SaveManager.get_total_xp() == int(win_reward.get("total_xp_after", -1)), "Awarded XP must persist in progression")
 	assert(SaveManager.get_player_skill_rating() > initial_skill, "A strong Infinity result must increase the hidden skill rating")
 
 	var repeated_reward: Dictionary = SaveManager.record_progression_result(first_puzzle, GameState.UNLIMITED_MODE, false, 1, 4, 2)
 	assert(bool(repeated_reward.get("repeat_attempt", false)), "Replaying a puzzle must be recognized")
-	assert(int(repeated_reward.get("xp_gained", 0)) > 0, "Partial progress must still award XP")
+	assert(int(repeated_reward.get("xp_gained", 0)) >= 8, "Partial progress must receive the increased XP reward even on a repeat")
 	assert(SaveManager.get_player_skill_rating() < float(win_reward.get("skill_after", 0.0)), "A weak result must lower the hidden skill rating")
+	var xp_before_empty_result: int = SaveManager.get_total_xp()
+	var empty_reward: Dictionary = SaveManager.record_progression_result(first_puzzle, GameState.UNLIMITED_MODE, false, 0, 4, 2)
+	assert(int(empty_reward.get("xp_gained", -1)) == 0, "A result with no solved rows must award zero XP")
+	assert(SaveManager.get_total_xp() == xp_before_empty_result, "A zero-row result must not change total XP")
 
 	var previous_threshold: int = -1
 	for level: int in range(1, 20):

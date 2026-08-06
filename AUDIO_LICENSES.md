@@ -2,14 +2,6 @@
 
 ## Pixabay Content License
 
-- `assets/audio/sfx/pixabay/game_complete.mp3`
-  - Purpose: completing a full puzzle successfully
-  - Title: `Level Complete`
-  - Creator: Universfield
-  - Source: https://pixabay.com/sound-effects/film-special-effects-level-complete-143022/
-  - License shown on source page: Pixabay Content License
-  - Downloaded: 2026-07-18
-  - SHA-256: `0C765F662886E27537915B52AA735914EFE43F4D52A9983E861C0E094AA0C5FD`
 - `assets/audio/sfx/pixabay/level_up.mp3`
   - Purpose: reaching a new player level after the XP animation
   - Title: `Level Up 05`
@@ -31,54 +23,18 @@ Godot through the Godot Asset Library.
 - `assets/audio/sfx/kenney_interface/row_correct.wav`
   - Original file: `confirmation_002.wav`
   - Purpose: a correctly completed word row
-- `assets/audio/sfx/kenney_interface/wrong_answer.wav`
-  - Original file: `error_003.wav`
-  - Purpose: an incorrect guess
+- `assets/audio/sfx/kenney_interface/menu_select.wav`
+  - Original file: `click1.wav`
+  - Purpose: selecting words and menu actions
+- `assets/audio/sfx/kenney_interface/menu_deselect.wav`
+  - Original file: `click2.wav`
+  - Purpose: deselecting words
 - `assets/audio/sfx/kenney_interface/wrong_answer_b.wav`
   - Original file: `error_005.wav`
   - Purpose: the selected incorrect-guess sound
-- `assets/audio/sfx/kenney_interface/wrong_answer_c.wav`
-  - Original file: `error_006.wav`
-  - Purpose: retained wrong-answer sound test alternative
 - License copy: `assets/audio/sfx/kenney_interface/LICENSE.txt`
-
-### Temporary sound laboratory candidates
-
-The sound laboratory contains three candidates for every remaining gameplay
-sound. XP and word-movement candidates come from Kenney Interface Sounds.
-
-- `assets/audio/sfx/sound_lab/xp_1.wav` — `pluck_001.wav`
-- `assets/audio/sfx/sound_lab/xp_2.wav` — `tick_002.wav`
-- `assets/audio/sfx/sound_lab/xp_3.wav` — `select_003.wav`
-- `assets/audio/sfx/sound_lab/move_1.wav` — `drop_001.wav`
-- `assets/audio/sfx/sound_lab/move_2.wav` — `scroll_003.wav`
-- `assets/audio/sfx/sound_lab/move_3.wav` — `switch_004.wav`
 
 Sources:
 
 - https://godotengine.org/asset-library/asset/794
 - https://www.kenney.nl/assets/interface-sounds
-
-## Adobe Firefly generated sound effects
-
-These previous alternatives are retained in the project but are not currently
-used by `SoundManager`. They were generated on 2026-07-18 with Adobe Firefly
-Generate Sound Effects and exported
-as 48 kHz stereo WAV files. Adobe describes outputs from the commercially
-released Firefly sound-effect generator as royalty-free and commercially safe
-subject to its applicable terms.
-
-- `assets/audio/sfx/row_correct.wav`
-  - Purpose: a correctly completed word row
-  - Prompt: "Short soft positive UI success sound for a cozy Scandinavian
-    mobile word puzzle game. Two gentle ascending wooden marimba plucks followed
-    by a tiny glass sparkle. Warm, clean, playful and premium."
-- `assets/audio/sfx/wrong_answer.wav`
-  - Purpose: an incorrect guess
-  - Prompt: "Short gentle negative UI sound for a cozy Scandinavian mobile word
-    puzzle game. One soft wooden knock followed by a subtle descending muted
-    marimba note. Warm, clear and slightly disappointing without sounding harsh
-    or alarming."
-
-Source and current terms should be retained with release records:
-https://www.adobe.com/products/firefly/features/sound-effect-generator.html

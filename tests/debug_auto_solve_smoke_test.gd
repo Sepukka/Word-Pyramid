@@ -21,7 +21,7 @@ func _ready() -> void:
 	GameState.completed_won = false
 	GameState.is_auto_solving = false
 	GameState.is_debug_completion = false
-	GameState.attempts_left = int(SaveManager.settings.get("attempts", 4))
+	GameState.attempts_left = SaveManager.MAX_ATTEMPTS
 	GameState.hints_used = 0
 
 	var statistics_before: Dictionary = SaveManager.statistics.duplicate(true)
@@ -36,10 +36,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	board.refresh()
-	var debug_button: Button = board.get("_debug_auto_solve") as Button
-	assert(is_instance_valid(debug_button) and not debug_button.visible, "Gameplay screen must not expose the debug solve button")
-	board.call("_on_debug_auto_solve_pressed")
-	assert(debug_button.disabled or not debug_button.visible, "Debug solve button must lock while solving")
+	assert(board.find_child("DebugAutoSolve", true, false) == null, "Gameplay UI must not expose an auto-solve button")
+	GameState.debug_auto_solve()
 	var timeout: float = 8.0
 	while not GameState.is_finished and timeout > 0.0:
 		await get_tree().create_timer(0.1).timeout
@@ -62,13 +60,19 @@ func _ready() -> void:
 	expected_progression["total_xp"] = int(GameState.result_progression.get("total_xp_after", 0))
 	assert(SaveManager.progression == expected_progression, "Debug solve changed progression data other than XP")
 	assert(SaveManager.active_game == active_game_before, "Debug solve overwrote the resumable game")
-	await get_tree().create_timer(3.8).timeout
+	await get_tree().create_timer(6.0).timeout
 	assert(SaveManager.daily_results == daily_results_before, "Debug aftermath consumed or changed a daily result")
 	assert(SaveManager.progression == expected_progression, "Debug XP animation changed progression after awarding XP")
 	var level_up_overlay: Control = board.get("_level_up_overlay") as Control
 	assert(is_instance_valid(level_up_overlay), "Crossing a level threshold must show the level-up celebration")
 	assert(level_up_overlay.find_child("LevelNumber", true, false) != null, "Level-up celebration must show the new level")
-	await get_tree().create_timer(1.5).timeout
+	var daily_unlock_badge: PanelContainer = board.call("_build_level_up_badge", SaveManager.DAILY_UNLOCK_LEVEL) as PanelContainer
+	assert(daily_unlock_badge.find_child("LevelUnlockReward", true, false) != null, "Level three must show the Daily Challenge unlock at the bottom of the popup")
+	daily_unlock_badge.queue_free()
+	var ordinary_badge: PanelContainer = board.call("_build_level_up_badge", SaveManager.DAILY_UNLOCK_LEVEL + 1) as PanelContainer
+	assert(ordinary_badge.find_child("LevelUnlockReward", true, false) == null, "Levels without a reward must not show an empty unlock panel")
+	ordinary_badge.queue_free()
+	await get_tree().create_timer(2.5).timeout
 	assert(not is_instance_valid(board.get("_level_up_overlay")), "Level-up celebration must clean itself up")
 	print("DEBUG_AUTO_SOLVE_SMOKE_TEST_PASS")
 	board.queue_free()

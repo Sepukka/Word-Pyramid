@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 432 432">
+  <defs>
+    <radialGradient id="sky" cx="42%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#5634a6"/>
+      <stop offset="1" stop-color="#1a0a5e"/>
+    </radialGradient>
+    <linearGradient id="mountain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff8dc"/>
+      <stop offset="0.23" stop-color="#d8b9ff"/>
+      <stop offset="0.48" stop-color="#27c6b2"/>
+      <stop offset="0.73" stop-color="#ff8066"/>
+      <stop offset="1" stop-color="#ffd84a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="155%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#080222" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="432" height="432" fill="url(#sky)"/>
+  <circle cx="91" cy="92" r="36" fill="#ffd84a" opacity="0.92"/>
+  <rect x="332" y="72" width="74" height="74" rx="24" transform="rotate(14 369 109)" fill="#d8b9ff" opacity="0.72"/>
+  <g filter="url(#shadow)">
+    <path d="M62 354 L202 86 Q216 60 230 86 L370 354 Z" fill="url(#mountain)" stroke="#100540" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M182 124 L216 68 L250 132 L231 123 L216 143 L201 123 Z" fill="#fffdf4"/>
+    <path d="M109 263 H323" stroke="#100540" stroke-width="7" stroke-linecap="round" opacity="0.72"/>
+    <path d="M144 198 H288" stroke="#100540" stroke-width="7" stroke-linecap="round" opacity="0.72"/>
+    <path d="M178 133 H254" stroke="#100540" stroke-width="7" stroke-linecap="round" opacity="0.72"/>
+    <path d="M76 328 H356" stroke="#100540" stroke-width="7" stroke-linecap="round" opacity="0.72"/>
+  </g>
+  <path d="M216 69 V42" stroke="#ffd84a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M220 43 L267 56 L220 72 Z" fill="#ffd84a" stroke="#100540" stroke-width="5" stroke-linejoin="round"/>
+</svg>

@@ -14,16 +14,18 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Word Pyramid"
-config/icon="res://assets/store/google-play-app-icon-512.png"
+config/name="Word Ascent"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7")
 boot_splash/bg_color=Color(0.996078, 0.980392, 0.956863, 1)
-boot_splash/show_image=false
+boot_splash/image="res://assets/branding/word_ascent_loading_screen.png"
+config/icon="res://assets/app_icon.png"
 
 [autoload]
 
 SaveManager="*res://scripts/systems/save_manager.gd"
+AnalyticsManager="*res://scripts/systems/analytics_manager.gd"
+NotificationManager="*res://scripts/systems/notification_manager.gd"
 PuzzleLoader="*res://scripts/data/puzzle_loader.gd"
 SoundManager="*res://scripts/systems/sound_manager.gd"
 AdManager="*res://scripts/systems/ad_manager.gd"

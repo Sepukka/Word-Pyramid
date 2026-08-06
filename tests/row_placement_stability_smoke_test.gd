@@ -37,6 +37,17 @@ func _ready() -> void:
 	_font_size = sample.get_theme_font_size("font_size")
 	var board_message: Label = _board.get("_message") as Label
 	assert(board_message.text.is_empty() and not board_message.visible, "Normal gameplay starts without a redundant permanent message")
+	var gameplay_status_slot: Control = _board.get("_gameplay_status_slot") as Control
+	assert(gameplay_status_slot != null and is_equal_approx(gameplay_status_slot.custom_minimum_size.y, GameBoard.GAMEPLAY_STATUS_HEIGHT), "Normal gameplay reserves a fixed feedback slot")
+	var pyramid: VBoxContainer = _board.get("_pyramid") as VBoxContainer
+	var pyramid_origin: Vector2 = pyramid.global_position
+	_board.call("_show_board_message", "A deliberately long hint message that wraps onto another line must not move the pyramid.")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert(pyramid.global_position.is_equal_approx(pyramid_origin), "Wrapped hint feedback must not move the gameplay pyramid")
+	_board.call("_clear_board_message")
+	await get_tree().process_frame
+	assert(pyramid.global_position.is_equal_approx(pyramid_origin), "Clearing feedback must not move the gameplay pyramid")
 
 	var three_group: Dictionary = _group_of_size(3)
 	var three_words: Array[String] = GameState._to_string_array(three_group.get("words", []))

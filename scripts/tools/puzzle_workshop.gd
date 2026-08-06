@@ -334,7 +334,7 @@ func _build_preview_panel() -> Control:
 	phone_content.alignment = BoxContainer.ALIGNMENT_CENTER
 	phone_content.add_theme_constant_override("separation", 8)
 	phone.add_child(phone_content)
-	var logo := _label("Word Pyramid", 20, PURPLE, _font_heading)
+	var logo := _label("Word Ascent", 20, PURPLE, _font_heading)
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	phone_content.add_child(logo)
 	_preview_title = _label("Uusi kenttä", 15, PURPLE_2, _font_heading)

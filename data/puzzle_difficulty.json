@@ -82,24 +82,24 @@
 			"rating": 1180.0
 		},
 		"daily_021": {
-			"tier": 3.0,
-			"rating": 1050.0
+			"tier": 2.0,
+			"rating": 920.0
 		},
 		"daily_022": {
-			"tier": 3.0,
-			"rating": 1100.0
+			"tier": 2.0,
+			"rating": 950.0
 		},
 		"daily_023": {
-			"tier": 4.0,
-			"rating": 1180.0
+			"tier": 2.0,
+			"rating": 930.0
 		},
 		"daily_024": {
-			"tier": 4.0,
-			"rating": 1240.0
+			"tier": 1.0,
+			"rating": 850.0
 		},
 		"daily_025": {
-			"tier": 5.0,
-			"rating": 1320.0
+			"tier": 2.0,
+			"rating": 960.0
 		},
 		"daily_026": {"tier": 1.0, "rating": 840.0},
 		"daily_027": {"tier": 2.0, "rating": 930.0},
@@ -202,24 +202,24 @@
 			"rating": 1200.0
 		},
 		"fi_daily_021": {
-			"tier": 3.0,
-			"rating": 1070.0
+			"tier": 2.0,
+			"rating": 920.0
 		},
 		"fi_daily_022": {
-			"tier": 3.0,
-			"rating": 1120.0
+			"tier": 2.0,
+			"rating": 950.0
 		},
 		"fi_daily_023": {
-			"tier": 4.0,
-			"rating": 1200.0
+			"tier": 2.0,
+			"rating": 930.0
 		},
 		"fi_daily_024": {
-			"tier": 4.0,
-			"rating": 1260.0
+			"tier": 1.0,
+			"rating": 850.0
 		},
 		"fi_daily_025": {
-			"tier": 5.0,
-			"rating": 1340.0
+			"tier": 2.0,
+			"rating": 960.0
 		},
 		"fi_daily_026": {"tier": 1.0, "rating": 840.0},
 		"fi_daily_027": {"tier": 2.0, "rating": 930.0},

@@ -1,20 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#d5b8ff"/>
-      <stop offset="0.55" stop-color="#a77aef"/>
-      <stop offset="1" stop-color="#6b3fc7"/>
+    <linearGradient id="mountain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff8dc"/>
+      <stop offset="0.23" stop-color="#d8b9ff"/>
+      <stop offset="0.48" stop-color="#27c6b2"/>
+      <stop offset="0.73" stop-color="#ff8066"/>
+      <stop offset="1" stop-color="#ffd84a"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="155%">
       <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#351a78" flood-opacity="0.28"/>
     </filter>
   </defs>
-  <g fill="url(#tile)" stroke="#8052d4" stroke-width="2" filter="url(#shadow)">
-    <rect x="176" y="84" width="80" height="80" rx="23"/>
-    <rect x="130" y="174" width="80" height="80" rx="23"/>
-    <rect x="222" y="174" width="80" height="80" rx="23"/>
-    <rect x="84" y="264" width="80" height="80" rx="23"/>
-    <rect x="176" y="264" width="80" height="80" rx="23"/>
-    <rect x="268" y="264" width="80" height="80" rx="23"/>
+  <g filter="url(#shadow)">
+    <path d="M80 350 L202 102 Q216 76 230 102 L352 350 Z" fill="url(#mountain)" stroke="#100540" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M181 144 L216 82 L251 151 L231 139 L216 158 L201 139 Z" fill="#fffdf4"/>
+    <path d="M112 275 H320 M145 210 H287 M180 145 H252 M91 326 H341" fill="none" stroke="#100540" stroke-width="7" stroke-linecap="round" opacity="0.72"/>
+    <path d="M216 83 V54" fill="none" stroke="#ffd84a" stroke-width="8" stroke-linecap="round"/>
+    <path d="M220 55 L265 67 L220 83 Z" fill="#ffd84a" stroke="#100540" stroke-width="5" stroke-linejoin="round"/>
   </g>
 </svg>

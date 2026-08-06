@@ -1,0 +1,132 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/loading_screen.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/branding/word_ascent_loading_screen.png" id="2_background"]
+
+[sub_resource type="StyleBoxFlat" id="Style_track"]
+bg_color = Color(0.101961, 0.0392157, 0.368627, 0.18)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="Style_progress"]
+bg_color = Color(0.447059, 0.223529, 0.94902, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.282353, 0.117647, 0.733333, 0.3)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="Style_dot_purple"]
+bg_color = Color(0.72549, 0.223529, 1, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.101961, 0.0392157, 0.368627, 0.28)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="Style_dot_teal"]
+bg_color = Color(0, 0.74902, 0.647059, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.101961, 0.0392157, 0.368627, 0.28)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="Style_dot_yellow"]
+bg_color = Color(1, 0.839216, 0, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.101961, 0.0392157, 0.368627, 0.28)
+shadow_size = 3
+
+[node name="LoadingScreen" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1_script")
+
+[node name="Screen" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Artwork" type="TextureRect" parent="Screen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_background")
+expand_mode = 1
+stretch_mode = 6
+mouse_filter = 2
+
+[node name="Loader" type="Control" parent="Screen"]
+layout_mode = 1
+anchors_preset = 0
+anchor_left = 0.5
+anchor_top = 0.915
+anchor_right = 0.5
+anchor_bottom = 0.915
+offset_left = -70.0
+offset_top = -17.0
+offset_right = 70.0
+offset_bottom = 21.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DotPurple" type="Panel" parent="Screen/Loader"]
+layout_mode = 0
+offset_left = 35.0
+offset_top = 0.0
+offset_right = 53.0
+offset_bottom = 9.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_dot_purple")
+
+[node name="DotTeal" type="Panel" parent="Screen/Loader"]
+layout_mode = 0
+offset_left = 61.0
+offset_top = 0.0
+offset_right = 79.0
+offset_bottom = 9.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_dot_teal")
+
+[node name="DotYellow" type="Panel" parent="Screen/Loader"]
+layout_mode = 0
+offset_left = 87.0
+offset_top = 0.0
+offset_right = 105.0
+offset_bottom = 9.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_dot_yellow")
+
+[node name="ProgressTrack" type="Panel" parent="Screen/Loader"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 25.0
+offset_right = 128.0
+offset_bottom = 30.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_track")
+
+[node name="ProgressFill" type="Panel" parent="Screen/Loader"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 25.0
+offset_right = 20.0
+offset_bottom = 30.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_progress")

@@ -1,0 +1,3 @@
+# These files are rollback copies, not part of the runnable Godot project.
+# Keeping the folder outside the editor's resource scan prevents duplicate
+# global class registrations such as GameBoard.
